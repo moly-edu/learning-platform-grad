@@ -50,7 +50,7 @@ const Signup = () => {
   // });
 
   const onSubmit: SubmitHandler<z.infer<typeof SignUpSchema>> = async (
-    formData
+    formData,
   ) => {
     setSubmitError(null);
     // signupMutation.mutate({ body: formData });
@@ -64,7 +64,7 @@ const Signup = () => {
       setSubmitError(error.message || "Something went wrong");
     } else {
       toast.success("Signed up successfully");
-      router.push("/dashboard");
+      router.push("/dashboard/classes");
     }
   };
 

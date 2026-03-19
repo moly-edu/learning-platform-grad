@@ -17,11 +17,11 @@ export default async function ClassLayout({
   try {
     res = await apiServer.classes.getClassWithCourse({ params: { classId } });
   } catch {
-    redirect("/dashboard");
+    redirect("/dashboard/classes");
   }
 
   if (res.status !== 200 || !res.body.data) {
-    redirect("/dashboard");
+    redirect("/dashboard/classes");
   }
 
   const role = `class_${res.body.role}` as
@@ -34,7 +34,7 @@ export default async function ClassLayout({
 
   if (!rootNode) {
     console.error("Failed to build tree");
-    redirect("/dashboard");
+    redirect("/dashboard/classes");
   }
 
   const courseUI = {

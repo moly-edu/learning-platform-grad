@@ -52,7 +52,7 @@ const SigninPage = () => {
       setSubmitError(error.message || "Something went wrong");
     } else {
       toast.success("Signed in successfully");
-      router.push("/dashboard");
+      router.push("/dashboard/classes");
     }
   };
 

@@ -60,7 +60,7 @@ export function UserDropdown({ user }: UserDropdownProps) {
             <Notebook className="size-4" /> <span>Classes</span>
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
+        {/* <DropdownMenuItem asChild>
           <Link href="/dashboard">
             <LayoutDashboard className="size-4" /> <span>Dashboard</span>
           </Link>
@@ -69,7 +69,7 @@ export function UserDropdown({ user }: UserDropdownProps) {
           <Link href="/dev">
             <CreditCard className="size-4" /> <span>Widgets</span>
           </Link>
-        </DropdownMenuItem>
+        </DropdownMenuItem> */}
         {/* {user.role === "admin" && <AdminItem />} */}
         <SignOutItem />
       </DropdownMenuContent>

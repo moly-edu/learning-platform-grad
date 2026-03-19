@@ -21,7 +21,7 @@ export default async function OrgLayout({
       query: { orgSlug: slug },
     });
     if (memberRes.status !== 200 || !memberRes.body) {
-      redirect("/dashboard");
+      redirect("/dashboard/classes");
     }
     organization = await auth.api.getFullOrganization({
       query: {
@@ -31,10 +31,10 @@ export default async function OrgLayout({
       headers: await headers(),
     });
   } catch {
-    redirect("/dashboard");
+    redirect("/dashboard/classes");
   }
 
-  if (!organization) redirect("/dashboard");
+  if (!organization) redirect("/dashboard/classes");
 
   return (
     <OrganizationProvider organization={organization}>

@@ -7,9 +7,7 @@ export async function GET() {
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/github/callback`;
 
   // GitHub OAuth URL
-  const githubAuthUrl = new URL(
-    "https://github.com/apps/joy-math/installations/new"
-  );
+  const githubAuthUrl = new URL(`${process.env.GITHUB_APP_INSTALL_URL}`);
 
   // Redirect to GitHub App installation page
   return NextResponse.redirect(githubAuthUrl.toString());

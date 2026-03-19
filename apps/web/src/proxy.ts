@@ -29,9 +29,9 @@ export default async function proxy(req: NextRequest) {
     isPublicRoute &&
     session?.user &&
     // Thêm điều kiện này để tránh vòng lặp chuyển hướng khi ở /dashboard
-    !req.nextUrl.pathname.startsWith("/dashboard")
+    !req.nextUrl.pathname.startsWith("/dashboard/classes")
   ) {
-    return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
+    return NextResponse.redirect(new URL("/dashboard/classes", req.nextUrl));
   }
 
   return NextResponse.next();
