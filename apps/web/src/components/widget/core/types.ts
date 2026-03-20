@@ -1,5 +1,6 @@
 export interface WidgetDefinition {
   schema: Record<string, any>;
+  resolvedDefaults?: Record<string, any>;
 }
 
 export interface Submission {
@@ -9,4 +10,9 @@ export interface Submission {
     score: number;
     maxScore: number;
   };
+}
+
+export interface HostTtsResult {
+  ok: boolean;
+  error?: string;
 }

@@ -7,6 +7,10 @@ import { TweakpaneBuilder } from "./core/TweakpaneBuilder";
 import { Pane } from "tweakpane";
 import * as TweakpaneImagePlugin from "@kitschpatrol/tweakpane-plugin-image";
 import { AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import {
+  stopHostTtsPlayback,
+  synthesizeWithHostTts,
+} from "./core/HostTtsClient";
 
 export default function WidgetPreview({ html }: { html: string }) {
   const [widgetDef, setWidgetDef] = useState<WidgetDefinition | null>(null);
@@ -104,6 +108,36 @@ export default function WidgetPreview({ html }: { html: string }) {
         console.log("📣 Widget event:", event.data.event, event.data.payload);
       }
 
+      if (event.data.type === "TTS_SYNTHESIZE") {
+        const requestId = event.data?.payload?.requestId;
+        const text = String(event.data?.payload?.text || "");
+        if (!requestId) return;
+        if (event.source !== iframeRef.current?.contentWindow) {
+          return;
+        }
+        const targetWindow = event.source as Window | null;
+        if (!targetWindow) return;
+        (async () => {
+          const result = await synthesizeWithHostTts(text);
+          targetWindow.postMessage(
+            {
+              type: "TTS_SYNTHESIZE_RESULT",
+              payload: {
+                requestId,
+                ...result,
+              },
+            },
+            "*",
+          );
+        })();
+      }
+      if (event.data.type === "TTS_STOP") {
+        if (event.source !== iframeRef.current?.contentWindow) {
+          return;
+        }
+        stopHostTtsPlayback();
+      }
+
       if (event.data.type === "ERROR") {
         console.error("❌ Widget error:", event.data.payload);
         setError(event.data.payload?.message || "Widget error");
@@ -176,9 +210,9 @@ export default function WidgetPreview({ html }: { html: string }) {
       pane.registerPlugin(TweakpaneImagePlugin);
       paneInstanceRef.current = pane;
 
-      const initialConfig = SchemaProcessor.extractDefaultsFromSchema(
-        widgetDef.schema,
-      );
+      const initialConfig =
+        widgetDef.resolvedDefaults ??
+        SchemaProcessor.extractDefaultsFromSchema(widgetDef.schema);
 
       console.log("🎯 Initial config extracted:", initialConfig);
 

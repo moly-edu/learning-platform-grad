@@ -21,6 +21,10 @@ import {
 import AssignmentStudentsPanel from "./AssignmentStudentsPanel";
 import DirectAssignStudentPanel from "./DirectAssignStudentPanel";
 import { Button } from "@/components/ui/button";
+import {
+  stopHostTtsPlayback,
+  synthesizeWithHostTts,
+} from "../core/HostTtsClient";
 
 export interface TeacherCreateAssignmentRef {
   getCurrentConfig: () => Record<string, any>;
@@ -221,6 +225,36 @@ const TeacherCreateAssignment = forwardRef<
 
       if (event.data.type === "EVENT") {
         console.log("📣 Widget event:", event.data.event, event.data.payload);
+      }
+
+      if (event.data.type === "TTS_SYNTHESIZE") {
+        const requestId = event.data?.payload?.requestId;
+        const text = String(event.data?.payload?.text || "");
+        if (!requestId) return;
+        if (event.source !== iframeRef.current?.contentWindow) {
+          return;
+        }
+        const targetWindow = event.source as Window | null;
+        if (!targetWindow) return;
+        (async () => {
+          const result = await synthesizeWithHostTts(text);
+          targetWindow.postMessage(
+            {
+              type: "TTS_SYNTHESIZE_RESULT",
+              payload: {
+                requestId,
+                ...result,
+              },
+            },
+            "*",
+          );
+        })();
+      }
+      if (event.data.type === "TTS_STOP") {
+        if (event.source !== iframeRef.current?.contentWindow) {
+          return;
+        }
+        stopHostTtsPlayback();
       }
 
       if (event.data.type === "ERROR") {

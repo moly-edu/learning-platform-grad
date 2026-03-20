@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { AlertCircle, CheckCircle, Loader2, XCircle } from "lucide-react";
 import { Submission, WidgetDefinition } from "../core/types";
 import { useCourseStructure } from "@/components/providers/course-structure-provider";
+import {
+  stopHostTtsPlayback,
+  synthesizeWithHostTts,
+} from "../core/HostTtsClient";
 
 interface StudentAssignmentViewProps {
   assignmentId: string;
@@ -178,6 +182,36 @@ export default function StudentAssignmentView({
 
       if (event.data.type === "EVENT") {
         console.log("📣 Widget event:", event.data.event, event.data.payload);
+      }
+
+      if (event.data.type === "TTS_SYNTHESIZE") {
+        const requestId = event.data?.payload?.requestId;
+        const text = String(event.data?.payload?.text || "");
+        if (!requestId) return;
+        if (event.source !== iframeRef.current?.contentWindow) {
+          return;
+        }
+        const targetWindow = event.source as Window | null;
+        if (!targetWindow) return;
+        (async () => {
+          const result = await synthesizeWithHostTts(text);
+          targetWindow.postMessage(
+            {
+              type: "TTS_SYNTHESIZE_RESULT",
+              payload: {
+                requestId,
+                ...result,
+              },
+            },
+            "*",
+          );
+        })();
+      }
+      if (event.data.type === "TTS_STOP") {
+        if (event.source !== iframeRef.current?.contentWindow) {
+          return;
+        }
+        stopHostTtsPlayback();
       }
 
       if (event.data.type === "ERROR") {

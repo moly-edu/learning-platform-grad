@@ -13,6 +13,10 @@ import {
 import { SchemaProcessor } from "@/components/widget/core/SchemaProcessor";
 import { TweakpaneBuilder } from "@/components/widget/core/TweakpaneBuilder";
 import { Submission, WidgetDefinition } from "@/components/widget/core/types";
+import {
+  stopHostTtsPlayback,
+  synthesizeWithHostTts,
+} from "@/components/widget/core/HostTtsClient";
 
 // ============================================================
 // WIDGET VALIDATOR - CHỈ SỬA HÀM NÀY
@@ -288,6 +292,36 @@ function WidgetHost({
         console.log("📣 Widget event:", event.data.event, event.data.payload);
       }
 
+      if (event.data.type === "TTS_SYNTHESIZE") {
+        const requestId = event.data?.payload?.requestId;
+        const text = String(event.data?.payload?.text || "");
+        if (!requestId) return;
+        if (event.source !== iframeRef.current?.contentWindow) {
+          return;
+        }
+        const targetWindow = event.source as Window | null;
+        if (!targetWindow) return;
+        (async () => {
+          const result = await synthesizeWithHostTts(text);
+          targetWindow.postMessage(
+            {
+              type: "TTS_SYNTHESIZE_RESULT",
+              payload: {
+                requestId,
+                ...result,
+              },
+            },
+            "*",
+          );
+        })();
+      }
+      if (event.data.type === "TTS_STOP") {
+        if (event.source !== iframeRef.current?.contentWindow) {
+          return;
+        }
+        stopHostTtsPlayback();
+      }
+
       if (event.data.type === "ERROR") {
         console.error("❌ Widget error:", event.data.payload);
         setError(event.data.payload?.message || "Widget error");
@@ -358,9 +392,9 @@ function WidgetHost({
       pane.registerPlugin(TweakpaneImagePlugin);
       paneInstanceRef.current = pane;
 
-      const initialConfig = SchemaProcessor.extractDefaultsFromSchema(
-        widgetDef.schema,
-      );
+      const initialConfig =
+        widgetDef.resolvedDefaults ??
+        SchemaProcessor.extractDefaultsFromSchema(widgetDef.schema);
 
       console.log("🎯 Initial config extracted:", initialConfig);
 

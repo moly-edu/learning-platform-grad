@@ -32,23 +32,26 @@ export class TweakpaneBuilder {
     this.updateVisibility();
   }
 
-  private checkVisibility(visibleIf: any): boolean {
-    if (!visibleIf) return true;
+  private checkVisibility(condition: any): boolean {
+    if (!condition) return true;
 
-    const { param, equals, notEquals, in: inArray } = visibleIf;
-    const value = this.getConfigValue(param);
-
-    if (equals !== undefined) {
-      return value === equals;
+    if (condition.and) {
+      return condition.and.every((c: any) => this.checkVisibility(c));
     }
 
-    if (notEquals !== undefined) {
-      return value !== notEquals;
+    if (condition.or) {
+      return condition.or.some((c: any) => this.checkVisibility(c));
     }
 
-    if (inArray !== undefined) {
-      return inArray.includes(value);
-    }
+    const value = this.getConfigValue(condition.param);
+
+    if (condition.equals !== undefined) return value === condition.equals;
+    if (condition.notEquals !== undefined) return value !== condition.notEquals;
+    if (condition.in !== undefined) return condition.in.includes(value);
+    if (condition.gt !== undefined) return value > condition.gt;
+    if (condition.gte !== undefined) return value >= condition.gte;
+    if (condition.lt !== undefined) return value < condition.lt;
+    if (condition.lte !== undefined) return value <= condition.lte;
 
     return true;
   }
@@ -158,6 +161,11 @@ export class TweakpaneBuilder {
     parentConfig: Record<string, any>,
     pathPrefix: string[],
   ) {
+    if (folderSchema.hidden) {
+      if (!parentConfig[key]) parentConfig[key] = {};
+      return;
+    }
+
     const folder = parentPane.addFolder({
       title: folderSchema.title || key,
       expanded: folderSchema.expanded ?? true,
@@ -188,6 +196,13 @@ export class TweakpaneBuilder {
     parentConfig: Record<string, any>,
     pathPrefix: string[],
   ) {
+    if (field.hidden) {
+      if (parentConfig[key] === undefined && field.default !== undefined) {
+        parentConfig[key] = field.default;
+      }
+      return;
+    }
+
     const options: any = {
       label: field.label || key,
     };
@@ -241,21 +256,11 @@ export class TweakpaneBuilder {
     }
 
     if (control) {
+      if (field.readOnly) {
+        control.disabled = true;
+      }
       const currentPath = [...pathPrefix, key].join(".");
       this.controlsMap.set(currentPath, control);
     }
-  }
-
-  // Thêm vào TweakpaneBuilder class
-  public updateConfig(newConfig: Record<string, any>) {
-    // Update internal state
-    Object.keys(newConfig).forEach((key) => {
-      if (this.config.hasOwnProperty(key)) {
-        this.config[key] = newConfig[key];
-      }
-    });
-
-    // Refresh Tweakpane UI
-    this.pane.refresh();
   }
 }
