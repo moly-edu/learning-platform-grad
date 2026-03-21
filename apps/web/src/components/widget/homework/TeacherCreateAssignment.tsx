@@ -329,9 +329,9 @@ const TeacherCreateAssignment = forwardRef<
       paneInstanceRef.current = pane;
 
       // Lấy defaults từ schema
-      const defaults = SchemaProcessor.extractDefaultsFromSchema(
-        widgetDef.schema,
-      );
+      const defaults =
+        widgetDef.resolvedDefaults ??
+        SchemaProcessor.extractDefaultsFromSchema(widgetDef.schema);
 
       console.log("🎯 Starting config (defaults):", defaults);
 

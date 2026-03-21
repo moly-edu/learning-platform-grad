@@ -3,6 +3,10 @@ import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import WebView, { WebViewMessageEvent } from "react-native-webview";
 import { API_BASE_URL } from "@/lib/config/api";
 import { authClient } from "@/lib/auth-client";
+import {
+  stopHostTtsPlayback,
+  synthesizeWithHostTts,
+} from "@/components/widget/core/HostTtsClient";
 
 interface AssignmentData {
   assignmentId: string;
@@ -243,6 +247,27 @@ export default function AssignmentWidget({
         const submissionData: Submission = message.payload;
         console.log("✅ Submission received:", submissionData);
         handleSubmitToDatabase(submissionData);
+      }
+
+      if (message.type === "TTS_SYNTHESIZE") {
+        const requestId = message?.payload?.requestId;
+        const text = String(message?.payload?.text || "");
+        if (!requestId) return;
+
+        (async () => {
+          const result = await synthesizeWithHostTts(text);
+          sendMessage({
+            type: "TTS_SYNTHESIZE_RESULT",
+            payload: {
+              requestId,
+              ...result,
+            },
+          });
+        })();
+      }
+
+      if (message.type === "TTS_STOP") {
+        stopHostTtsPlayback();
       }
 
       if (message.type === "ERROR") {
