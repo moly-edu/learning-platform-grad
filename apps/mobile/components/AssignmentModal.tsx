@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
-  ScrollView,
   Modal,
   Pressable,
   StyleSheet,
@@ -45,16 +44,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (visible) {
-      setLoading(true);
-      setAssignments([]);
-      setError(null);
-      fetchAssignments();
-    }
-  }, [visible, homeworkNodeId, classId]);
-
-  const fetchAssignments = async () => {
+  const fetchAssignments = useCallback(async () => {
     try {
       const { data: session } = await authClient.getSession();
 
@@ -91,7 +81,16 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [classId, homeworkNodeId]);
+
+  useEffect(() => {
+    if (visible) {
+      setLoading(true);
+      setAssignments([]);
+      setError(null);
+      fetchAssignments();
+    }
+  }, [visible, fetchAssignments]);
 
   const handleAssignmentPress = (assignmentId: string) => {
     onClose();
@@ -143,7 +142,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
         {item.hasSubmitted && item.evaluation && (
           <View style={styles.evaluationContainer}>
             <View style={styles.evaluationRow}>
-              <Text style={styles.evaluationLabel}>Evaluation:</Text>
+              <Text style={styles.evaluationLabel}>Result:</Text>
               <Text
                 style={[
                   styles.evaluationValue,
@@ -231,8 +230,8 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: "white",
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     height: "80%",
     paddingTop: 16,
   },
@@ -246,61 +245,65 @@ const styles = StyleSheet.create({
     borderBottomColor: "#e5e7eb",
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#111827",
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#0f172a",
   },
   closeButton: {
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 6,
-    backgroundColor: "#f3f4f6",
+    borderRadius: 12,
+    backgroundColor: "#f1f5f9",
   },
   closeButtonText: {
-    fontSize: 18,
-    color: "#6b7280",
+    fontSize: 20,
+    color: "#334155",
+    fontWeight: "700",
   },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 14,
-    color: "#6b7280",
+    fontSize: 16,
+    color: "#475569",
+    fontWeight: "600",
   },
   errorText: {
-    fontSize: 14,
+    fontSize: 16,
     color: "#dc2626",
     textAlign: "center",
     marginBottom: 16,
   },
   retryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: "#3b82f6",
-    borderRadius: 6,
+    minHeight: 44,
+    paddingHorizontal: 18,
+    justifyContent: "center",
+    backgroundColor: "#0f766e",
+    borderRadius: 12,
   },
   retryButtonText: {
     color: "white",
-    fontWeight: "600",
-    fontSize: 14,
+    fontWeight: "700",
+    fontSize: 15,
   },
   emptyText: {
-    fontSize: 14,
-    color: "#9ca3af",
+    fontSize: 16,
+    color: "#64748b",
   },
   listContent: {
     padding: 12,
+    paddingBottom: 22,
   },
   assignmentItem: {
-    padding: 12,
-    marginBottom: 8,
-    borderRadius: 6,
+    padding: 14,
+    marginBottom: 10,
+    borderRadius: 14,
     borderLeftWidth: 4,
   },
   assignmentHeader: {
@@ -313,31 +316,31 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   assignmentTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#111827",
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#0f172a",
     flex: 1,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
   },
   statusText: {
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "800",
     color: "white",
   },
   assignmentDescription: {
-    fontSize: 12,
-    color: "#4b5563",
+    fontSize: 14,
+    color: "#334155",
     marginBottom: 8,
-    lineHeight: 18,
+    lineHeight: 21,
   },
   evaluationContainer: {
     backgroundColor: "rgba(255, 255, 255, 0.5)",
-    padding: 8,
-    borderRadius: 4,
+    padding: 10,
+    borderRadius: 10,
     marginBottom: 8,
   },
   evaluationRow: {
@@ -346,17 +349,17 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   evaluationLabel: {
-    fontSize: 12,
-    color: "#6b7280",
-    fontWeight: "500",
-  },
-  evaluationValue: {
-    fontSize: 12,
+    fontSize: 13,
+    color: "#64748b",
     fontWeight: "600",
   },
+  evaluationValue: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
   submittedDate: {
-    fontSize: 11,
-    color: "#9ca3af",
+    fontSize: 12,
+    color: "#64748b",
     fontStyle: "italic",
   },
 });

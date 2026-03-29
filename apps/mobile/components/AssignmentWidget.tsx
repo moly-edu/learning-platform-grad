@@ -195,7 +195,7 @@ export default function AssignmentWidget({
     };
 
     loadAssignment();
-  }, [assignmentId]);
+  }, [assignmentId, onError]);
 
   // Handle messages from WebView
   const handleWebViewMessage = (event: WebViewMessageEvent) => {
@@ -471,7 +471,7 @@ export default function AssignmentWidget({
         <View style={styles.overlay}>
           <View style={styles.overlayContent}>
             <ActivityIndicator size="large" color="#3b82f6" />
-            <Text style={styles.overlayText}>Saving submission...</Text>
+            <Text style={styles.overlayText}>Saving your answer...</Text>
           </View>
         </View>
       )}
@@ -482,19 +482,20 @@ export default function AssignmentWidget({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
+    backgroundColor: "#f8fafc",
   },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f9fafb",
+    backgroundColor: "#f8fafc",
     padding: 16,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: "#6b7280",
+    color: "#475569",
+    fontWeight: "600",
   },
   errorIcon: {
     fontSize: 48,
@@ -508,14 +509,14 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: "#9ca3af",
+    color: "#64748b",
   },
   statusHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
   },
@@ -525,7 +526,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statusIcon: {
-    fontSize: 20,
+    fontSize: 22,
     marginRight: 8,
     fontWeight: "bold",
   },
@@ -533,23 +534,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statusTitle: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "800",
     color: "#374151",
   },
   statusScore: {
-    fontSize: 11,
-    color: "#6b7280",
+    fontSize: 13,
+    color: "#475569",
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: 999,
   },
   statusBadgeText: {
     color: "white",
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "800",
   },
   webViewContainer: {
     flex: 1,
@@ -565,7 +566,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "white",
+    backgroundColor: "#ffffff",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -578,7 +579,7 @@ const styles = StyleSheet.create({
   overlayContent: {
     backgroundColor: "white",
     padding: 24,
-    borderRadius: 16,
+    borderRadius: 18,
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -589,7 +590,7 @@ const styles = StyleSheet.create({
   overlayText: {
     marginTop: 12,
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#374151",
   },
 });

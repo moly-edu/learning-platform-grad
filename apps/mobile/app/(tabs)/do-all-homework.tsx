@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ActivityIndicator,
   Pressable,
-  ScrollView,
-  Platform,
+  SafeAreaView,
+  Modal,
+  FlatList,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { API_BASE_URL } from "@/lib/config/api";
@@ -23,7 +24,7 @@ interface PendingAssignment {
 interface DisplayedAssignment extends PendingAssignment {
   index: number;
   isCompleted: boolean;
-  isCorrect?: boolean; // NEW: Track if the submission is correct
+  isCorrect?: boolean;
 }
 
 export default function DoAllHomeworkScreen() {
@@ -33,22 +34,18 @@ export default function DoAllHomeworkScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Original pending assignments when screen opened
   const [pendingWhenOpened, setPendingWhenOpened] = useState<
     PendingAssignment[]
   >([]);
-  // Track completed assignments
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
-  // Track evaluation (isCorrect) for each assignment
   const [evaluationMap, setEvaluationMap] = useState<
     Map<string, { isCorrect: boolean }>
   >(new Map());
-  // Current assignment being worked on
   const [currentAssignmentId, setCurrentAssignmentId] = useState<
     string | undefined
   >();
+  const [showAssignmentsModal, setShowAssignmentsModal] = useState(false);
 
-  // Load pending assignments
   useEffect(() => {
     const loadPendingAssignments = async () => {
       if (!classId) {
@@ -94,7 +91,7 @@ export default function DoAllHomeworkScreen() {
           throw new Error(result.error || "Failed to load assignments");
         }
       } catch (err) {
-        console.error("❌ Load pending assignments error:", err);
+        console.error("Load pending assignments error:", err);
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
@@ -104,416 +101,413 @@ export default function DoAllHomeworkScreen() {
     loadPendingAssignments();
   }, [classId]);
 
-  // Handle assignment completed
-  const handleAssignmentCompleted = (assignmentId: string) => {
-    // Mark as completed
-    setCompletedIds((prev) => new Set([...prev, assignmentId]));
+  const displayedAssignments: DisplayedAssignment[] = useMemo(
+    () =>
+      pendingWhenOpened.map((assignment, idx) => ({
+        ...assignment,
+        index: idx + 1,
+        isCompleted: completedIds.has(assignment.assignmentId),
+      })),
+    [pendingWhenOpened, completedIds],
+  );
 
-    // Find current index and move to next
-    const currentIdx = pendingWhenOpened.findIndex(
-      (a) => a.assignmentId === assignmentId,
-    );
+  const completedCount = displayedAssignments.filter(
+    (a) => a.isCompleted,
+  ).length;
+  const totalCount = displayedAssignments.length;
+  const progressPercent =
+    totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-    if (currentIdx < pendingWhenOpened.length - 1) {
-      // Move to next assignment after a short delay
-      setTimeout(() => {
-        setCurrentAssignmentId(pendingWhenOpened[currentIdx + 1].assignmentId);
-      }, 500);
-    }
-  };
-
-  // Handle evaluation update from AssignmentWidget
-  const handleEvaluationUpdate = (assignmentId: string, isCorrect: boolean) => {
-    setEvaluationMap((prev) => {
-      const newMap = new Map(prev);
-      newMap.set(assignmentId, { isCorrect });
-      return newMap;
-    });
-  };
-
-  // Check if all assignments are completed
   const allCompleted =
     pendingWhenOpened.length > 0 &&
     pendingWhenOpened.every((a) => completedIds.has(a.assignmentId));
 
-  // Build displayed assignments list
-  const displayedAssignments: DisplayedAssignment[] = pendingWhenOpened.map(
-    (assignment, idx) => ({
-      ...assignment,
-      index: idx + 1,
-      isCompleted: completedIds.has(assignment.assignmentId),
-    }),
+  const handleAssignmentCompleted = useCallback(
+    (assignmentId: string) => {
+      setCompletedIds((prev) => new Set([...prev, assignmentId]));
+
+      const currentIdx = pendingWhenOpened.findIndex(
+        (a) => a.assignmentId === assignmentId,
+      );
+
+      if (currentIdx < pendingWhenOpened.length - 1) {
+        setTimeout(() => {
+          setCurrentAssignmentId(
+            pendingWhenOpened[currentIdx + 1].assignmentId,
+          );
+        }, 300);
+      }
+    },
+    [pendingWhenOpened],
   );
 
-  const currentAssignment = displayedAssignments.find(
-    (a) => a.assignmentId === currentAssignmentId,
+  const handleEvaluationUpdate = useCallback(
+    (assignmentId: string, isCorrect: boolean) => {
+      setEvaluationMap((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(assignmentId, { isCorrect });
+        return newMap;
+      });
+    },
+    [],
   );
 
-  // LOADING STATE
+  const handleWidgetError = useCallback((nextError: string) => {
+    console.error("Widget error:", nextError);
+  }, []);
+
+  const handleCurrentAssignmentCompleted = useCallback(() => {
+    if (!currentAssignmentId) return;
+    handleAssignmentCompleted(currentAssignmentId);
+  }, [currentAssignmentId, handleAssignmentCompleted]);
+
+  const selectAssignment = (assignmentId: string) => {
+    setCurrentAssignmentId(assignmentId);
+    setShowAssignmentsModal(false);
+  };
+
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
-        <Text style={styles.loadingText}>Loading assignments...</Text>
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#0f766e" />
+          <Text style={styles.loadingText}>Preparing assignments...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
-  // ERROR STATE
   if (error) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.errorIcon}>⚠️</Text>
-        <Text style={styles.errorText}>{error}</Text>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Go Back</Text>
-        </Pressable>
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>Go back</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
     );
   }
 
-  // NO PENDING ASSIGNMENTS
   if (pendingWhenOpened.length === 0) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.successIcon}>🎉</Text>
-        <Text style={styles.successTitle}>All Done!</Text>
-        <Text style={styles.successText}>
-          You have no pending assignments in this class.
-        </Text>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Go Back</Text>
-        </Pressable>
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.centerContainer}>
+          <Text style={styles.successIcon}>🎉</Text>
+          <Text style={styles.successTitle}>Nothing pending</Text>
+          <Text style={styles.successText}>
+            You already finished all homework for this class.
+          </Text>
+          <Pressable style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>Back to class</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
     );
   }
 
-  // ALL COMPLETED
   if (allCompleted) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.successIcon}>🎉</Text>
-        <Text style={styles.successTitle}>Completed!</Text>
-        <Text style={styles.successText}>
-          You have completed all {displayedAssignments.length} assignments.
-        </Text>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Done</Text>
-        </Pressable>
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.centerContainer}>
+          <Text style={styles.successIcon}>🏆</Text>
+          <Text style={styles.successTitle}>Awesome work!</Text>
+          <Text style={styles.successText}>
+            You finished all {displayedAssignments.length} assignments.
+          </Text>
+          <Pressable style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>Done</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {/* Main content */}
-      <View style={styles.mainContent}>
-        {/* LEFT: Assignment list */}
-        <View style={styles.sidebar}>
-          <View style={styles.sidebarHeader}>
-            <Text style={styles.sidebarTitle}>📋 Assignments</Text>
-            <Text style={styles.sidebarSubtitle}>
-              {displayedAssignments.length} items
-            </Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <Pressable
+          style={styles.progressBarButton}
+          onPress={() => setShowAssignmentsModal(true)}
+        >
+          <View style={styles.progressTrack}>
+            <View
+              style={[styles.progressFill, { width: `${progressPercent}%` }]}
+            />
           </View>
+        </Pressable>
 
-          <ScrollView style={styles.assignmentList}>
-            {displayedAssignments.map((assignment) => {
-              const isCurrent = assignment.assignmentId === currentAssignmentId;
-              const evaluation = evaluationMap.get(assignment.assignmentId);
-              const isCorrect = evaluation?.isCorrect;
-              const isLoadingEvaluation =
-                assignment.isCompleted && isCorrect === undefined;
-
-              return (
-                <Pressable
-                  key={assignment.assignmentId}
-                  onPress={() =>
-                    setCurrentAssignmentId(assignment.assignmentId)
-                  }
-                  style={[
-                    styles.assignmentItem,
-                    isCurrent && styles.assignmentItemActive,
-                    assignment.isCompleted &&
-                      (isCorrect === false
-                        ? styles.assignmentItemIncorrect
-                        : isCorrect === true
-                          ? styles.assignmentItemCompleted
-                          : styles.assignmentItemLoading),
-                  ]}
-                >
-                  <View style={styles.assignmentIcon}>
-                    {assignment.isCompleted ? (
-                      isCorrect === undefined ? (
-                        <ActivityIndicator
-                          size="small"
-                          color="#6b7280"
-                          style={styles.loadingIcon}
-                        />
-                      ) : isCorrect === false ? (
-                        <Text style={styles.incorrectIcon}>✗</Text>
-                      ) : (
-                        <Text style={styles.checkIcon}>✓</Text>
-                      )
-                    ) : (
-                      <Text style={styles.circleIcon}>○</Text>
-                    )}
-                  </View>
-                  <View style={styles.assignmentInfo}>
-                    <Text
-                      style={[
-                        styles.assignmentTitle,
-                        isCurrent && styles.assignmentTitleActive,
-                        assignment.isCompleted &&
-                          (isCorrect === false
-                            ? styles.assignmentTitleIncorrect
-                            : isCorrect === true
-                              ? styles.assignmentTitleCompleted
-                              : styles.assignmentTitleLoading),
-                      ]}
-                      numberOfLines={1}
-                    >
-                      Assignment {assignment.index}
-                    </Text>
-                    <Text style={styles.assignmentSubtitle} numberOfLines={1}>
-                      {assignment.homeworkTitle}
-                    </Text>
-                  </View>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* RIGHT: Assignment widget */}
-        <View style={styles.widgetContainer}>
-          {currentAssignment && (
+        <View style={styles.widgetWrap}>
+          {currentAssignmentId ? (
             <AssignmentWidget
               key={currentAssignmentId}
-              assignmentId={currentAssignmentId!}
-              onCompleted={() =>
-                handleAssignmentCompleted(currentAssignmentId!)
-              }
+              assignmentId={currentAssignmentId}
+              onCompleted={handleCurrentAssignmentCompleted}
               onEvaluationUpdate={handleEvaluationUpdate}
-              onError={(error) => console.error("Widget error:", error)}
+              onError={handleWidgetError}
             />
+          ) : (
+            <View style={styles.centerContainerSmall}>
+              <Text style={styles.emptyText}>No assignment selected.</Text>
+            </View>
           )}
         </View>
       </View>
-    </View>
+
+      <Modal
+        visible={showAssignmentsModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowAssignmentsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Assignments</Text>
+              <Pressable
+                style={styles.modalCloseButton}
+                onPress={() => setShowAssignmentsModal(false)}
+              >
+                <Text style={styles.modalCloseText}>✕</Text>
+              </Pressable>
+            </View>
+
+            <FlatList
+              data={displayedAssignments}
+              keyExtractor={(item) => item.assignmentId}
+              contentContainerStyle={styles.assignmentListContent}
+              renderItem={({ item }) => {
+                const isCurrent = item.assignmentId === currentAssignmentId;
+                const evaluation = evaluationMap.get(item.assignmentId);
+                const isCorrect = evaluation?.isCorrect;
+
+                return (
+                  <Pressable
+                    style={[
+                      styles.assignmentItem,
+                      isCurrent && styles.assignmentItemCurrent,
+                      item.isCompleted &&
+                        (isCorrect === false
+                          ? styles.assignmentItemWrong
+                          : styles.assignmentItemDone),
+                    ]}
+                    onPress={() => selectAssignment(item.assignmentId)}
+                  >
+                    <View style={styles.assignmentTopRow}>
+                      <Text style={styles.assignmentIndex}>#{item.index}</Text>
+                      <Text style={styles.assignmentStatus}>
+                        {item.isCompleted
+                          ? isCorrect === false
+                            ? "Try again"
+                            : "Done"
+                          : "Pending"}
+                      </Text>
+                    </View>
+                    <Text style={styles.assignmentTitle} numberOfLines={1}>
+                      {item.title || `Assignment ${item.index}`}
+                    </Text>
+                    <Text style={styles.assignmentSubtitle} numberOfLines={1}>
+                      {item.homeworkTitle}
+                    </Text>
+                  </Pressable>
+                );
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#f0fdfa",
+  },
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 10,
+    gap: 10,
   },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f9fafb",
-    padding: 24,
+    paddingHorizontal: 24,
+    backgroundColor: "#f0fdfa",
+  },
+  centerContainerSmall: {
+    minHeight: 220,
+    alignItems: "center",
+    justifyContent: "center",
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: "#6b7280",
+    color: "#0f766e",
+    fontWeight: "700",
   },
   errorIcon: {
-    fontSize: 48,
-    marginBottom: 16,
+    fontSize: 52,
+    marginBottom: 12,
   },
   errorText: {
     fontSize: 16,
-    color: "#dc2626",
+    color: "#b91c1c",
     textAlign: "center",
     marginBottom: 16,
   },
   successIcon: {
     fontSize: 64,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   successTitle: {
     fontSize: 28,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: "800",
+    color: "#0f172a",
     marginBottom: 8,
   },
   successText: {
     fontSize: 16,
-    color: "#6b7280",
+    color: "#475569",
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: 20,
   },
   backButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: "#3b82f6",
-    borderRadius: 8,
+    paddingHorizontal: 18,
+    minHeight: 46,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0f766e",
   },
   backButtonText: {
-    color: "white",
-    fontWeight: "600",
+    color: "#ffffff",
+    fontWeight: "700",
     fontSize: 16,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-  },
-  closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#f3f4f6",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  closeButtonText: {
-    fontSize: 20,
-    color: "#374151",
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1f2937",
-    marginLeft: 12,
-  },
-  progressBadge: {
-    paddingHorizontal: 12,
+  progressBarButton: {
+    borderRadius: 999,
     paddingVertical: 6,
+    paddingHorizontal: 2,
+  },
+  progressTrack: {
+    height: 14,
+    borderRadius: 999,
     backgroundColor: "#dbeafe",
-    borderRadius: 16,
+    overflow: "hidden",
   },
-  progressText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#2563eb",
+  progressFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: "#0f766e",
   },
-  mainContent: {
+  widgetWrap: {
     flex: 1,
-    flexDirection: "row",
-    padding: 8,
-    gap: 8,
-  },
-  sidebar: {
-    width: 200,
-    backgroundColor: "white",
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: "#cbd5e1",
+    backgroundColor: "#ffffff",
+    minHeight: 320,
   },
-  sidebarHeader: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+  emptyText: {
+    fontSize: 15,
+    color: "#94a3b8",
   },
-  sidebarTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
-  },
-  sidebarSubtitle: {
-    fontSize: 12,
-    color: "#9ca3af",
-    marginTop: 2,
-  },
-  assignmentList: {
+  modalOverlay: {
     flex: 1,
-    padding: 8,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    height: "70%",
+    backgroundColor: "#ffffff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 12,
+  },
+  modalHeader: {
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f1f5f9",
+  },
+  modalCloseText: {
+    fontSize: 18,
+    color: "#334155",
+    fontWeight: "700",
+  },
+  assignmentListContent: {
+    padding: 12,
+    paddingBottom: 20,
+    gap: 8,
   },
   assignmentItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 4,
-    borderWidth: 2,
-    borderColor: "#e5e7eb",
-    backgroundColor: "white",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#dbeafe",
+    backgroundColor: "#f8fafc",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
-  assignmentItemActive: {
-    borderColor: "#3b82f6",
-    backgroundColor: "#eff6ff",
+  assignmentItemCurrent: {
+    borderColor: "#38bdf8",
+    backgroundColor: "#e0f2fe",
   },
-  assignmentItemCompleted: {
-    borderColor: "#bbf7d0",
+  assignmentItemDone: {
+    borderColor: "#86efac",
     backgroundColor: "#f0fdf4",
   },
-  assignmentItemIncorrect: {
+  assignmentItemWrong: {
     borderColor: "#fecaca",
     backgroundColor: "#fef2f2",
   },
-  assignmentItemLoading: {
-    borderColor: "#e5e7eb",
-    backgroundColor: "white",
-  },
-  assignmentIcon: {
-    width: 24,
-    height: 24,
-    justifyContent: "center",
+  assignmentTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    marginRight: 8,
+    marginBottom: 3,
   },
-  checkIcon: {
-    fontSize: 18,
-    color: "#22c55e",
-    fontWeight: "bold",
+  assignmentIndex: {
+    fontSize: 12,
+    color: "#64748b",
+    fontWeight: "700",
   },
-  incorrectIcon: {
-    fontSize: 18,
-    color: "#dc2626",
-    fontWeight: "bold",
-  },
-  circleIcon: {
-    fontSize: 18,
-    color: "#d1d5db",
-  },
-  loadingIcon: {
-    width: 16,
-    height: 16,
-  },
-  assignmentInfo: {
-    flex: 1,
+  assignmentStatus: {
+    fontSize: 12,
+    color: "#334155",
+    fontWeight: "800",
   },
   assignmentTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#374151",
-  },
-  assignmentTitleActive: {
-    color: "#2563eb",
-  },
-  assignmentTitleCompleted: {
-    color: "#16a34a",
-    textDecorationLine: "line-through",
-  },
-  assignmentTitleIncorrect: {
-    color: "#dc2626",
-    textDecorationLine: "line-through",
-  },
-  assignmentTitleLoading: {
-    color: "#374151",
+    fontSize: 16,
+    color: "#0f172a",
+    fontWeight: "800",
   },
   assignmentSubtitle: {
-    fontSize: 11,
-    color: "#9ca3af",
     marginTop: 2,
-  },
-  widgetContainer: {
-    flex: 1,
-    backgroundColor: "white",
-    borderRadius: 12,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
+    fontSize: 13,
+    color: "#64748b",
   },
 });

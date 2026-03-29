@@ -1,6 +1,6 @@
 import { authClient } from "@/lib/auth-client";
 import { API_BASE_URL } from "@/lib/config/api";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Text,
   View,
@@ -9,10 +9,10 @@ import {
   RefreshControl,
   Pressable,
   StyleSheet,
-  TouchableOpacity,
+  SafeAreaView,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Settings } from "lucide-react-native";
+import { Settings, BookOpen, Users, ClipboardList } from "lucide-react-native";
 
 interface ClassData {
   id: string;
@@ -40,7 +40,68 @@ export default function IndexTab() {
   const [pendingAssignments, setPendingAssignments] =
     useState<PendingAssignments>({});
 
-  const fetchClasses = async () => {
+  const fetchPendingAssignments = useCallback(
+    async (classesData: ClassData[], token: string) => {
+      try {
+        const pendingMap: PendingAssignments = {};
+
+        // Fetch pending assignments cho mỗi class
+        for (const classItem of classesData) {
+          if (!classItem.course) continue; // Bỏ qua nếu không có course
+          try {
+            const response = await fetch(
+              `${API_BASE_URL}/api/mobile/class/homework-status?classId=${classItem.id}&courseId=${classItem.course.id}`,
+              {
+                method: "GET",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+              },
+            );
+
+            if (response.ok) {
+              const result = await response.json();
+              if (result.success && result.data) {
+                const { assignedByLessonNode, submittedByLessonNode } =
+                  result.data;
+
+                // Calculate total pending
+                let totalAssigned = 0;
+                let totalSubmitted = 0;
+
+                Object.values(assignedByLessonNode || {}).forEach(
+                  (count: any) => {
+                    totalAssigned += count;
+                  },
+                );
+
+                Object.values(submittedByLessonNode || {}).forEach(
+                  (count: any) => {
+                    totalSubmitted += count;
+                  },
+                );
+
+                pendingMap[classItem.id] = totalAssigned - totalSubmitted;
+              }
+            }
+          } catch (error) {
+            console.error(
+              `Error fetching pending for class ${classItem.id}:`,
+              error,
+            );
+          }
+        }
+
+        setPendingAssignments(pendingMap);
+      } catch (error) {
+        console.error("Error fetching pending assignments:", error);
+      }
+    },
+    [],
+  );
+
+  const fetchClasses = useCallback(async () => {
     try {
       // Lấy session token từ better-auth
       const { data: session } = await authClient.getSession();
@@ -73,74 +134,13 @@ export default function IndexTab() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
-
-  const fetchPendingAssignments = async (
-    classesData: ClassData[],
-    token: string,
-  ) => {
-    try {
-      const pendingMap: PendingAssignments = {};
-
-      // Fetch pending assignments cho mỗi class
-      for (const classItem of classesData) {
-        if (!classItem.course) continue; // Bỏ qua nếu không có course
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/api/mobile/class/homework-status?classId=${classItem.id}&courseId=${classItem.course.id}`,
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-            },
-          );
-
-          if (response.ok) {
-            const result = await response.json();
-            if (result.success && result.data) {
-              const { assignedByLessonNode, submittedByLessonNode } =
-                result.data;
-
-              // Calculate total pending
-              let totalAssigned = 0;
-              let totalSubmitted = 0;
-
-              Object.values(assignedByLessonNode || {}).forEach(
-                (count: any) => {
-                  totalAssigned += count;
-                },
-              );
-
-              Object.values(submittedByLessonNode || {}).forEach(
-                (count: any) => {
-                  totalSubmitted += count;
-                },
-              );
-
-              pendingMap[classItem.id] = totalAssigned - totalSubmitted;
-            }
-          }
-        } catch (error) {
-          console.error(
-            `Error fetching pending for class ${classItem.id}:`,
-            error,
-          );
-        }
-      }
-
-      setPendingAssignments(pendingMap);
-    } catch (error) {
-      console.error("Error fetching pending assignments:", error);
-    }
-  };
+  }, [fetchPendingAssignments]);
 
   useEffect(() => {
     if (!isPending && session?.user) {
       fetchClasses();
     }
-  }, [session, isPending]);
+  }, [session, isPending, fetchClasses]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -149,9 +149,12 @@ export default function IndexTab() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0f766e" />
+          <Text style={styles.loadingText}>Loading your classes...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -169,148 +172,248 @@ export default function IndexTab() {
           })
         }
       >
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-          }}
-        >
-          <View style={{ flex: 1 }}>
+        <View style={styles.cardTopRow}>
+          <View style={styles.cardIconWrap}>
+            <BookOpen size={22} color="#0f766e" />
+          </View>
+          <View style={styles.cardTextWrap}>
             <Text style={styles.className}>{item.name}</Text>
             {item.course && (
-              <Text style={styles.courseName}>{item.course.name}</Text>
+              <Text style={styles.courseName} numberOfLines={1}>
+                {item.course.name}
+              </Text>
             )}
-            <Text style={styles.memberCount}>
-              {item._count?.members || 0} members
-            </Text>
           </View>
-          {pending > 0 && (
+          {pending >= 0 && (
             <View
               style={[
                 styles.pendingBadge,
-                hasPending && { backgroundColor: "#ef4444" },
+                hasPending
+                  ? styles.pendingBadgeDanger
+                  : styles.pendingBadgeGood,
               ]}
             >
-              <Text
-                style={[
-                  styles.pendingBadgeText,
-                  hasPending && { color: "white" },
-                ]}
-              >
-                {pending}
+              <Text style={styles.pendingBadgeText}>
+                {hasPending ? `${pending} to do` : "Done"}
               </Text>
             </View>
           )}
+        </View>
+
+        <View style={styles.cardBottomRow}>
+          <View style={styles.infoPill}>
+            <Users size={14} color="#475569" />
+            <Text style={styles.infoPillText}>
+              {item._count?.members || 0} friends
+            </Text>
+          </View>
+          <View style={styles.infoPill}>
+            <ClipboardList size={14} color="#475569" />
+            <Text style={styles.infoPillText}>
+              {hasPending ? "Need practice" : "Great progress"}
+            </Text>
+          </View>
         </View>
       </Pressable>
     );
   };
 
   return (
-    <View style={styles.container}>
-      {classes.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.centerText}>No classes enrolled yet</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.greeting}>Hi learner!</Text>
+            <Text style={styles.subtitle}>Pick a class and keep going.</Text>
+          </View>
+          <Pressable
+            style={styles.settingsButton}
+            onPress={() => router.push("/(tabs)/settings")}
+          >
+            <Settings size={20} color="#0f172a" />
+          </Pressable>
         </View>
-      ) : (
-        <FlatList
-          data={classes}
-          renderItem={renderClassItem}
-          keyExtractor={(item) => item.id}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-        />
-      )}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push("/settings")}
-      >
-        <Text style={styles.fabText}>
-          <Settings className="size-5 text-white mr-2" />
-        </Text>
-      </TouchableOpacity>
-    </View>
+
+        {classes.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyTitle}>No classes yet</Text>
+            <Text style={styles.centerText}>
+              Ask your teacher to add you to a class.
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={classes}
+            renderItem={renderClassItem}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+          />
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#f0fdfa",
+  },
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 12,
+    backgroundColor: "#f0fdfa",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f0fdfa",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 17,
+    color: "#0f766e",
+    fontWeight: "600",
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  greeting: {
+    fontSize: 30,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#475569",
+    marginTop: 4,
+  },
+  settingsButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#bae6fd",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  listContent: {
+    paddingBottom: 24,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 16,
+    backgroundColor: "#ffffff",
+    borderRadius: 24,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "#dbeafe",
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#0f172a",
+    marginBottom: 8,
   },
   centerText: {
     fontSize: 16,
-    color: "#666",
+    color: "#475569",
     textAlign: "center",
   },
   classCard: {
     backgroundColor: "white",
-    borderRadius: 8,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 12,
-    shadowColor: "#000",
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
+    shadowColor: "#0f172a",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  cardTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  cardIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "#ccfbf1",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  cardTextWrap: {
+    flex: 1,
   },
   className: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 4,
-    color: "#333",
+    fontSize: 20,
+    fontWeight: "800",
+    marginBottom: 3,
+    color: "#0f172a",
   },
   courseName: {
     fontSize: 14,
-    color: "#666",
-    marginBottom: 8,
-  },
-  memberCount: {
-    fontSize: 12,
-    color: "#999",
+    color: "#475569",
   },
   pendingBadge: {
-    backgroundColor: "#dcfce7",
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    minWidth: 28,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    minWidth: 68,
     justifyContent: "center",
     alignItems: "center",
+  },
+  pendingBadgeDanger: {
+    backgroundColor: "#fee2e2",
+  },
+  pendingBadgeGood: {
+    backgroundColor: "#dcfce7",
   },
   pendingBadgeText: {
     fontSize: 12,
-    fontWeight: "600",
-    color: "#16a34a",
+    fontWeight: "800",
+    color: "#1f2937",
   },
-  fab: {
-    position: "absolute",
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#D3D3D3",
-    justifyContent: "center",
+  cardBottomRow: {
+    marginTop: 12,
+    flexDirection: "row",
+    gap: 8,
+  },
+  infoPill: {
+    flexDirection: "row",
     alignItems: "center",
-    right: 20,
-    bottom: 30,
-    elevation: 5, // Android shadow
-    shadowColor: "#000", // iOS shadow
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
-  fabText: {
-    color: "#fff",
-    fontSize: 28,
-    lineHeight: 30,
+  infoPillText: {
+    fontSize: 12,
+    color: "#475569",
+    fontWeight: "700",
   },
 });

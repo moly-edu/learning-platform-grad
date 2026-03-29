@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
-  FlatList,
+  SafeAreaView,
 } from "react-native";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { API_BASE_URL } from "@/lib/config/api";
@@ -24,19 +24,31 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { AssignmentModal } from "@/components/AssignmentModal";
 
-// Tree Node Component
 interface TreeNodeProps {
   node: LessonNodeUI;
   level: number;
   isExpanded: boolean;
   onToggleExpand: (node: LessonNodeUI) => void;
-  onSelectNode: (nodeId: string) => void;
+  onSelectNode: (nodeId: string | null) => void;
   isSelected: boolean;
   homeworkCounts?: { totalAssigned: number; pending: number; correct: number };
   showStats?: boolean;
 }
 
-// Helper: get stats badge colors based on correct ratio
+function getNodeTypeLabel(type: LessonNodeType | string) {
+  if (type === LessonNodeType.course) return "Course";
+  if (type === LessonNodeType.module) return "Module";
+  if (type === LessonNodeType.lesson) return "Lesson";
+  return "Node";
+}
+
+function getNodeIcon(type: LessonNodeType | string) {
+  if (type === LessonNodeType.course) return "📚";
+  if (type === LessonNodeType.module) return "📦";
+  if (type === LessonNodeType.lesson) return "📝";
+  return "📘";
+}
+
 function getStatsBadge(
   correct: number,
   total: number,
@@ -44,7 +56,6 @@ function getStatsBadge(
   label: string;
   bgColor: string;
   textColor: string;
-  ratio: number;
 } | null {
   if (total === 0) return null;
   const ratio = correct / total;
@@ -54,23 +65,22 @@ function getStatsBadge(
       label: `${correct}/${total}`,
       bgColor: "#dcfce7",
       textColor: "#166534",
-      ratio,
     };
-  } else if (ratio >= 0.4) {
+  }
+
+  if (ratio >= 0.4) {
     return {
       label: `${correct}/${total}`,
       bgColor: "#fef3c7",
       textColor: "#92400e",
-      ratio,
-    };
-  } else {
-    return {
-      label: `${correct}/${total}`,
-      bgColor: "#fee2e2",
-      textColor: "#991b1b",
-      ratio,
     };
   }
+
+  return {
+    label: `${correct}/${total}`,
+    bgColor: "#fee2e2",
+    textColor: "#991b1b",
+  };
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({
@@ -83,106 +93,94 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   homeworkCounts,
   showStats = false,
 }) => {
-  // Don't show homework nodes in tree
   if (node.type === LessonNodeType.homework) return null;
 
   const hasChildren = node._count.children > 0;
-  const hasPendingHomework = homeworkCounts && homeworkCounts.pending > 0;
+  const canExpand = hasChildren && node.type !== LessonNodeType.lesson;
+  const leftPadding = 12 + level * 16;
+
+  const handlePress = () => {
+    onSelectNode(node.id);
+    if (canExpand) {
+      onToggleExpand(node);
+    }
+  };
+
+  const statsBadge =
+    showStats && homeworkCounts
+      ? getStatsBadge(homeworkCounts.correct, homeworkCounts.totalAssigned)
+      : null;
 
   return (
-    <View>
+    <View style={styles.treeNodeWrap}>
       <Pressable
         style={[
           styles.treeNode,
           {
-            paddingLeft: level * 16 + 12,
-            backgroundColor: isSelected ? "#dbeafe" : "white",
-            borderLeftColor: isSelected ? "#3b82f6" : "transparent",
+            marginLeft: leftPadding,
           },
+          isSelected && styles.treeNodeSelected,
         ]}
-        onPress={() => onSelectNode(node.id)}
+        onPress={handlePress}
       >
-        <View style={styles.treeNodeContent}>
-          <Pressable
-            onPress={(e) => {
-              e.stopPropagation();
-              onToggleExpand(node);
-            }}
-            style={styles.expandButton}
-          >
-            {hasChildren && node.type !== LessonNodeType.lesson ? (
-              <Text>{isExpanded ? "▼" : "▶"}</Text>
-            ) : (
-              <View style={{ width: 16 }} />
-            )}
-          </Pressable>
+        <View style={styles.treeNodeRow}>
+          <View style={styles.treeNodeMainInfo}>
+            <Text style={styles.nodeChevron}>
+              {canExpand ? (isExpanded ? "▼" : "▶") : "•"}
+            </Text>
+            <Text style={styles.nodeIcon}>{getNodeIcon(node.type)}</Text>
+            <View style={styles.nodeTextGroup}>
+              <Text style={styles.nodeTitle}>{node.title}</Text>
+              <Text style={styles.nodeTypeLabel}>
+                {getNodeTypeLabel(node.type)}
+              </Text>
+            </View>
+          </View>
 
-          <Text style={styles.nodeIcon}>
-            {node.type === LessonNodeType.lesson && "📄"}
-            {node.type === LessonNodeType.course && "📚"}
-            {node.type === LessonNodeType.module && "📁"}
-          </Text>
-
-          <Text
-            style={[
-              styles.nodeTitle,
-              {
-                flex: 1,
-              },
-            ]}
-            numberOfLines={1}
-          >
-            {node.title}
-          </Text>
-
-          {homeworkCounts &&
-            homeworkCounts.totalAssigned > 0 &&
-            (showStats ? (
-              (() => {
-                const stats = getStatsBadge(
-                  homeworkCounts.correct,
-                  homeworkCounts.totalAssigned,
-                );
-                return stats ? (
-                  <View
-                    style={[styles.badge, { backgroundColor: stats.bgColor }]}
+          {homeworkCounts && homeworkCounts.totalAssigned > 0 ? (
+            showStats ? (
+              statsBadge ? (
+                <View
+                  style={[
+                    styles.badge,
+                    { backgroundColor: statsBadge.bgColor },
+                  ]}
+                >
+                  <Text
+                    style={[styles.badgeText, { color: statsBadge.textColor }]}
                   >
-                    <Text
-                      style={{
-                        color: stats.textColor,
-                        fontSize: 10,
-                        fontWeight: "600",
-                      }}
-                    >
-                      {stats.label}
-                    </Text>
-                  </View>
-                ) : null;
-              })()
+                    {statsBadge.label}
+                  </Text>
+                </View>
+              ) : null
             ) : (
               <View
                 style={[
                   styles.badge,
-                  {
-                    backgroundColor: hasPendingHomework ? "#ef4444" : "#dcfce7",
-                  },
+                  homeworkCounts.pending > 0
+                    ? styles.badgePending
+                    : styles.badgeCompleted,
                 ]}
               >
                 <Text
-                  style={{
-                    color: hasPendingHomework ? "white" : "#166534",
-                    fontSize: 10,
-                    fontWeight: "600",
-                  }}
+                  style={[
+                    styles.badgeText,
+                    homeworkCounts.pending > 0
+                      ? styles.badgePendingText
+                      : styles.badgeCompletedText,
+                  ]}
                 >
-                  {hasPendingHomework ? `${homeworkCounts.pending}` : "✓"}
+                  {homeworkCounts.pending > 0
+                    ? `${homeworkCounts.pending}`
+                    : "✓"}
                 </Text>
               </View>
-            ))}
+            )
+          ) : null}
         </View>
       </Pressable>
 
-      {isExpanded && node.children && node.children.length > 0 && (
+      {isExpanded && node.children.length > 0 ? (
         <View>
           {node.children.map((child) => (
             <TreeNodeRenderer
@@ -193,12 +191,11 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             />
           ))}
         </View>
-      )}
+      ) : null}
     </View>
   );
 };
 
-// Renderer component that connects to context
 const TreeNodeRenderer: React.FC<{
   node: LessonNodeUI;
   level: number;
@@ -226,7 +223,6 @@ const TreeNodeRenderer: React.FC<{
   );
 };
 
-// Detail Panel
 const DetailPanel: React.FC<{ classId: string; showStats?: boolean }> = ({
   classId,
   showStats = false,
@@ -240,17 +236,17 @@ const DetailPanel: React.FC<{ classId: string; showStats?: boolean }> = ({
   if (!selectedNode) {
     return (
       <View style={styles.detailPlaceholder}>
+        <Text style={styles.detailPlaceholderTitle}>Pick a lesson</Text>
         <Text style={styles.detailPlaceholderText}>
-          Select a lesson to view details
+          Tap a card above to see details and assignments.
         </Text>
       </View>
     );
   }
 
-  // Get homework nodes if this is a lesson
   const homeworkNodes =
     selectedNode.type === LessonNodeType.lesson
-      ? (selectedNode.children || []).filter(
+      ? selectedNode.children.filter(
           (child) => child.type === LessonNodeType.homework,
         )
       : [];
@@ -261,156 +257,143 @@ const DetailPanel: React.FC<{ classId: string; showStats?: boolean }> = ({
   };
 
   return (
-    <>
-      <ScrollView style={styles.detailPanel}>
-        <View style={styles.detailContent}>
-          <View style={styles.typeTag}>
-            <Text style={styles.typeTagText}>{selectedNode.type}</Text>
-          </View>
+    <View style={styles.detailPanel}>
+      <View style={styles.detailHeaderRow}>
+        <View style={styles.typeTag}>
+          <Text style={styles.typeTagText}>
+            {getNodeTypeLabel(selectedNode.type)}
+          </Text>
+        </View>
+        <Text style={styles.detailEmoji}>{getNodeIcon(selectedNode.type)}</Text>
+      </View>
 
-          <Text style={styles.detailTitle}>{selectedNode.title}</Text>
+      <Text style={styles.detailTitle}>{selectedNode.title}</Text>
 
-          <View style={styles.divider} />
+      <View style={styles.sectionWrap}>
+        <Text style={styles.sectionTitle}>Description</Text>
+        <Text style={styles.sectionText}>
+          {(selectedNode.content as { description?: string })?.description ||
+            "No description yet."}
+        </Text>
+      </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.sectionText}>
-              {(selectedNode.content as any)?.description ||
-                "No description available."}
+      {selectedNode.type === LessonNodeType.lesson ? (
+        <View style={styles.sectionWrap}>
+          <Text style={styles.sectionTitle}>
+            Homework ({homeworkNodes.length})
+          </Text>
+          {homeworkNodes.length === 0 ? (
+            <Text style={styles.emptyText}>
+              No homework for this lesson yet.
             </Text>
-          </View>
+          ) : (
+            <View style={styles.homeworkList}>
+              {homeworkNodes.map((hw) => {
+                const counts = getHomeworkCounts(hw.id);
+                const hasAssignments = counts.totalAssigned > 0;
+                const hasPending = counts.pending > 0;
+                const stats = getStatsBadge(
+                  counts.correct,
+                  counts.totalAssigned,
+                );
 
-          {selectedNode.type === LessonNodeType.lesson && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                Homework ({homeworkNodes.length})
-              </Text>
-              {homeworkNodes.length === 0 ? (
-                <Text style={styles.emptyText}>
-                  No homework for this lesson
-                </Text>
-              ) : (
-                <View style={styles.homeworkList}>
-                  {homeworkNodes.map((hw) => {
-                    const hwCounts = getHomeworkCounts(hw.id);
-                    const hasPending = hwCounts && hwCounts.pending > 0;
-                    const hasAssigned = hwCounts && hwCounts.totalAssigned > 0;
-
-                    return (
-                      <Pressable
-                        key={hw.id}
+                return (
+                  <Pressable
+                    key={hw.id}
+                    style={[
+                      styles.homeworkCard,
+                      !hasAssignments && styles.homeworkCardDisabled,
+                    ]}
+                    onPress={() => hasAssignments && handleHomeworkPress(hw.id)}
+                    disabled={!hasAssignments}
+                  >
+                    <View style={styles.homeworkTopRow}>
+                      <Text
                         style={[
-                          styles.homeworkItem,
-                          !hasAssigned && styles.homeworkItemDisabled,
+                          styles.homeworkTitle,
+                          !hasAssignments && styles.homeworkMuted,
                         ]}
-                        onPress={() =>
-                          hasAssigned && handleHomeworkPress(hw.id)
-                        }
-                        disabled={!hasAssigned}
                       >
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <Text
-                            style={[
-                              styles.homeworkTitle,
-                              { flex: 1 },
-                              !hasAssigned && styles.homeworkTitleDisabled,
-                            ]}
-                          >
-                            📋 {hw.title}
-                          </Text>
-                          {hasAssigned &&
-                            (showStats ? (
-                              (() => {
-                                const stats = getStatsBadge(
-                                  hwCounts.correct,
-                                  hwCounts.totalAssigned,
-                                );
-                                return stats ? (
-                                  <View
-                                    style={[
-                                      styles.badge,
-                                      { backgroundColor: stats.bgColor },
-                                    ]}
-                                  >
-                                    <Text
-                                      style={{
-                                        color: stats.textColor,
-                                        fontSize: 10,
-                                        fontWeight: "600",
-                                      }}
-                                    >
-                                      {stats.label}
-                                    </Text>
-                                  </View>
-                                ) : null;
-                              })()
-                            ) : (
-                              <View
+                        📋 {hw.title}
+                      </Text>
+
+                      {hasAssignments ? (
+                        showStats ? (
+                          stats ? (
+                            <View
+                              style={[
+                                styles.badge,
+                                { backgroundColor: stats.bgColor },
+                              ]}
+                            >
+                              <Text
                                 style={[
-                                  styles.badge,
-                                  {
-                                    backgroundColor: hasPending
-                                      ? "#ef4444"
-                                      : "#dcfce7",
-                                  },
+                                  styles.badgeText,
+                                  { color: stats.textColor },
                                 ]}
                               >
-                                <Text
-                                  style={{
-                                    color: hasPending ? "white" : "#166534",
-                                    fontSize: 10,
-                                    fontWeight: "600",
-                                  }}
-                                >
-                                  {hasPending ? `${hwCounts.pending}` : "✓"}
-                                </Text>
-                              </View>
-                            ))}
-                        </View>
-                        <Text
-                          style={[
-                            styles.homeworkSubtitle,
-                            !hasAssigned && styles.homeworkSubtitleDisabled,
-                          ]}
-                        >
-                          {hasAssigned
-                            ? `${hwCounts.totalAssigned} assignment${hwCounts.totalAssigned !== 1 ? "s" : ""} · ${hwCounts.pending} pending`
-                            : "No assignments yet"}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
+                                {stats.label}
+                              </Text>
+                            </View>
+                          ) : null
+                        ) : (
+                          <View
+                            style={[
+                              styles.badge,
+                              hasPending
+                                ? styles.badgePending
+                                : styles.badgeCompleted,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.badgeText,
+                                hasPending
+                                  ? styles.badgePendingText
+                                  : styles.badgeCompletedText,
+                              ]}
+                            >
+                              {hasPending ? `${counts.pending}` : "✓"}
+                            </Text>
+                          </View>
+                        )
+                      ) : null}
+                    </View>
+
+                    <Text
+                      style={[
+                        styles.homeworkSubtitle,
+                        !hasAssignments && styles.homeworkMuted,
+                      ]}
+                    >
+                      {hasAssignments
+                        ? `${counts.totalAssigned} assignment${counts.totalAssigned > 1 ? "s" : ""} · ${counts.pending} pending`
+                        : "No assignments yet"}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           )}
         </View>
-      </ScrollView>
+      ) : null}
 
-      {selectedHomeworkId && (
+      {selectedHomeworkId ? (
         <AssignmentModal
           visible={showAssignmentModal}
           onClose={() => setShowAssignmentModal(false)}
           homeworkNodeId={selectedHomeworkId}
           classId={classId}
         />
-      )}
-    </>
+      ) : null}
+    </View>
   );
 };
 
-// Do All Homework Button Component
 const DoAllHomeworkButton: React.FC<{ classId: string }> = ({ classId }) => {
   const router = useRouter();
   const { homeworkCountsMap, course } = useCourseStructure();
 
-  // Calculate total pending from root node
   const rootCounts = course.rootLessonNodeId
     ? homeworkCountsMap.get(course.rootLessonNodeId)
     : null;
@@ -418,9 +401,8 @@ const DoAllHomeworkButton: React.FC<{ classId: string }> = ({ classId }) => {
 
   if (totalPending === 0) {
     return (
-      <View style={styles.doAllButtonDisabled}>
-        <Text style={styles.doAllButtonIcon}>✓</Text>
-        <Text style={styles.doAllButtonTextDisabled}>All Done!</Text>
+      <View style={styles.doAllButtonDone}>
+        <Text style={styles.doAllButtonDoneText}>🎉 All homework done</Text>
       </View>
     );
   }
@@ -435,29 +417,26 @@ const DoAllHomeworkButton: React.FC<{ classId: string }> = ({ classId }) => {
         })
       }
     >
-      <Text style={styles.doAllButtonIcon}>▶</Text>
-      <Text style={styles.doAllButtonText}>Do Homework ({totalPending})</Text>
+      <Text style={styles.doAllButtonText}>
+        ▶ Do all homework ({totalPending})
+      </Text>
     </Pressable>
   );
 };
 
-// Main Content Component
 const ClassDetailContent: React.FC<{
   classData: ClassData;
-  courseUI: CourseUI;
-}> = ({ classData, courseUI }) => {
+}> = ({ classData }) => {
   const { isLoading, course, homeworkCountsMap, refetchHomeworkCounts } =
     useCourseStructure();
   const [showStats, setShowStats] = useState(false);
 
-  // Refetch homework counts when screen is focused
   useFocusEffect(
     React.useCallback(() => {
       refetchHomeworkCounts();
     }, [refetchHomeworkCounts]),
   );
 
-  // Calculate root stats for toggle button label
   const rootCounts = course.rootLessonNodeId
     ? homeworkCountsMap.get(course.rootLessonNodeId)
     : null;
@@ -467,64 +446,85 @@ const ClassDetailContent: React.FC<{
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color="#0f766e" />
         <Text style={styles.loadingText}>Loading course structure...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.mainContainer}>
-      {/* Tree Sidebar */}
-      <View style={{ flex: 3 }}>
-        <ScrollView style={styles.sidebar}>
-          <View style={styles.sidebarHeader}>
-            <Text style={styles.sidebarTitle}>Course Structure</Text>
-            <Text style={styles.courseName}>{course.name}</Text>
-            <DoAllHomeworkButton classId={classData.id} />
-            {totalAssigned > 0 && (
-              <Pressable
-                style={[
-                  styles.statsToggleButton,
-                  showStats && styles.statsToggleButtonActive,
-                ]}
-                onPress={() => setShowStats((prev) => !prev)}
-              >
-                <Text style={styles.statsToggleIcon}>📊</Text>
-                <Text
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.horizontalLayout}>
+        <View style={styles.leftPane}>
+          <View style={styles.heroCard}>
+            <Text style={styles.className}>{classData.name}</Text>
+            <Text style={styles.courseName}>Course: {course.name}</Text>
+
+            {totalAssigned > 0 ? (
+              <View style={styles.heroActionsRow}>
+                <View style={styles.heroActionItem}>
+                  <DoAllHomeworkButton classId={classData.id} />
+                </View>
+
+                <Pressable
                   style={[
-                    styles.statsToggleText,
-                    showStats && styles.statsToggleTextActive,
+                    styles.statsToggleButton,
+                    styles.heroActionItem,
+                    showStats && styles.statsToggleButtonActive,
                   ]}
+                  onPress={() => setShowStats((prev) => !prev)}
                 >
-                  {showStats
-                    ? `Stats: ${totalCorrect}/${totalAssigned}`
-                    : "View Stats"}
-                </Text>
-              </Pressable>
+                  <Text
+                    style={[
+                      styles.statsToggleText,
+                      showStats && styles.statsToggleTextActive,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {showStats
+                      ? `📊 ${totalCorrect}/${totalAssigned}`
+                      : "📊 Stats"}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <DoAllHomeworkButton classId={classData.id} />
             )}
           </View>
 
-          {course.rootLessonNode ? (
-            <TreeNodeRenderer
-              node={course.rootLessonNode}
-              level={0}
-              showStats={showStats}
-            />
-          ) : (
-            <Text style={styles.emptyText}>No course structure</Text>
-          )}
-        </ScrollView>
+          <View style={[styles.panelCard, styles.treePanelCard]}>
+            <Text style={styles.panelTitle}>Course map</Text>
+            <Text style={styles.panelSubtitle}>
+              Tap a card to select and open it.
+            </Text>
+
+            <ScrollView contentContainerStyle={styles.treeScrollContent}>
+              {course.rootLessonNode ? (
+                <TreeNodeRenderer
+                  node={course.rootLessonNode}
+                  level={0}
+                  showStats={showStats}
+                />
+              ) : (
+                <Text style={styles.emptyText}>No course structure yet.</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+
+        <View style={styles.rightPane}>
+          <View style={[styles.panelCard, styles.detailPanelCard]}>
+            <Text style={styles.panelTitle}>Lesson details</Text>
+            <ScrollView contentContainerStyle={styles.detailScrollContent}>
+              <DetailPanel classId={classData.id} showStats={showStats} />
+            </ScrollView>
+          </View>
+        </View>
       </View>
-      {/* Detail Panel */}
-      <View style={{ flex: 7 }}>
-        <DetailPanel classId={classData.id} showStats={showStats} />
-      </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
-// Main Screen Component
 export default function ClassDetailScreen() {
   const { classId } = useLocalSearchParams<{ classId: string }>();
   const [classData, setClassData] = useState<ClassData | null>(null);
@@ -540,6 +540,7 @@ export default function ClassDetailScreen() {
         if (!session?.session.token) {
           throw new Error("No session token available");
         }
+
         if (!classId) {
           setError("No class ID provided");
           return;
@@ -551,7 +552,7 @@ export default function ClassDetailScreen() {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${session?.session.token}`, // Gửi token
+              Authorization: `Bearer ${session.session.token}`,
             },
           },
         );
@@ -563,21 +564,19 @@ export default function ClassDetailScreen() {
         const result = await response.json();
         if (result.success && result.data) {
           const { classData, nodes } = result.data;
-
-          // Build tree from nodes
           const rootNode = buildTreeFromFlatList(nodes);
 
-          const courseUI: CourseUI = {
+          const nextCourseUI: CourseUI = {
             id: classData.course.id,
             name: classData.course.name,
-            organizationId: "", // Not available in mobile context
+            organizationId: "",
             rootLessonNodeId: classData.course.rootLessonNodeId,
             rootLessonNode: rootNode,
             course: classData.course,
           };
 
           setClassData(classData);
-          setCourseUI(courseUI);
+          setCourseUI(nextCourseUI);
         } else {
           setError(result.error || "Failed to load class");
         }
@@ -595,7 +594,7 @@ export default function ClassDetailScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color="#0f766e" />
         <Text style={styles.loadingText}>Loading class...</Text>
       </View>
     );
@@ -604,6 +603,7 @@ export default function ClassDetailScreen() {
   if (error || !classData || !courseUI) {
     return (
       <View style={styles.errorContainer}>
+        <Text style={styles.errorTitle}>Could not open class</Text>
         <Text style={styles.errorText}>{error || "Failed to load class"}</Text>
       </View>
     );
@@ -611,245 +611,351 @@ export default function ClassDetailScreen() {
 
   return (
     <CourseStructureProvider initialCourse={courseUI} classId={classId}>
-      <ClassDetailContent classData={classData} courseUI={courseUI} />
+      <ClassDetailContent classData={classData} />
     </CourseStructureProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  mainContainer: {
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#f0fdfa",
+  },
+  horizontalLayout: {
     flex: 1,
     flexDirection: "row",
-    backgroundColor: "#f9fafb",
+    gap: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
-  sidebar: {
-    backgroundColor: "white",
-    borderRightWidth: 1,
-    borderRightColor: "#e5e7eb",
+  leftPane: {
+    width: "42%",
+    gap: 10,
   },
-  sidebarHeader: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+  rightPane: {
+    flex: 1,
   },
-  sidebarTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
-    marginBottom: 8,
+  heroCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#bae6fd",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  heroActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  heroActionItem: {
+    flex: 1,
+  },
+  className: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#0f172a",
   },
   courseName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#111827",
+    fontSize: 13,
+    color: "#475569",
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  doAllButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0f766e",
+    borderRadius: 10,
+    minHeight: 40,
+    paddingHorizontal: 10,
+  },
+  doAllButtonText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#ffffff",
+  },
+  doAllButtonDone: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#dcfce7",
+    borderRadius: 10,
+    minHeight: 40,
+    paddingHorizontal: 10,
+  },
+  doAllButtonDoneText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#166534",
+  },
+  statsToggleButton: {
+    minHeight: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f8fafc",
+    paddingHorizontal: 8,
+  },
+  statsToggleButtonActive: {
+    backgroundColor: "#fef3c7",
+    borderColor: "#fde68a",
+  },
+  statsToggleText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#334155",
+  },
+  statsToggleTextActive: {
+    color: "#92400e",
+  },
+  panelCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#bae6fd",
+    padding: 12,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  treePanelCard: {
+    flex: 1,
+  },
+  detailPanelCard: {
+    flex: 1,
+  },
+  treeScrollContent: {
+    paddingBottom: 12,
+  },
+  detailScrollContent: {
+    paddingBottom: 16,
+  },
+  panelTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#0f172a",
+    marginBottom: 2,
+  },
+  panelSubtitle: {
+    fontSize: 14,
+    color: "#64748b",
+    marginBottom: 10,
+  },
+  treeNodeWrap: {
+    marginBottom: 8,
   },
   treeNode: {
-    paddingVertical: 8,
-    paddingRight: 12,
-    flexDirection: "row",
-    borderLeftWidth: 2,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#dbeafe",
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    marginRight: 2,
   },
-  treeNodeContent: {
+  treeNodeSelected: {
+    backgroundColor: "#e0f2fe",
+    borderColor: "#38bdf8",
+  },
+  treeNodeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  treeNodeMainInfo: {
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
   },
-  expandButton: {
-    width: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
+  nodeChevron: {
+    fontSize: 14,
+    width: 18,
+    color: "#334155",
+    textAlign: "center",
   },
   nodeIcon: {
-    fontSize: 16,
-    marginRight: 4,
+    fontSize: 18,
+    marginRight: 8,
+  },
+  nodeTextGroup: {
+    flex: 1,
   },
   nodeTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0f172a",
+  },
+  nodeTypeLabel: {
     fontSize: 12,
-    color: "#1f2937",
+    color: "#64748b",
+    marginTop: 1,
   },
   badge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 12,
-    marginLeft: 8,
+    minWidth: 34,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgePending: {
+    backgroundColor: "#fee2e2",
+  },
+  badgeCompleted: {
+    backgroundColor: "#dcfce7",
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  badgePendingText: {
+    color: "#991b1b",
+  },
+  badgeCompletedText: {
+    color: "#166534",
   },
   detailPanel: {
-    backgroundColor: "#ffffff",
+    marginTop: 2,
   },
-  detailContent: {
-    padding: 16,
+  detailHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  detailEmoji: {
+    fontSize: 24,
   },
   typeTag: {
     alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    backgroundColor: "#f3f4f6",
-    borderRadius: 16,
-    marginBottom: 12,
+    borderRadius: 999,
+    backgroundColor: "#ecfeff",
+    borderWidth: 1,
+    borderColor: "#a5f3fc",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   typeTagText: {
-    fontSize: 10,
-    fontWeight: "500",
-    color: "#374151",
-    textTransform: "capitalize",
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#0f766e",
   },
   detailTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 16,
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#0f172a",
+    marginTop: 8,
   },
-  divider: {
-    height: 1,
-    backgroundColor: "#e5e7eb",
-    marginVertical: 12,
-  },
-  section: {
-    marginBottom: 16,
+  sectionWrap: {
+    marginTop: 12,
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#374151",
-    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#334155",
+    marginBottom: 6,
   },
   sectionText: {
-    fontSize: 12,
-    color: "#4b5563",
-    lineHeight: 18,
-  },
-  emptyText: {
-    fontSize: 12,
-    color: "#9ca3af",
-    fontStyle: "italic",
+    fontSize: 16,
+    color: "#475569",
+    lineHeight: 24,
   },
   homeworkList: {
     gap: 8,
   },
-  homeworkItem: {
+  homeworkCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#fde68a",
+    backgroundColor: "#fffbeb",
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: "#fef3c7",
-    borderRadius: 4,
   },
-  homeworkItemDisabled: {
-    backgroundColor: "#f3f4f6",
-    opacity: 0.7,
+  homeworkCardDisabled: {
+    borderColor: "#e2e8f0",
+    backgroundColor: "#f8fafc",
+  },
+  homeworkTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
   },
   homeworkTitle: {
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "800",
     color: "#92400e",
-    marginBottom: 4,
-  },
-  homeworkTitleDisabled: {
-    color: "#9ca3af",
+    flex: 1,
   },
   homeworkSubtitle: {
-    fontSize: 11,
+    marginTop: 5,
+    fontSize: 14,
     color: "#b45309",
   },
-  homeworkSubtitleDisabled: {
-    color: "#9ca3af",
+  homeworkMuted: {
+    color: "#94a3b8",
   },
-  placeholderText: {
-    fontSize: 12,
-    color: "#9ca3af",
+  emptyText: {
+    fontSize: 14,
+    color: "#94a3b8",
+    fontStyle: "italic",
+  },
+  detailPlaceholder: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    backgroundColor: "#f8fafc",
+    padding: 14,
+    marginTop: 8,
+  },
+  detailPlaceholderTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#334155",
+    marginBottom: 4,
+  },
+  detailPlaceholderText: {
+    fontSize: 14,
+    color: "#64748b",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f9fafb",
+    backgroundColor: "#f0fdfa",
+    padding: 16,
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 14,
-    color: "#6b7280",
+    fontSize: 16,
+    color: "#0f766e",
+    fontWeight: "700",
   },
   errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fef2f2",
+    backgroundColor: "#fff7ed",
+    padding: 16,
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#9a3412",
+    marginBottom: 6,
   },
   errorText: {
-    fontSize: 14,
-    color: "#dc2626",
+    fontSize: 15,
+    color: "#c2410c",
     textAlign: "center",
-    paddingHorizontal: 16,
-  },
-  detailPlaceholder: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#ffffff",
-  },
-  detailPlaceholderText: {
-    fontSize: 14,
-    color: "#9ca3af",
-  },
-  doAllButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#8b5cf6",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginTop: 12,
-    gap: 6,
-  },
-  doAllButtonDisabled: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#dcfce7",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginTop: 12,
-    gap: 6,
-  },
-  doAllButtonIcon: {
-    fontSize: 12,
-    color: "white",
-  },
-  doAllButtonText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "white",
-  },
-  doAllButtonTextDisabled: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#16a34a",
-  },
-  statsToggleButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f3f4f6",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginTop: 8,
-    gap: 6,
-  },
-  statsToggleButtonActive: {
-    backgroundColor: "#ede9fe",
-  },
-  statsToggleIcon: {
-    fontSize: 12,
-  },
-  statsToggleText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#6b7280",
-  },
-  statsToggleTextActive: {
-    color: "#7c3aed",
   },
 });

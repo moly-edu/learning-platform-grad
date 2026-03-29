@@ -1,4 +1,5 @@
 import { authClient } from "@/lib/auth-client";
+import React, { useState } from "react";
 import {
   Image,
   Pressable,
@@ -6,6 +7,8 @@ import {
   View,
   ActivityIndicator,
   ScrollView,
+  StyleSheet,
+  SafeAreaView,
 } from "react-native";
 import {
   LogOutIcon,
@@ -14,7 +17,6 @@ import {
   Mail,
   CheckCircle,
 } from "lucide-react-native";
-import { useState } from "react";
 
 export default function SettingsTab() {
   const { data: session } = authClient.useSession();
@@ -33,97 +35,224 @@ export default function SettingsTab() {
     if (signOutError) {
       setError(signOutError.message || "Sign out failed. Please try again.");
     } else {
-      setSuccess("Signed out successfully!");
+      setSuccess("Signed out successfully.");
     }
   }
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
-      <View className="pt-12 px-6 pb-8">
-        {/* Header */}
-        <Text className="text-3xl font-bold text-gray-900 mb-2">Settings</Text>
-        <Text className="text-base text-gray-600 mb-8">
-          Manage your account information
-        </Text>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.pageContent}>
+        <View style={styles.headerCard}>
+          <Text style={styles.title}>Settings</Text>
+          <Text style={styles.subtitle}>Manage your account information</Text>
+        </View>
 
-        {/* Error Message */}
         {error ? (
-          <View className="flex-row items-center bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-            <AlertCircle className="size-5 text-red-500 mr-3" />
-            <Text className="flex-1 text-red-700 text-sm">{error}</Text>
+          <View style={[styles.messageBox, styles.errorBox]}>
+            <AlertCircle size={20} color="#dc2626" />
+            <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
 
-        {/* Success Message */}
         {success ? (
-          <View className="flex-row items-center bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
-            <CheckCircle className="size-5 text-green-500 mr-3" />
-            <Text className="flex-1 text-green-700 text-sm">{success}</Text>
+          <View style={[styles.messageBox, styles.successBox]}>
+            <CheckCircle size={20} color="#16a34a" />
+            <Text style={styles.successText}>{success}</Text>
           </View>
         ) : null}
 
-        {/* Profile Card */}
-        <View className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-          {/* Avatar */}
-          <View className="items-center mb-6">
+        <View style={styles.profileCard}>
+          <View style={styles.avatarWrap}>
             {session?.user.image ? (
               <Image
                 source={{ uri: session.user.image }}
-                className="w-24 h-24 rounded-full border-4 border-blue-100"
+                style={styles.avatarImage}
               />
             ) : (
-              <View className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 items-center justify-center border-4 border-blue-100">
-                <User className="size-12 text-white" />
+              <View style={styles.avatarFallback}>
+                <User size={34} color="#ffffff" />
               </View>
             )}
           </View>
 
-          {/* User Info */}
-          <View className="space-y-4">
-            {/* Name */}
-            {session?.user.name && (
-              <View className="flex-row items-center bg-gray-50 rounded-xl p-4">
-                <User className="size-5 text-gray-500 mr-3" />
-                <View className="flex-1">
-                  <Text className="text-xs text-gray-500 mb-1">Name</Text>
-                  <Text className="text-base font-medium text-gray-900">
-                    {session.user.name}
-                  </Text>
-                </View>
-              </View>
-            )}
+          <View style={styles.infoRow}>
+            <View style={styles.infoIconWrap}>
+              <User size={18} color="#334155" />
+            </View>
+            <View style={styles.infoTextWrap}>
+              <Text style={styles.infoLabel}>Name</Text>
+              <Text style={styles.infoValue}>
+                {session?.user.name || "No name available"}
+              </Text>
+            </View>
+          </View>
 
-            {/* Email */}
-            <View className="flex-row items-center bg-gray-50 rounded-xl p-4">
-              <Mail className="size-5 text-gray-500 mr-3" />
-              <View className="flex-1">
-                <Text className="text-xs text-gray-500 mb-1">Email</Text>
-                <Text className="text-base font-medium text-gray-900">
-                  {session?.user.email || "No email available"}
-                </Text>
-              </View>
+          <View style={styles.infoRow}>
+            <View style={styles.infoIconWrap}>
+              <Mail size={18} color="#334155" />
+            </View>
+            <View style={styles.infoTextWrap}>
+              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoValue}>
+                {session?.user.email || "No email available"}
+              </Text>
             </View>
           </View>
         </View>
 
-        {/* Sign Out Button */}
         <Pressable
           onPress={handleSignOut}
           disabled={loading}
-          className="flex-row items-center justify-center gap-3 bg-gray-400 rounded-xl py-4"
+          style={[styles.signOutButton, loading && styles.buttonDisabled]}
         >
           {loading ? (
-            <ActivityIndicator color="white" />
+            <ActivityIndicator color="#ffffff" />
           ) : (
-            <>
-              <LogOutIcon className="size-5 text-white mr-2" />
-              <Text className="text-white font-semibold text-base">
-                Sign out
-              </Text>
-            </>
+            <View style={styles.signOutRow}>
+              <LogOutIcon size={20} color="#ffffff" />
+              <Text style={styles.signOutButtonText}>Sign out</Text>
+            </View>
           )}
         </Pressable>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#f0fdfa",
+  },
+  pageContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 24,
+    gap: 12,
+  },
+  headerCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#bae6fd",
+    padding: 16,
+  },
+  title: {
+    fontSize: 30,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  subtitle: {
+    marginTop: 4,
+    fontSize: 16,
+    color: "#475569",
+  },
+  messageBox: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  errorBox: {
+    backgroundColor: "#fef2f2",
+    borderColor: "#fecaca",
+  },
+  successBox: {
+    backgroundColor: "#f0fdf4",
+    borderColor: "#bbf7d0",
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#b91c1c",
+  },
+  successText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#15803d",
+  },
+  profileCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#bae6fd",
+    padding: 16,
+    gap: 10,
+  },
+  avatarWrap: {
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  avatarImage: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 3,
+    borderColor: "#bfdbfe",
+  },
+  avatarFallback: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: "#0f766e",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: "#99f6e4",
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  infoIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#e2e8f0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  infoTextWrap: {
+    flex: 1,
+  },
+  infoLabel: {
+    fontSize: 12,
+    color: "#64748b",
+    marginBottom: 2,
+  },
+  infoValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0f172a",
+  },
+  signOutButton: {
+    minHeight: 50,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ef4444",
+  },
+  buttonDisabled: {
+    opacity: 0.75,
+  },
+  signOutRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  signOutButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+});

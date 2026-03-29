@@ -5,12 +5,7 @@ import React, {
   useCallback,
   useEffect,
 } from "react";
-import {
-  CourseUI,
-  LessonNodeUI,
-  HomeworkCountResult,
-  LessonNodeType,
-} from "@/types/course";
+import { CourseUI, LessonNodeUI, HomeworkCountResult } from "@/types/course";
 import { buildHomeworkCountsMap } from "@/lib/utils/course-structure";
 import { API_BASE_URL } from "@/lib/config/api";
 import { authClient } from "@/lib/auth-client";
@@ -53,7 +48,7 @@ interface CourseStructureProviderProps {
 export const CourseStructureProvider: React.FC<
   CourseStructureProviderProps
 > = ({ children, initialCourse, classId }) => {
-  const [course, setCourse] = useState<CourseUI>(initialCourse);
+  const [course] = useState<CourseUI>(initialCourse);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
     initialCourse.rootLessonNodeId,
   );

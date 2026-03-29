@@ -9,11 +9,11 @@ export default function RootLayout() {
     <React.Fragment>
       <StatusBar hidden={true} />
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Protected guard={session?.user.id != undefined}>
+        <Stack.Protected guard={session?.user.id !== undefined}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         </Stack.Protected>
-        <Stack.Protected guard={session?.user.id == undefined}>
-          <Stack.Screen name="sign-in" />
+        <Stack.Protected guard={session?.user.id === undefined}>
+          <Stack.Screen name="sign-in" options={{ headerShown: false }} />
         </Stack.Protected>
       </Stack>
     </React.Fragment>

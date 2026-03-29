@@ -8,6 +8,7 @@ import {
   View,
   ActivityIndicator,
   StyleSheet,
+  SafeAreaView,
 } from "react-native";
 
 export default function SignInPage() {
@@ -20,7 +21,7 @@ export default function SignInPage() {
     setError("");
 
     if (!email || !password) {
-      setError("Please enter both email and password");
+      setError("Please enter both email and password.");
       return;
     }
 
@@ -40,99 +41,105 @@ export default function SignInPage() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.inner}>
-        {/* Header */}
-        <View style={styles.header}>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.heroCard}>
           <Text style={styles.title}>Welcome back</Text>
-          <Text style={styles.subtitle}>Sign in to continue</Text>
+          <Text style={styles.subtitle}>Sign in to start learning</Text>
         </View>
 
-        {/* Error Message */}
         {error ? (
           <View style={styles.errorBox}>
-            <AlertCircle size={20} color="#ef4444" style={styles.errorIcon} />
+            <AlertCircle size={20} color="#dc2626" style={styles.errorIcon} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
 
-        {/* Email Input */}
-        <View style={styles.inputWrapper}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            placeholder="example@email.com"
-            value={email}
-            onChangeText={(text) => {
-              setEmail(text);
-              setError("");
-            }}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            style={styles.input}
-            placeholderTextColor="#9ca3af"
-          />
-        </View>
+        <View style={styles.formCard}>
+          <View style={styles.inputWrapper}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              placeholder="example@email.com"
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                setError("");
+              }}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              style={styles.input}
+              placeholderTextColor="#94a3b8"
+            />
+          </View>
 
-        {/* Password Input */}
-        <View style={styles.inputWrapper}>
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            placeholder="Password"
-            value={password}
-            onChangeText={(text) => {
-              setPassword(text);
-              setError("");
-            }}
-            secureTextEntry
-            autoComplete="password"
-            style={styles.input}
-            placeholderTextColor="#9ca3af"
-          />
-        </View>
+          <View style={styles.inputWrapper}>
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              placeholder="Password"
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                setError("");
+              }}
+              secureTextEntry
+              autoComplete="password"
+              style={styles.input}
+              placeholderTextColor="#94a3b8"
+            />
+          </View>
 
-        {/* Login Button */}
-        <Pressable
-          onPress={handleLogin}
-          disabled={loading}
-          style={[styles.button, loading && styles.buttonDisabled]}
-        >
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <View style={styles.buttonContent}>
-              <LogInIcon size={20} color="#ffffff" style={styles.buttonIcon} />
-              <Text style={styles.buttonText}>Sign in</Text>
-            </View>
-          )}
-        </Pressable>
+          <Pressable
+            onPress={handleLogin}
+            disabled={loading}
+            style={[styles.button, loading && styles.buttonDisabled]}
+          >
+            {loading ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <View style={styles.buttonContent}>
+                <LogInIcon
+                  size={20}
+                  color="#ffffff"
+                  style={styles.buttonIcon}
+                />
+                <Text style={styles.buttonText}>Sign in</Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#f0fdfa",
+  },
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
-  },
-  inner: {
-    flex: 1,
     justifyContent: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
   },
-  header: {
-    marginBottom: 40,
+  heroCard: {
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#bae6fd",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
   },
   title: {
     fontSize: 32,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 8,
+    fontWeight: "800",
+    color: "#0f172a",
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
-    color: "#6b7280",
+    color: "#475569",
   },
   errorBox: {
     flexDirection: "row",
@@ -140,46 +147,54 @@ const styles = StyleSheet.create({
     backgroundColor: "#fef2f2",
     borderWidth: 1,
     borderColor: "#fecaca",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
   },
   errorIcon: {
-    marginRight: 12,
+    marginRight: 10,
   },
   errorText: {
     flex: 1,
     color: "#b91c1c",
     fontSize: 14,
   },
+  formCard: {
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#bae6fd",
+    borderRadius: 20,
+    padding: 16,
+  },
   inputWrapper: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   label: {
     fontSize: 14,
-    fontWeight: "500",
-    color: "#374151",
+    fontWeight: "700",
+    color: "#334155",
     marginBottom: 8,
   },
   input: {
     backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: "#d1d5db",
+    borderColor: "#cbd5e1",
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    minHeight: 48,
     fontSize: 16,
     color: "#111827",
   },
   button: {
-    backgroundColor: "#6b7280",
+    marginTop: 4,
     borderRadius: 12,
-    paddingVertical: 16,
+    minHeight: 50,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#0f766e",
   },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.75,
   },
   buttonContent: {
     flexDirection: "row",
@@ -190,7 +205,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#ffffff",
-    fontWeight: "600",
-    fontSize: 16,
+    fontWeight: "800",
+    fontSize: 17,
   },
 });
