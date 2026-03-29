@@ -1,14 +1,7 @@
 "use client";
 
 import { authClient } from "@/lib/auth-client";
-import {
-  CreditCard,
-  LayoutDashboard,
-  LogOutIcon,
-  Notebook,
-  ShieldIcon,
-  UserIcon,
-} from "lucide-react";
+import { LogOutIcon, Notebook, UserIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,12 +16,15 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { User } from "@repo/api-contract";
+import { useTranslations } from "next-intl";
 
 interface UserDropdownProps {
   user: User;
 }
 
 export function UserDropdown({ user }: UserDropdownProps) {
+  const t = useTranslations("userDropdown");
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -57,7 +53,7 @@ export function UserDropdown({ user }: UserDropdownProps) {
         </DropdownMenuItem> */}
         <DropdownMenuItem asChild>
           <Link href="/dashboard/classes">
-            <Notebook className="size-4" /> <span>Classes</span>
+            <Notebook className="size-4" /> <span>{t("classes")}</span>
           </Link>
         </DropdownMenuItem>
         {/* <DropdownMenuItem asChild>
@@ -77,32 +73,23 @@ export function UserDropdown({ user }: UserDropdownProps) {
   );
 }
 
-function AdminItem() {
-  return (
-    <DropdownMenuItem asChild>
-      <Link href="/admin">
-        <ShieldIcon className="size-4" /> <span>Admin</span>
-      </Link>
-    </DropdownMenuItem>
-  );
-}
-
 function SignOutItem() {
   const router = useRouter();
+  const t = useTranslations("userDropdown");
 
   async function handleSignOut() {
     const { error } = await authClient.signOut();
     if (error) {
-      toast.error(error.message || "Something went wrong");
+      toast.error(error.message || t("somethingWentWrong"));
     } else {
-      toast.success("Signed out successfully");
-      router.push("/sign-in");
+      toast.success(t("signOutSuccess"));
+      router.push("/signin");
     }
   }
 
   return (
     <DropdownMenuItem onClick={handleSignOut}>
-      <LogOutIcon className="size-4" /> <span>Sign out</span>
+      <LogOutIcon className="size-4" /> <span>{t("signOut")}</span>
     </DropdownMenuItem>
   );
 }

@@ -6,6 +6,7 @@ import { WidgetDefinition } from "../core/types";
 import { Button } from "@/components/ui/button";
 import AssignmentStudentsPanel from "./AssignmentStudentsPanel";
 import DirectAssignStudentPanel from "./DirectAssignStudentPanel";
+import { useLocale } from "next-intl";
 
 interface TeacherViewAssignmentWithStudentsProps {
   assignmentId: string;
@@ -22,6 +23,9 @@ export default function TeacherViewAssignmentWithStudents({
   targetStudentId,
   targetStudentName,
 }: TeacherViewAssignmentWithStudentsProps) {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const [widgetDef, setWidgetDef] = useState<WidgetDefinition | null>(null);
   const [config] = useState<Record<string, any>>(initialConfig);
   const [error, setError] = useState<string | null>(null);
@@ -96,13 +100,15 @@ export default function TeacherViewAssignmentWithStudents({
       }
       if (event.data.type === "ERROR") {
         console.error("❌ Widget error:", event.data.payload);
-        setError(event.data.payload?.message || "Widget error");
+        setError(
+          event.data.payload?.message || (isVi ? "Lỗi widget" : "Widget error"),
+        );
       }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  }, [isVi]);
 
   // Send initial config when iframe ready
   useEffect(() => {
@@ -117,7 +123,11 @@ export default function TeacherViewAssignmentWithStudents({
         {viewingAnswer && (
           <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
             <div className="text-sm text-blue-700">
-              <strong>Reviewing student submission</strong>
+              <strong>
+                {isVi
+                  ? "Đang xem bài nộp của học sinh"
+                  : "Reviewing student submission"}
+              </strong>
             </div>
             <Button
               size="sm"
@@ -125,7 +135,7 @@ export default function TeacherViewAssignmentWithStudents({
               onClick={handleResetView}
               className="text-xs"
             >
-              ← Quay lại
+              {isVi ? "← Quay lại" : "← Back"}
             </Button>
           </div>
         )}
@@ -143,7 +153,9 @@ export default function TeacherViewAssignmentWithStudents({
           <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
             <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={20} />
             <div>
-              <div className="font-bold text-red-800">Lỗi</div>
+              <div className="font-bold text-red-800">
+                {isVi ? "Lỗi" : "Error"}
+              </div>
               <div className="text-sm text-red-600 mt-1">{error}</div>
             </div>
           </div>

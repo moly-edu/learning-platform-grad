@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AlertCircle, CheckCircle, Loader2, XCircle } from "lucide-react";
 import { Submission, WidgetDefinition } from "../core/types";
 import { useCourseStructure } from "@/components/providers/course-structure-provider";
+import { useLocale } from "next-intl";
 import {
   stopHostTtsPlayback,
   synthesizeWithHostTts,
@@ -39,6 +40,9 @@ export default function StudentAssignmentView({
   onCompleted,
   onEvaluationUpdate,
 }: StudentAssignmentViewProps) {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const { updateAssignmentStatus } = useCourseStructure();
   const [assignmentData, setAssignmentData] = useState<AssignmentData | null>(
     null,
@@ -84,7 +88,10 @@ export default function StudentAssignmentView({
 
         if (!assignmentRes.ok) {
           const errorData = await assignmentRes.json();
-          throw new Error(errorData.error || "Không thể tải bài tập");
+          throw new Error(
+            errorData.error ||
+              (isVi ? "Không thể tải bài tập" : "Unable to load assignment"),
+          );
         }
 
         const data: AssignmentData = await assignmentRes.json();
@@ -98,21 +105,29 @@ export default function StudentAssignmentView({
         );
 
         if (!widgetRes.ok) {
-          throw new Error("Không thể tải widget");
+          throw new Error(
+            isVi ? "Không thể tải widget" : "Unable to load widget",
+          );
         }
 
         const widgetData: { html: string } = await widgetRes.json();
         setWidgetHtml(widgetData.html);
       } catch (err) {
         console.error("❌ Load assignment error:", err);
-        setError(err instanceof Error ? err.message : "Có lỗi xảy ra");
+        setError(
+          err instanceof Error
+            ? err.message
+            : isVi
+              ? "Có lỗi xảy ra"
+              : "Something went wrong",
+        );
       } finally {
         setLoading(false);
       }
     };
 
     loadAssignment();
-  }, [assignmentId]);
+  }, [assignmentId, isVi]);
 
   // 2️⃣ Load widget HTML into iframe
   useEffect(() => {
@@ -216,13 +231,15 @@ export default function StudentAssignmentView({
 
       if (event.data.type === "ERROR") {
         console.error("❌ Widget error:", event.data.payload);
-        setError(event.data.payload?.message || "Widget error");
+        setError(
+          event.data.payload?.message || (isVi ? "Lỗi widget" : "Widget error"),
+        );
       }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [assignmentData]);
+  }, [assignmentData, isVi]);
 
   // 5️⃣ Submit to database
   const handleSubmitToDatabase = async (submission: Submission) => {
@@ -249,7 +266,10 @@ export default function StudentAssignmentView({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Không thể lưu bài làm");
+        throw new Error(
+          errorData.error ||
+            (isVi ? "Không thể lưu bài làm" : "Unable to save submission"),
+        );
       }
 
       const result = await response.json();
@@ -298,8 +318,12 @@ export default function StudentAssignmentView({
     } catch (err) {
       console.error("❌ Submit error:", err);
       alert(
-        "Không thể lưu bài làm: " +
-          (err instanceof Error ? err.message : "Unknown error"),
+        (isVi ? "Không thể lưu bài làm: " : "Unable to save submission: ") +
+          (err instanceof Error
+            ? err.message
+            : isVi
+              ? "Lỗi không xác định"
+              : "Unknown error"),
       );
     } finally {
       setSubmitting(false);
@@ -339,7 +363,7 @@ export default function StudentAssignmentView({
       <div className="flex flex-col items-center justify-center h-full gap-3 p-8">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         <span className="text-lg text-muted-foreground">
-          Loading assignment...
+          {isVi ? "Đang tải bài tập..." : "Loading assignment..."}
         </span>
       </div>
     );
@@ -351,7 +375,9 @@ export default function StudentAssignmentView({
       <div className="flex flex-col items-center justify-center h-full gap-3 p-8">
         <div className="text-red-500 text-lg font-semibold">⚠️ {error}</div>
         <p className="text-sm text-muted-foreground">
-          Vui lòng liên hệ giáo viên hoặc thử lại sau
+          {isVi
+            ? "Vui lòng liên hệ giáo viên hoặc thử lại sau"
+            : "Please contact your teacher or try again later"}
         </p>
       </div>
     );
@@ -361,7 +387,7 @@ export default function StudentAssignmentView({
   if (!assignmentData || !widgetHtml) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
-        Không có dữ liệu bài tập
+        {isVi ? "Không có dữ liệu bài tập" : "No assignment data"}
       </div>
     );
   }
@@ -380,17 +406,19 @@ export default function StudentAssignmentView({
               )}
               <div>
                 <div className="font-semibold text-foreground">
-                  You have completed this assignment
+                  {isVi
+                    ? "Bạn đã hoàn thành bài tập này"
+                    : "You have completed this assignment"}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Score:{" "}
+                  {isVi ? "Điểm" : "Score"}:{" "}
                   <strong>
                     {assignmentData.submissionData.evaluation.score}/
                     {assignmentData.submissionData.evaluation.maxScore}
                   </strong>{" "}
                   •{" "}
                   {new Date(assignmentData.submittedAt!).toLocaleString(
-                    "vi-VN",
+                    isVi ? "vi-VN" : "en-US",
                   )}
                 </div>
               </div>
@@ -403,8 +431,12 @@ export default function StudentAssignmentView({
               }`}
             >
               {assignmentData.submissionData.evaluation.isCorrect
-                ? "Đúng"
-                : "Sai"}
+                ? isVi
+                  ? "Đúng"
+                  : "Correct"
+                : isVi
+                  ? "Sai"
+                  : "Incorrect"}
             </div>
           </div>
         </div>
@@ -427,7 +459,7 @@ export default function StudentAssignmentView({
             <div className="bg-card rounded-2xl shadow-2xl p-6 flex flex-col items-center gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
               <span className="text-lg font-semibold text-foreground">
-                Saving...
+                {isVi ? "Đang lưu..." : "Saving..."}
               </span>
             </div>
           </div>

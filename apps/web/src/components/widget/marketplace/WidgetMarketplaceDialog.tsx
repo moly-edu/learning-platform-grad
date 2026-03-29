@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import WidgetMarketplace from "./WidgetMarketplace";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function WidgetMarketplaceDialog() {
+  const t = useTranslations("widgetMarketplace");
   const [widgets, setWidgets] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +25,7 @@ export default function WidgetMarketplaceDialog() {
     return (
       <div className="flex justify-center pt-15 w-full h-full gap-3">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        <span className="text-lg">Loading...</span>
+        <span className="text-lg">{t("loading")}</span>
       </div>
     );
 

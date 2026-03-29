@@ -2,6 +2,8 @@ import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth-server";
 import { headers } from "next/headers";
+import { getLocale } from "next-intl/server";
+import { getDateTimeLocale } from "@/i18n/config";
 
 async function getWidgets(userId: string) {
   return await prisma.widget.findMany({
@@ -20,6 +22,9 @@ async function getWidgets(userId: string) {
 }
 
 export default async function WidgetsPage() {
+  const locale = await getLocale();
+  const isVi = locale === "vi";
+
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -30,21 +35,23 @@ export default async function WidgetsPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">Your Widgets</h1>
+        <h1 className="text-3xl font-bold">
+          {isVi ? "Widget của bạn" : "Your Widgets"}
+        </h1>
 
         <div className="flex items-center gap-3">
           <Link
             href="/dev/marketplace"
             className="px-4 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors"
           >
-            Widget Marketplace
+            {isVi ? "Chợ Widget" : "Widget Marketplace"}
           </Link>
 
           <Link
             href="/dev/dashboard"
             className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            New Widget
+            {isVi ? "Widget mới" : "New Widget"}
           </Link>
         </div>
       </div>
@@ -67,16 +74,18 @@ export default async function WidgetsPage() {
             </svg>
           </div>
           <h2 className="text-xl font-semibold text-foreground mb-2">
-            No widgets found
+            {isVi ? "Chưa có widget" : "No widgets found"}
           </h2>
           <p className="text-muted-foreground mb-6">
-            Start by creating your first widget
+            {isVi
+              ? "Bắt đầu bằng cách tạo widget đầu tiên"
+              : "Start by creating your first widget"}
           </p>
           <Link
             href="/dev/dashboard"
             className="inline-flex px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
           >
-            New Widget
+            {isVi ? "Widget mới" : "New Widget"}
           </Link>
         </div>
       ) : (
@@ -139,7 +148,9 @@ export default async function WidgetsPage() {
                         d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
                       />
                     </svg>
-                    <span>Branch: {widget.branch}</span>
+                    <span>
+                      {isVi ? "Nhánh" : "Branch"}: {widget.branch}
+                    </span>
                   </div>
 
                   <div className="flex items-center">
@@ -156,14 +167,18 @@ export default async function WidgetsPage() {
                         d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                       />
                     </svg>
-                    <span>{widget._count.builds} builds</span>
+                    <span>
+                      {widget._count.builds} {isVi ? "bản build" : "builds"}
+                    </span>
                   </div>
                 </div>
 
                 <div className="pt-4 border-t border-border">
                   <p className="text-xs text-muted-foreground">
-                    Update{" "}
-                    {new Date(widget.updatedAt).toLocaleDateString("vi-VN")}
+                    {isVi ? "Cập nhật" : "Updated"}{" "}
+                    {new Date(widget.updatedAt).toLocaleDateString(
+                      getDateTimeLocale(locale),
+                    )}
                   </p>
                 </div>
               </Link>

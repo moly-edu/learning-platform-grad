@@ -1,0 +1,239 @@
+{
+  "app": {
+    "name": "Moly"
+  },
+  "localeSwitcher": {
+    "label": "Language",
+    "en": "English",
+    "vi": "Vietnamese"
+  },
+  "modeToggle": {
+    "toggleTheme": "Toggle theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "userDropdown": {
+    "classes": "Classes",
+    "admin": "Admin",
+    "signOut": "Sign out",
+    "signOutSuccess": "Signed out successfully",
+    "somethingWentWrong": "Something went wrong"
+  },
+  "auth": {
+    "signin": {
+      "title": "Sign In",
+      "email": "Email",
+      "emailPlaceholder": "Email here",
+      "password": "Password",
+      "passwordPlaceholder": "Password here",
+      "submit": "Login",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign Up",
+      "success": "Signed in successfully",
+      "fallbackError": "Something went wrong"
+    },
+    "signup": {
+      "title": "Sign Up",
+      "fullName": "Full name",
+      "fullNamePlaceholder": "Full name here",
+      "email": "Email",
+      "emailPlaceholder": "Email here",
+      "password": "Password",
+      "passwordPlaceholder": "Password here",
+      "submit": "Sign up",
+      "hasAccount": "Already have an account?",
+      "signIn": "Sign In",
+      "success": "Signed up successfully",
+      "fallbackError": "Something went wrong"
+    }
+  },
+  "dashboard": {
+    "home": {
+      "title": "Your Organizations",
+      "subtitle": "Manage your organizations and courses",
+      "emptyTitle": "No organizations yet",
+      "emptyDescription": "Create your first organization to start building courses.",
+      "openOrganization": "Open organization"
+    }
+  },
+  "classes": {
+    "page": {
+      "title": "Your classes",
+      "created": "Created class",
+      "teacher": "Teacher",
+      "student": "Student",
+      "empty": "You have not joined any classes yet"
+    },
+    "card": {
+      "owner": "Owner",
+      "teacher": "Teacher",
+      "student": "Student",
+      "members": "members",
+      "pending": "pending",
+      "assignment": "Assignment",
+      "done": "Done",
+      "noAssignments": "No assignments yet."
+    },
+    "details": {
+      "backToCourse": "Back to Course",
+      "members": "Members"
+    },
+    "nav": {
+      "members": "Members",
+      "groups": "Groups"
+    },
+    "membersTable": {
+      "username": "Username",
+      "email": "Email",
+      "role": "Role",
+      "actions": "Actions"
+    },
+    "searchUser": {
+      "invalidEmail": "Invalid email format",
+      "notFound": "No user found with this email",
+      "somethingWentWrong": "Something went wrong",
+      "addSuccess": "Member added successfully with role {role}",
+      "addError": "An error occurred while adding member",
+      "title": "Add member to your class",
+      "emailSearch": "Email search",
+      "emailPlaceholder": "your@gmail.com",
+      "rolePlaceholder": "Select role",
+      "addUser": "Add user",
+      "teacher": "Teacher",
+      "student": "Student"
+    },
+    "groups": {
+      "createSuccess": "Group created successfully",
+      "createError": "Unable to create group",
+      "updateSuccess": "Group updated successfully",
+      "updateError": "Unable to update group",
+      "deleteSuccess": "Group deleted successfully",
+      "deleteError": "Unable to delete group",
+      "addMemberSuccess": "Member added successfully",
+      "addMemberError": "Unable to add member",
+      "removeMemberSuccess": "Member removed from group",
+      "removeMemberError": "Unable to remove member",
+      "title": "Groups",
+      "createGroup": "Create group",
+      "groupsCount": "{count} groups",
+      "emptyGroups": "No groups yet",
+      "membersCount": "{count} members",
+      "selectGroup": "Select a group to view details",
+      "searchStudents": "Search students to add into this group...",
+      "noStudentFound": "No students found",
+      "members": "Members ({count})",
+      "emptyMembers": "No members yet",
+      "hintAddStudents": "Use the search box above to add students",
+      "createDialogTitle": "Create new group",
+      "createDialogDescription": "Create a new group in this class to manage students.",
+      "name": "Group name",
+      "namePlaceholder": "Enter group name...",
+      "description": "Description (optional)",
+      "descriptionPlaceholder": "Enter description...",
+      "cancel": "Cancel",
+      "create": "Create group",
+      "editDialogTitle": "Edit group",
+      "editDialogDescription": "Change group name or description.",
+      "save": "Save",
+      "deleteDialogTitle": "Delete group",
+      "deleteDialogDescription": "Are you sure you want to delete group \"{name}\"? All members will be removed from this group. This action cannot be undone.",
+      "delete": "Delete"
+    }
+  },
+  "organization": {
+    "nav": {
+      "courses": "Courses",
+      "members": "Members",
+      "settings": "Settings"
+    },
+    "page": {
+      "title": "Courses",
+      "createCourse": "Create Course",
+      "createCourseTitle": "Create Course",
+      "createCourseDescription": "Create a new course to get started.",
+      "empty": "No course available!"
+    },
+    "members": {
+      "title": "Members"
+    },
+    "settings": {
+      "placeholder": "Organization settings"
+    },
+    "membersTable": {
+      "username": "Username",
+      "email": "Email",
+      "role": "Role",
+      "actions": "Actions"
+    },
+    "searchUser": {
+      "invalidEmail": "Invalid email format",
+      "notFound": "No user found with this email",
+      "somethingWentWrong": "Something went wrong",
+      "addSuccess": "Member added successfully with role {role}",
+      "addError": "An error occurred while adding member",
+      "title": "Add member to your organization",
+      "emailSearch": "Email search",
+      "emailPlaceholder": "your@gmail.com",
+      "rolePlaceholder": "Select role",
+      "addUser": "Add user",
+      "admin": "Admin",
+      "member": "Member"
+    },
+    "memberAction": {
+      "remove": "Remove",
+      "removeSuccess": "Successfully removed member"
+    }
+  },
+  "forms": {
+    "organizationDialog": {
+      "trigger": "Create Organization",
+      "title": "Create Organization",
+      "description": "Create a new organization to get started."
+    },
+    "createOrganization": {
+      "name": "Name",
+      "namePlaceholder": "My Organization",
+      "slug": "Slug",
+      "slugPlaceholder": "my-org",
+      "submit": "Create Organization",
+      "nameMin": "Name must be at least 2 characters",
+      "slugMin": "Slug must be at least 2 characters",
+      "createError": "Failed to create organization",
+      "createSuccess": "Organization created successfully",
+      "unexpectedError": "An unexpected error occurred"
+    },
+    "createCourse": {
+      "name": "Course Name",
+      "slug": "Slug",
+      "slugPlaceholder": "course-slug",
+      "description": "Description",
+      "submit": "Create Course",
+      "nameMin": "Name must be at least 2 characters",
+      "slugMin": "Slug must be at least 2 characters",
+      "slugFormat": "Slug must contain only lowercase letters, numbers and hyphens",
+      "orgNotFound": "Organization not found",
+      "createError": "Failed to create course",
+      "createSuccess": "Course created successfully",
+      "unexpectedError": "An unexpected error occurred"
+    },
+    "createClass": {
+      "name": "Class Name",
+      "namePlaceholder": "e.g. Monday Morning Session",
+      "submit": "Create Class",
+      "nameMin": "Class name must be at least 2 characters",
+      "nameMax": "Class name cannot exceed 50 characters",
+      "createError": "Failed to create class",
+      "createSuccess": "Class created successfully",
+      "unexpectedError": "An unexpected error occurred"
+    }
+  },
+  "widgetMarketplace": {
+    "title": "Widget Marketplace",
+    "subtitle": "Explore widgets from the community",
+    "searchPlaceholder": "Search widgets by name...",
+    "clearSearch": "Clear search",
+    "empty": "No widgets found",
+    "loading": "Loading..."
+  }
+}

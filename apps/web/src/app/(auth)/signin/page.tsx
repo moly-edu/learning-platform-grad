@@ -24,11 +24,13 @@ import {
 import { SignInSchema } from "@repo/api-contract";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 export const dynamic = "force-dynamic";
 
 const SigninPage = () => {
   const router = useRouter();
+  const t = useTranslations("auth.signin");
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof SignInSchema>>({
@@ -49,9 +51,9 @@ const SigninPage = () => {
     });
 
     if (error) {
-      setSubmitError(error.message || "Something went wrong");
+      setSubmitError(error.message || t("fallbackError"));
     } else {
-      toast.success("Signed in successfully");
+      toast.success(t("success"));
       router.push("/dashboard/classes");
     }
   };
@@ -59,7 +61,7 @@ const SigninPage = () => {
   return (
     <Card className="w-full sm:max-w-md">
       <CardHeader>
-        <CardTitle>Sign In</CardTitle>
+        <CardTitle>{t("title")}</CardTitle>
       </CardHeader>
       <CardContent>
         <form id="form-rhf" onSubmit={form.handleSubmit(onSubmit)}>
@@ -69,13 +71,13 @@ const SigninPage = () => {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="form-rhf-email">Email</FieldLabel>
+                  <FieldLabel htmlFor="form-rhf-email">{t("email")}</FieldLabel>
                   <Input
                     type="email"
                     {...field}
                     id="form-rhf-email"
                     aria-invalid={fieldState.invalid}
-                    placeholder="Email here"
+                    placeholder={t("emailPlaceholder")}
                     disabled={isLoading}
                   />
                   {fieldState.invalid && (
@@ -89,13 +91,15 @@ const SigninPage = () => {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="form-rhf-password">Password</FieldLabel>
+                  <FieldLabel htmlFor="form-rhf-password">
+                    {t("password")}
+                  </FieldLabel>
                   <Input
                     type="password"
                     {...field}
                     id="form-rhf-password"
                     aria-invalid={fieldState.invalid}
-                    placeholder="Password here"
+                    placeholder={t("passwordPlaceholder")}
                     disabled={isLoading}
                   />
                   {fieldState.invalid && (
@@ -117,12 +121,12 @@ const SigninPage = () => {
             form="form-rhf"
             disabled={isLoading}
           >
-            {!isLoading ? "Login" : <Loader />}
+            {!isLoading ? t("submit") : <Loader />}
           </Button>
           <span className="self-container">
-            Don't have an account?{" "}
+            {t("noAccount")}{" "}
             <Link href="/signup" className="text-primary">
-              Sign Up
+              {t("signUp")}
             </Link>
           </span>
         </Field>

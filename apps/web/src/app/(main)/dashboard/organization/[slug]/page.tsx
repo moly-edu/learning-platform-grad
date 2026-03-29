@@ -15,8 +15,10 @@ import { CreateCourseForm } from "@/components/forms/create-course-form";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useOrganization } from "@/components/providers/org-context";
+import { useTranslations } from "next-intl";
 
 export default function OrganizationPage() {
+  const t = useTranslations("organization.page");
   const organization = useOrganization();
   const [hasPermission, setHasPermission] = useState(false);
   const [createCourseDialogOpen, setCreateCourseDialogOpen] = useState(false);
@@ -52,7 +54,7 @@ export default function OrganizationPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="font-bold text-2xl">Courses</h1>
+        <h1 className="font-bold text-2xl">{t("title")}</h1>
         {hasPermission && (
           <Dialog
             open={createCourseDialogOpen}
@@ -60,14 +62,14 @@ export default function OrganizationPage() {
           >
             <DialogTrigger asChild>
               <Button className="bg-primary hover:bg-primary/90">
-                Create Course
+                {t("createCourse")}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create Course</DialogTitle>
+                <DialogTitle>{t("createCourseTitle")}</DialogTitle>
                 <DialogDescription>
-                  Create a new course to get started.
+                  {t("createCourseDescription")}
                 </DialogDescription>
               </DialogHeader>
               <CreateCourseForm
@@ -80,7 +82,7 @@ export default function OrganizationPage() {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {!isLoading && (courses?.length ?? 0) === 0 ? (
-          <p className="text-sm text-muted-foreground">No course available!</p>
+          <p className="text-sm text-muted-foreground">{t("empty")}</p>
         ) : (
           courses?.map((course) => (
             <Button asChild key={course.id} variant="outline">

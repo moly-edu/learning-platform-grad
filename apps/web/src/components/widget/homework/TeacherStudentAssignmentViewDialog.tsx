@@ -10,6 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "next-intl";
 
 interface TeacherStudentAssignmentViewDialogProps {
   assignmentId: string;
@@ -39,6 +40,9 @@ export default function TeacherStudentAssignmentViewDialog({
   studentId,
   studentName,
 }: TeacherStudentAssignmentViewDialogProps) {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const [assignmentData, setAssignmentData] = useState<AssignmentData | null>(
     null,
   );
@@ -82,7 +86,10 @@ export default function TeacherStudentAssignmentViewDialog({
 
         if (!res.ok) {
           const data = await res.json();
-          throw new Error(data.error || "Không thể tải bài tập");
+          throw new Error(
+            data.error ||
+              (isVi ? "Không thể tải bài tập" : "Unable to load assignment"),
+          );
         }
 
         const data: AssignmentData = await res.json();
@@ -92,19 +99,29 @@ export default function TeacherStudentAssignmentViewDialog({
         const widgetRes = await fetch(
           `/api/widgets/${data.widgetId}/preview?buildRunId=${data.buildRunId}`,
         );
-        if (!widgetRes.ok) throw new Error("Không thể tải widget");
+        if (!widgetRes.ok) {
+          throw new Error(
+            isVi ? "Không thể tải widget" : "Unable to load widget",
+          );
+        }
 
         const widgetData: { html: string } = await widgetRes.json();
         setWidgetHtml(widgetData.html);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Có lỗi xảy ra");
+        setError(
+          err instanceof Error
+            ? err.message
+            : isVi
+              ? "Có lỗi xảy ra"
+              : "Something went wrong",
+        );
       } finally {
         setLoading(false);
       }
     };
 
     loadAssignment();
-  }, [open, assignmentId, studentId]);
+  }, [open, assignmentId, studentId, isVi]);
 
   // Load widget into iframe
   useEffect(() => {
@@ -164,19 +181,27 @@ export default function TeacherStudentAssignmentViewDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className="px-2! py-1! bg-orange-100 text-orange-700 text-xs rounded hover:bg-orange-200">
-          <span className="hidden sm:inline">Show Assignment</span>
+          <span className="hidden sm:inline">
+            {isVi ? "Xem bài tập" : "Show Assignment"}
+          </span>
         </Button>
       </DialogTrigger>
 
       <DialogContent className="w-[90vw]! h-[95vh]! max-w-none! p-1! flex! flex-col! min-h-0!">
         <DialogHeader className="px-6 py-4 border-b shrink-0">
-          <DialogTitle>Submission of {studentName}</DialogTitle>
+          <DialogTitle>
+            {isVi
+              ? `Bài nộp của ${studentName}`
+              : `Submission of ${studentName}`}
+          </DialogTitle>
         </DialogHeader>
 
         {loading ? (
           <div className="flex justify-center items-center w-full h-full gap-3">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-            <span className="text-lg">Loading...</span>
+            <span className="text-lg">
+              {isVi ? "Đang tải..." : "Loading..."}
+            </span>
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
@@ -196,10 +221,12 @@ export default function TeacherStudentAssignmentViewDialog({
                     )}
                     <div>
                       <div className="font-semibold text-foreground">
-                        {studentName} đã hoàn thành bài tập
+                        {isVi
+                          ? `${studentName} đã hoàn thành bài tập`
+                          : `${studentName} has completed this assignment`}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Điểm:{" "}
+                        {isVi ? "Điểm" : "Score"}:{" "}
                         <strong>
                           {assignmentData.submissionData.evaluation.score}/
                           {assignmentData.submissionData.evaluation.maxScore}
@@ -209,7 +236,7 @@ export default function TeacherStudentAssignmentViewDialog({
                             {" • "}
                             {new Date(
                               assignmentData.submittedAt,
-                            ).toLocaleString("vi-VN")}
+                            ).toLocaleString(isVi ? "vi-VN" : "en-US")}
                           </>
                         )}
                       </div>
@@ -223,8 +250,12 @@ export default function TeacherStudentAssignmentViewDialog({
                     }`}
                   >
                     {assignmentData.submissionData.evaluation.isCorrect
-                      ? "Đúng"
-                      : "Sai"}
+                      ? isVi
+                        ? "Đúng"
+                        : "Correct"
+                      : isVi
+                        ? "Sai"
+                        : "Incorrect"}
                   </div>
                 </div>
               </div>
@@ -233,7 +264,9 @@ export default function TeacherStudentAssignmentViewDialog({
             {!assignmentData.hasSubmitted && (
               <div className="shrink-0 border-b border-border bg-yellow-50 dark:bg-yellow-950/30 px-6 py-3">
                 <div className="text-sm text-yellow-700 font-medium">
-                  ⏳ {studentName} not done
+                  {isVi
+                    ? `⏳ ${studentName} chưa hoàn thành`
+                    : `⏳ ${studentName} not done`}
                 </div>
               </div>
             )}
@@ -252,7 +285,7 @@ export default function TeacherStudentAssignmentViewDialog({
           </div>
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground">
-            Không có dữ liệu
+            {isVi ? "Không có dữ liệu" : "No data"}
           </div>
         )}
       </DialogContent>

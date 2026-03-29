@@ -4,6 +4,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 
 interface Widget {
   id: string;
@@ -27,6 +28,9 @@ interface Props {
 }
 
 export default function BuildInterface({ widget, builds }: Props) {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const [building, setBuilding] = useState(false);
   const router = useRouter();
 
@@ -46,13 +50,16 @@ export default function BuildInterface({ widget, builds }: Props) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Build failed to start");
+        throw new Error(
+          data.error ||
+            (isVi ? "Không thể bắt đầu build" : "Build failed to start"),
+        );
       }
 
       // Refresh to show new build
       router.refresh();
     } catch (error: any) {
-      alert(`Error: ${error.message}`);
+      alert(`${isVi ? "Lỗi" : "Error"}: ${error.message}`);
     } finally {
       setBuilding(false);
     }
@@ -68,13 +75,17 @@ export default function BuildInterface({ widget, builds }: Props) {
           </h2>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-muted-foreground">Repository:</span>
+              <span className="text-muted-foreground">
+                {isVi ? "Kho mã" : "Repository"}:
+              </span>
               <p className="font-medium text-foreground">
                 {widget.repoFullName}
               </p>
             </div>
             <div>
-              <span className="text-muted-foreground">Branch:</span>
+              <span className="text-muted-foreground">
+                {isVi ? "Nhánh" : "Branch"}:
+              </span>
               <p className="font-medium text-foreground">{widget.branch}</p>
             </div>
           </div>
@@ -85,10 +96,10 @@ export default function BuildInterface({ widget, builds }: Props) {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-foreground">
-                New Build
+                {isVi ? "Build mới" : "New Build"}
               </h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Next version:{" "}
+                {isVi ? "Phiên bản kế tiếp" : "Next version"}:{" "}
                 <span className="font-mono font-semibold">v{nextVersion}</span>
               </p>
             </div>
@@ -97,7 +108,13 @@ export default function BuildInterface({ widget, builds }: Props) {
               disabled={building}
               className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed transition-colors font-medium"
             >
-              {building ? "Starting..." : "Start Build"}
+              {building
+                ? isVi
+                  ? "Đang bắt đầu..."
+                  : "Starting..."
+                : isVi
+                  ? "Bắt đầu build"
+                  : "Start Build"}
             </button>
           </div>
         </div>
@@ -105,12 +122,14 @@ export default function BuildInterface({ widget, builds }: Props) {
         {/* Build History */}
         <div className="bg-card rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4">
-            Build History
+            {isVi ? "Lịch sử build" : "Build History"}
           </h3>
 
           {builds.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
-              No builds yet. Click "Start Build" to create your first build.
+              {isVi
+                ? 'Chưa có bản build nào. Bấm "Bắt đầu build" để tạo bản build đầu tiên.'
+                : 'No builds yet. Click "Start Build" to create your first build.'}
             </p>
           ) : (
             <div className="space-y-3">
@@ -137,18 +156,18 @@ export default function BuildInterface({ widget, builds }: Props) {
                         {build.completedAt ? (
                           <span>
                             {new Date(build.completedAt).toLocaleDateString(
-                              "vi-VN",
+                              isVi ? "vi-VN" : "en-US",
                             )}
                           </span>
                         ) : build.startedAt ? (
                           <span>
-                            Started{" "}
+                            {isVi ? "Bắt đầu" : "Started"}{" "}
                             {new Date(build.startedAt).toLocaleDateString(
-                              "vi-VN",
+                              isVi ? "vi-VN" : "en-US",
                             )}
                           </span>
                         ) : (
-                          <span>Pending</span>
+                          <span>{isVi ? "Đang chờ" : "Pending"}</span>
                         )}
                       </div>
 
@@ -158,7 +177,7 @@ export default function BuildInterface({ widget, builds }: Props) {
                           href={`/dev/deploy/${widget.id}/details/${build.id}`}
                           className="px-3 py-1 text-sm bg-muted text-muted-foreground rounded hover:bg-muted/80 transition-colors"
                         >
-                          View Details
+                          {isVi ? "Xem chi tiết" : "View Details"}
                         </a>
                       )}
                     </div>
@@ -174,6 +193,9 @@ export default function BuildInterface({ widget, builds }: Props) {
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const colors = {
     pending: "bg-muted text-muted-foreground",
     building: "bg-blue-100 text-blue-700 animate-pulse",
@@ -188,12 +210,19 @@ function StatusBadge({ status }: { status: string }) {
     failed: "❌",
   };
 
+  const labels = {
+    pending: isVi ? "ĐANG CHỜ" : "PENDING",
+    building: isVi ? "ĐANG BUILD" : "BUILDING",
+    success: isVi ? "THÀNH CÔNG" : "SUCCESS",
+    failed: isVi ? "THẤT BẠI" : "FAILED",
+  };
+
   return (
     <span
       className={`px-2 py-1 rounded text-xs font-medium inline-flex items-center gap-1 ${colors[status as keyof typeof colors] || colors.pending}`}
     >
       <span>{icons[status as keyof typeof icons] || "⏳"}</span>
-      {status.toUpperCase()}
+      {labels[status as keyof typeof labels] || labels.pending}
     </span>
   );
 }

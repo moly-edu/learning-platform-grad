@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CheckCircle, Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "next-intl";
 
 interface DirectAssignStudentPanelProps {
   assignmentId: string;
@@ -17,6 +18,9 @@ export default function DirectAssignStudentPanel({
   studentName,
   onAssigned,
 }: DirectAssignStudentPanelProps) {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const [assigning, setAssigning] = useState(false);
   const [assigned, setAssigned] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,12 +36,20 @@ export default function DirectAssignStudentPanel({
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Không thể giao bài");
+        throw new Error(
+          data.error || (isVi ? "Không thể giao bài" : "Unable to assign"),
+        );
       }
       setAssigned(true);
       onAssigned?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Có lỗi xảy ra");
+      setError(
+        err instanceof Error
+          ? err.message
+          : isVi
+            ? "Có lỗi xảy ra"
+            : "Something went wrong",
+      );
     } finally {
       setAssigning(false);
     }
@@ -46,9 +58,13 @@ export default function DirectAssignStudentPanel({
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-3 border-b border-border">
-        <h3 className="text-sm font-semibold text-foreground">Assign</h3>
+        <h3 className="text-sm font-semibold text-foreground">
+          {isVi ? "Giao bài" : "Assign"}
+        </h3>
         <p className="text-xs text-muted-foreground mt-1">
-          Assign directly to the current student
+          {isVi
+            ? "Giao trực tiếp cho học sinh hiện tại"
+            : "Assign directly to the current student"}
         </p>
       </div>
 
@@ -65,7 +81,7 @@ export default function DirectAssignStudentPanel({
         {assigned ? (
           <div className="flex items-center gap-2 text-green-600 font-medium">
             <CheckCircle size={20} />
-            Đã giao bài thành công!
+            {isVi ? "Đã giao bài thành công!" : "Assigned successfully!"}
           </div>
         ) : (
           <Button
@@ -76,12 +92,12 @@ export default function DirectAssignStudentPanel({
             {assigning ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Assigning...
+                {isVi ? "Đang giao..." : "Assigning..."}
               </>
             ) : (
               <>
                 <Send className="w-4 h-4 mr-2" />
-                Assign for {studentName}
+                {isVi ? `Giao cho ${studentName}` : `Assign for ${studentName}`}
               </>
             )}
           </Button>

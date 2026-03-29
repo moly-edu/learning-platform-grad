@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import StudentAssignmentView from "@/components/widget/homework/StudentAssignmentView";
 import { CheckCircle, Circle, Loader2, Play, XCircle } from "lucide-react";
 import { useCourseStructure } from "@/components/providers/course-structure-provider";
+import { useLocale } from "next-intl";
 
 interface PendingAssignment {
   classLessonNodeId: string;
@@ -22,6 +23,7 @@ interface PendingAssignment {
 }
 
 export default function StudentDoAllHomeworkDialog() {
+  const isVi = useLocale() === "vi";
   const { studentSubmissionStatus, isStudent } = useCourseStructure();
 
   const [open, setOpen] = useState(false);
@@ -130,16 +132,18 @@ export default function StudentDoAllHomeworkDialog() {
           disabled={pendingAssignments.length === 0}
         >
           <Play className="w-4 h-4 mr-2" />
-          Do assignment ({pendingAssignments.length})
+          {isVi ? "Làm bài tập" : "Do assignment"} ({pendingAssignments.length})
         </Button>
       </DialogTrigger>
 
       <DialogContent className="w-[95vw]! h-[95vh]! max-w-none! p-0! flex! flex-col! min-h-0!">
         <DialogHeader className="px-6 py-4 border-b shrink-0 flex flex-row items-center justify-between">
-          <DialogTitle>Do homework</DialogTitle>
+          <DialogTitle>{isVi ? "Làm bài tập" : "Do homework"}</DialogTitle>
           <div className="text-sm text-muted-foreground">
             {allCompleted ? (
-              <span className="text-green-600 font-semibold">✅ Done!</span>
+              <span className="text-green-600 font-semibold">
+                ✅ {isVi ? "Hoàn tất!" : "Done!"}
+              </span>
             ) : currentAssignment ? (
               <span>
                 {displayedAssignments.findIndex(
@@ -157,15 +161,19 @@ export default function StudentDoAllHomeworkDialog() {
         {allCompleted ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8">
             <div className="text-6xl">🎉</div>
-            <h2 className="text-3xl font-bold text-foreground">Done!</h2>
+            <h2 className="text-3xl font-bold text-foreground">
+              {isVi ? "Hoàn tất!" : "Done!"}
+            </h2>
             <p className="text-lg text-muted-foreground text-center">
-              You have done {displayedAssignments.length} assignment
+              {isVi
+                ? `Bạn đã hoàn thành ${displayedAssignments.length} bài tập`
+                : `You have done ${displayedAssignments.length} assignment`}
             </p>
             <Button
               onClick={() => setOpen(false)}
               className="mt-4 bg-blue-600 hover:bg-blue-700"
             >
-              Close
+              {isVi ? "Đóng" : "Close"}
             </Button>
           </div>
         ) : currentAssignment ? (
@@ -174,10 +182,11 @@ export default function StudentDoAllHomeworkDialog() {
             <div className="w-80 bg-card border border-border rounded-lg flex flex-col shrink-0">
               <div className="px-4 py-3 border-b border-border">
                 <h3 className="font-semibold text-foreground">
-                  📋 Assignment list
+                  {isVi ? "📋 Danh sách bài tập" : "📋 Assignment list"}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {displayedAssignments.length} assignment
+                  {displayedAssignments.length}{" "}
+                  {isVi ? "bài tập" : "assignment"}
                 </p>
               </div>
 
@@ -237,7 +246,7 @@ export default function StudentDoAllHomeworkDialog() {
                                     : "text-foreground"
                               }`}
                             >
-                              Assignment {assignment.index}
+                              {isVi ? "Bài" : "Assignment"} {assignment.index}
                             </div>
                           </div>
                         </div>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle } from "lucide-react";
 import { Submission, WidgetDefinition } from "../core/types";
+import { useLocale } from "next-intl";
 import {
   stopHostTtsPlayback,
   synthesizeWithHostTts,
@@ -17,6 +18,9 @@ export default function TeacherViewAssignment({
   html,
   initialConfig,
 }: TeacherViewAssignmentProps) {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const [widgetDef, setWidgetDef] = useState<WidgetDefinition | null>(null);
   const [config] = useState<Record<string, any>>(initialConfig);
   const [error, setError] = useState<string | null>(null);
@@ -158,13 +162,15 @@ export default function TeacherViewAssignment({
 
       if (event.data.type === "ERROR") {
         console.error("❌ Widget error:", event.data.payload);
-        setError(event.data.payload?.message || "Widget error");
+        setError(
+          event.data.payload?.message || (isVi ? "Lỗi widget" : "Widget error"),
+        );
       }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [config]);
+  }, [config, isVi]);
 
   // Send initial config when iframe ready
   useEffect(() => {
@@ -194,7 +200,7 @@ export default function TeacherViewAssignment({
       {loading && !error && (
         <div className="text-center mt-8 text-muted-foreground flex items-center justify-center gap-2">
           <div className="animate-spin h-5 w-5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full" />
-          Loading widget...
+          {isVi ? "Đang tải widget..." : "Loading widget..."}
         </div>
       )}
 
@@ -202,7 +208,9 @@ export default function TeacherViewAssignment({
         <div className="mt-8 max-w-2xl mx-auto bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
           <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={20} />
           <div>
-            <div className="font-bold text-red-800">Lỗi</div>
+            <div className="font-bold text-red-800">
+              {isVi ? "Lỗi" : "Error"}
+            </div>
             <div className="text-sm text-red-600 mt-1">{error}</div>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 
 interface Repo {
   id: number;
@@ -15,6 +16,9 @@ interface Repo {
 }
 
 export default function RepoList() {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const [repos, setRepos] = useState<Repo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -31,7 +35,12 @@ export default function RepoList() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch repositories");
+        throw new Error(
+          data.error ||
+            (isVi
+              ? "Không thể tải danh sách kho mã"
+              : "Failed to fetch repositories"),
+        );
       }
 
       setRepos(data.repos);
@@ -60,13 +69,15 @@ export default function RepoList() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to import");
+        throw new Error(
+          data.error || (isVi ? "Import thất bại" : "Failed to import"),
+        );
       }
 
       // Redirect to build page
       router.push(`/dev/deploy/${data.widget.id}`);
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      alert(`${isVi ? "Lỗi" : "Error"}: ${err.message}`);
       setImporting(null);
     }
   }
@@ -91,8 +102,9 @@ export default function RepoList() {
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
         <p className="text-yellow-800">
-          No repositories found. Make sure you've granted access to repositories
-          in your GitHub App settings.
+          {isVi
+            ? "Không tìm thấy kho mã nào. Hãy kiểm tra quyền truy cập repository trong phần cài đặt GitHub App."
+            : "No repositories found. Make sure you've granted access to repositories in your GitHub App settings."}
         </p>
       </div>
     );
@@ -113,7 +125,7 @@ export default function RepoList() {
                 </h3>
                 {repo.private && (
                   <span className="px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground rounded">
-                    Private
+                    {isVi ? "Riêng tư" : "Private"}
                   </span>
                 )}
               </div>
@@ -125,10 +137,15 @@ export default function RepoList() {
               )}
 
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>Branch: {repo.defaultBranch}</span>
+                <span>
+                  {isVi ? "Nhánh" : "Branch"}: {repo.defaultBranch}
+                </span>
                 <span>•</span>
                 <span>
-                  Updated {new Date(repo.updatedAt).toLocaleDateString()}
+                  {isVi ? "Cập nhật" : "Updated"}{" "}
+                  {new Date(repo.updatedAt).toLocaleDateString(
+                    isVi ? "vi-VN" : "en-US",
+                  )}
                 </span>
               </div>
             </div>
@@ -138,7 +155,13 @@ export default function RepoList() {
               disabled={importing === repo.id}
               className="ml-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:bg-primary/50 disabled:cursor-not-allowed transition-colors font-medium text-sm"
             >
-              {importing === repo.id ? "Importing..." : "Import"}
+              {importing === repo.id
+                ? isVi
+                  ? "Đang import..."
+                  : "Importing..."
+                : isVi
+                  ? "Nhập"
+                  : "Import"}
             </button>
           </div>
         </div>

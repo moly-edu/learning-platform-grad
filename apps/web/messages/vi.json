@@ -1,0 +1,239 @@
+{
+  "app": {
+    "name": "Moly"
+  },
+  "localeSwitcher": {
+    "label": "Ngôn ngữ",
+    "en": "Tiếng Anh",
+    "vi": "Tiếng Việt"
+  },
+  "modeToggle": {
+    "toggleTheme": "Chuyển giao diện",
+    "light": "Sáng",
+    "dark": "Tối",
+    "system": "Theo hệ thống"
+  },
+  "userDropdown": {
+    "classes": "Lớp học",
+    "admin": "Quản trị",
+    "signOut": "Đăng xuất",
+    "signOutSuccess": "Đăng xuất thành công",
+    "somethingWentWrong": "Đã có lỗi xảy ra"
+  },
+  "auth": {
+    "signin": {
+      "title": "Đăng nhập",
+      "email": "Email",
+      "emailPlaceholder": "Nhập email",
+      "password": "Mật khẩu",
+      "passwordPlaceholder": "Nhập mật khẩu",
+      "submit": "Đăng nhập",
+      "noAccount": "Chưa có tài khoản?",
+      "signUp": "Đăng ký",
+      "success": "Đăng nhập thành công",
+      "fallbackError": "Đã có lỗi xảy ra"
+    },
+    "signup": {
+      "title": "Đăng ký",
+      "fullName": "Họ và tên",
+      "fullNamePlaceholder": "Nhập họ và tên",
+      "email": "Email",
+      "emailPlaceholder": "Nhập email",
+      "password": "Mật khẩu",
+      "passwordPlaceholder": "Nhập mật khẩu",
+      "submit": "Tạo tài khoản",
+      "hasAccount": "Đã có tài khoản?",
+      "signIn": "Đăng nhập",
+      "success": "Đăng ký thành công",
+      "fallbackError": "Đã có lỗi xảy ra"
+    }
+  },
+  "dashboard": {
+    "home": {
+      "title": "Tổ chức của bạn",
+      "subtitle": "Quản lý tổ chức và khóa học",
+      "emptyTitle": "Chưa có tổ chức nào",
+      "emptyDescription": "Hãy tạo tổ chức đầu tiên để bắt đầu xây dựng khóa học.",
+      "openOrganization": "Mở tổ chức"
+    }
+  },
+  "classes": {
+    "page": {
+      "title": "Lớp học của bạn",
+      "created": "Lớp đã tạo",
+      "teacher": "Giảng viên",
+      "student": "Học viên",
+      "empty": "Bạn chưa tham gia lớp học nào"
+    },
+    "card": {
+      "owner": "Chủ lớp",
+      "teacher": "Giảng viên",
+      "student": "Học viên",
+      "members": "thành viên",
+      "pending": "chưa làm",
+      "assignment": "Bài tập",
+      "done": "Hoàn thành",
+      "noAssignments": "Chưa có bài tập."
+    },
+    "details": {
+      "backToCourse": "Quay lại khóa học",
+      "members": "Thành viên"
+    },
+    "nav": {
+      "members": "Thành viên",
+      "groups": "Nhóm"
+    },
+    "membersTable": {
+      "username": "Tên",
+      "email": "Email",
+      "role": "Vai trò",
+      "actions": "Hành động"
+    },
+    "searchUser": {
+      "invalidEmail": "Email không đúng định dạng",
+      "notFound": "Không tìm thấy người dùng với email này",
+      "somethingWentWrong": "Đã có lỗi xảy ra",
+      "addSuccess": "Thêm thành viên thành công với vai trò {role}",
+      "addError": "Có lỗi xảy ra khi thêm thành viên",
+      "title": "Thêm thành viên vào lớp học",
+      "emailSearch": "Tìm theo email",
+      "emailPlaceholder": "your@gmail.com",
+      "rolePlaceholder": "Chọn vai trò",
+      "addUser": "Thêm người dùng",
+      "teacher": "Giảng viên",
+      "student": "Học viên"
+    },
+    "groups": {
+      "createSuccess": "Tạo nhóm thành công",
+      "createError": "Không thể tạo nhóm",
+      "updateSuccess": "Cập nhật nhóm thành công",
+      "updateError": "Không thể cập nhật nhóm",
+      "deleteSuccess": "Xóa nhóm thành công",
+      "deleteError": "Không thể xóa nhóm",
+      "addMemberSuccess": "Thêm thành viên thành công",
+      "addMemberError": "Không thể thêm thành viên",
+      "removeMemberSuccess": "Đã xóa thành viên khỏi nhóm",
+      "removeMemberError": "Không thể xóa thành viên",
+      "title": "Nhóm",
+      "createGroup": "Tạo nhóm",
+      "groupsCount": "{count} nhóm",
+      "emptyGroups": "Chưa có nhóm nào",
+      "membersCount": "{count} thành viên",
+      "selectGroup": "Chọn một nhóm để xem chi tiết",
+      "searchStudents": "Tìm học sinh để thêm vào nhóm...",
+      "noStudentFound": "Không tìm thấy học sinh nào",
+      "members": "Thành viên ({count})",
+      "emptyMembers": "Chưa có thành viên nào",
+      "hintAddStudents": "Sử dụng ô tìm kiếm phía trên để thêm học sinh",
+      "createDialogTitle": "Tạo nhóm mới",
+      "createDialogDescription": "Tạo một nhóm mới trong lớp học để quản lý học sinh.",
+      "name": "Tên nhóm",
+      "namePlaceholder": "Nhập tên nhóm...",
+      "description": "Mô tả (tùy chọn)",
+      "descriptionPlaceholder": "Nhập mô tả...",
+      "cancel": "Hủy",
+      "create": "Tạo nhóm",
+      "editDialogTitle": "Chỉnh sửa nhóm",
+      "editDialogDescription": "Thay đổi tên hoặc mô tả của nhóm.",
+      "save": "Lưu",
+      "deleteDialogTitle": "Xóa nhóm",
+      "deleteDialogDescription": "Bạn có chắc muốn xóa nhóm \"{name}\"? Tất cả thành viên sẽ bị xóa khỏi nhóm. Hành động này không thể hoàn tác.",
+      "delete": "Xóa nhóm"
+    }
+  },
+  "organization": {
+    "nav": {
+      "courses": "Khóa học",
+      "members": "Thành viên",
+      "settings": "Cài đặt"
+    },
+    "page": {
+      "title": "Khóa học",
+      "createCourse": "Tạo khóa học",
+      "createCourseTitle": "Tạo khóa học",
+      "createCourseDescription": "Tạo khóa học mới để bắt đầu.",
+      "empty": "Chưa có khóa học nào!"
+    },
+    "members": {
+      "title": "Thành viên"
+    },
+    "settings": {
+      "placeholder": "Cài đặt tổ chức"
+    },
+    "membersTable": {
+      "username": "Tên",
+      "email": "Email",
+      "role": "Vai trò",
+      "actions": "Hành động"
+    },
+    "searchUser": {
+      "invalidEmail": "Email không đúng định dạng",
+      "notFound": "Không tìm thấy người dùng với email này",
+      "somethingWentWrong": "Đã có lỗi xảy ra",
+      "addSuccess": "Thêm thành viên thành công với vai trò {role}",
+      "addError": "Có lỗi xảy ra khi thêm thành viên",
+      "title": "Thêm thành viên vào tổ chức",
+      "emailSearch": "Tìm theo email",
+      "emailPlaceholder": "your@gmail.com",
+      "rolePlaceholder": "Chọn vai trò",
+      "addUser": "Thêm người dùng",
+      "admin": "Quản trị",
+      "member": "Thành viên"
+    },
+    "memberAction": {
+      "remove": "Xóa",
+      "removeSuccess": "Xóa thành viên thành công"
+    }
+  },
+  "forms": {
+    "organizationDialog": {
+      "trigger": "Tạo tổ chức",
+      "title": "Tạo tổ chức",
+      "description": "Tạo tổ chức mới để bắt đầu."
+    },
+    "createOrganization": {
+      "name": "Tên",
+      "namePlaceholder": "Tổ chức của tôi",
+      "slug": "Slug",
+      "slugPlaceholder": "to-chuc-toi",
+      "submit": "Tạo tổ chức",
+      "nameMin": "Tên phải có ít nhất 2 ký tự",
+      "slugMin": "Slug phải có ít nhất 2 ký tự",
+      "createError": "Không thể tạo tổ chức",
+      "createSuccess": "Tạo tổ chức thành công",
+      "unexpectedError": "Đã có lỗi không mong muốn"
+    },
+    "createCourse": {
+      "name": "Tên khóa học",
+      "slug": "Slug",
+      "slugPlaceholder": "slug-khoa-hoc",
+      "description": "Mô tả",
+      "submit": "Tạo khóa học",
+      "nameMin": "Tên phải có ít nhất 2 ký tự",
+      "slugMin": "Slug phải có ít nhất 2 ký tự",
+      "slugFormat": "Slug chỉ được chứa chữ thường, số và dấu gạch ngang",
+      "orgNotFound": "Không tìm thấy tổ chức",
+      "createError": "Không thể tạo khóa học",
+      "createSuccess": "Tạo khóa học thành công",
+      "unexpectedError": "Đã có lỗi không mong muốn"
+    },
+    "createClass": {
+      "name": "Tên lớp",
+      "namePlaceholder": "VD: Lớp sáng thứ hai",
+      "submit": "Tạo lớp",
+      "nameMin": "Tên lớp phải có ít nhất 2 ký tự",
+      "nameMax": "Tên lớp không được vượt quá 50 ký tự",
+      "createError": "Không thể tạo lớp",
+      "createSuccess": "Tạo lớp thành công",
+      "unexpectedError": "Đã có lỗi không mong muốn"
+    }
+  },
+  "widgetMarketplace": {
+    "title": "Chợ Widget",
+    "subtitle": "Khám phá widget từ cộng đồng",
+    "searchPlaceholder": "Tìm widget theo tên...",
+    "clearSearch": "Xóa tìm kiếm",
+    "empty": "Không tìm thấy widget",
+    "loading": "Đang tải..."
+  }
+}

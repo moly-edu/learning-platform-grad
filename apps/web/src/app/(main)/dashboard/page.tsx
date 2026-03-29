@@ -4,9 +4,11 @@ import { CreateOrganizationDialog } from "@/components/forms/create-organization
 import { auth } from "@/lib/auth-server";
 import { headers } from "next/headers";
 import { Building2, ArrowRight, Calendar } from "lucide-react";
+import { getLocale, getTranslations } from "next-intl/server";
+import { getDateTimeLocale } from "@/i18n/config";
 
-function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("en-US", {
+function formatDate(date: Date, locale: string) {
+  return new Intl.DateTimeFormat(getDateTimeLocale(locale), {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -14,6 +16,9 @@ function formatDate(date: Date) {
 }
 
 export default async function Dashboard() {
+  const t = await getTranslations("dashboard.home");
+  const locale = await getLocale();
+
   const organizations = await auth.api.listOrganizations({
     headers: await headers(),
   });
@@ -23,10 +28,8 @@ export default async function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-bold text-2xl">Your Organizations</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your organizations and courses
-          </p>
+          <h2 className="font-bold text-2xl">{t("title")}</h2>
+          <p className="text-sm text-muted-foreground mt-1">{t("subtitle")}</p>
         </div>
         <CreateOrganizationDialog />
       </div>
@@ -37,9 +40,9 @@ export default async function Dashboard() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
             <Building2 className="h-6 w-6 text-muted-foreground" />
           </div>
-          <p className="mt-4 font-medium">No organizations yet</p>
+          <p className="mt-4 font-medium">{t("emptyTitle")}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create your first organization to start building courses.
+            {t("emptyDescription")}
           </p>
         </div>
       ) : (
@@ -71,14 +74,14 @@ export default async function Dashboard() {
                   </p>
                   <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground">
                     <Calendar className="h-3 w-3" />
-                    <span>{formatDate(organization.createdAt)}</span>
+                    <span>{formatDate(organization.createdAt, locale)}</span>
                   </div>
                 </div>
               </div>
 
               {/* Hover arrow */}
               <div className="flex items-center text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                Open organization
+                {t("openOrganization")}
                 <ArrowRight className="ml-1 h-3 w-3" />
               </div>
             </Link>

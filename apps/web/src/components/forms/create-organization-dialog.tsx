@@ -12,8 +12,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useTranslations } from "next-intl";
 
 export function CreateOrganizationDialog() {
+  const t = useTranslations("forms.organizationDialog");
   const [open, setOpen] = useState(false);
 
   return (
@@ -21,15 +23,13 @@ export function CreateOrganizationDialog() {
       <DialogTrigger asChild>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
-          Create Organization
+          {t("trigger")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create Organization</DialogTitle>
-          <DialogDescription>
-            Create a new organization to get started.
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         <CreateOrganizationForm onSuccess={() => setOpen(false)} />
       </DialogContent>

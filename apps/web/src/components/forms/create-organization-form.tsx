@@ -17,13 +17,15 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
+import { useTranslations } from "next-intl";
 
-const formSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters").max(50),
-  slug: z.string().min(2, "Slug must be at least 2 characters").max(50),
-});
+const formSchema = (t: (key: string) => string) =>
+  z.object({
+    name: z.string().min(2, t("nameMin")).max(50),
+    slug: z.string().min(2, t("slugMin")).max(50),
+  });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<ReturnType<typeof formSchema>>;
 
 type CreateOrganizationFormProps = {
   onSuccess?: () => void;
@@ -32,12 +34,13 @@ type CreateOrganizationFormProps = {
 export function CreateOrganizationForm({
   onSuccess,
 }: CreateOrganizationFormProps) {
+  const t = useTranslations("forms.createOrganization");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const router = useRouter();
 
   const form = useForm<FormValues>({
     mode: "onChange",
-    resolver: standardSchemaResolver(formSchema),
+    resolver: standardSchemaResolver(formSchema(t)),
     defaultValues: {
       name: "",
       slug: "",
@@ -55,17 +58,17 @@ export function CreateOrganizationForm({
       });
 
       if (error) {
-        setSubmitError(error.message || "Failed to create organization");
-        toast.error(error.message || "Failed to create organization");
+        setSubmitError(error.message || t("createError"));
+        toast.error(error.message || t("createError"));
       } else {
-        toast.success("Organization created successfully");
+        toast.success(t("createSuccess"));
         form.reset();
         onSuccess?.();
         router.refresh();
       }
     } catch (err) {
-      setSubmitError("An unexpected error occurred");
-      toast.error("An unexpected error occurred");
+      setSubmitError(t("unexpectedError"));
+      toast.error(t("unexpectedError"));
       console.error(err);
     }
   };
@@ -80,11 +83,11 @@ export function CreateOrganizationForm({
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="org-name">Name</FieldLabel>
+                  <FieldLabel htmlFor="org-name">{t("name")}</FieldLabel>
                   <Input
                     {...field}
                     id="org-name"
-                    placeholder="My Organization"
+                    placeholder={t("namePlaceholder")}
                     disabled={isLoading}
                   />
                   {fieldState.invalid && (
@@ -99,11 +102,11 @@ export function CreateOrganizationForm({
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="org-slug">Slug</FieldLabel>
+                  <FieldLabel htmlFor="org-slug">{t("slug")}</FieldLabel>
                   <Input
                     {...field}
                     id="org-slug"
-                    placeholder="my-org"
+                    placeholder={t("slugPlaceholder")}
                     disabled={isLoading}
                   />
                   {fieldState.invalid && (
@@ -127,7 +130,7 @@ export function CreateOrganizationForm({
             {isLoading ? (
               <Loader className="size-4 animate-spin" />
             ) : (
-              "Create Organization"
+              t("submit")
             )}
           </Button>
         </Field>

@@ -25,10 +25,10 @@ import { api } from "@/lib/api-client";
 import { type ClassRole } from "@repo/db";
 import { useRouter } from "next/navigation";
 import { useClass } from "../providers/class-context";
-
-const emailSchema = z.string().email("Email không đúng định dạng");
+import { useTranslations } from "next-intl";
 
 export default function ClassSearchUser() {
+  const t = useTranslations("classes.searchUser");
   const { classCourse } = useClass();
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -49,7 +49,7 @@ export default function ClassSearchUser() {
       return;
     }
 
-    const result = emailSchema.safeParse(value);
+    const result = z.string().email(t("invalidEmail")).safeParse(value);
     if (!result.success) {
       setError(result.error.errors[0].message);
     } else {
@@ -67,10 +67,10 @@ export default function ClassSearchUser() {
         setFoundUser(user);
 
         if (!user) {
-          toast.error("Not found any user with this email");
+          toast.error(t("notFound"));
         }
       } catch (err) {
-        toast.error("Something went wrong");
+        toast.error(t("somethingWentWrong"));
       }
     });
   };
@@ -91,26 +91,26 @@ export default function ClassSearchUser() {
         throw new Error((res.body as any).error || "Failed to add member");
       }
       router.refresh();
-      toast.success(`Đã thêm thành công với quyền ${role}`);
+      toast.success(t("addSuccess", { role }));
     } catch (error: any) {
       setIsLoading(false);
-      toast.error(error.message || "Đã có lỗi xảy ra khi thêm thành viên");
+      toast.error(error.message || t("addError"));
     }
   };
 
   return (
     <Card className="w-full mx-auto">
       <CardHeader>
-        <CardTitle>Add member to your class</CardTitle>
+        <CardTitle>{t("title")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <Field data-invalid={!!error}>
-          <FieldLabel>Email search</FieldLabel>
+          <FieldLabel>{t("emailSearch")}</FieldLabel>
           <div className="flex gap-2">
             <Input
               value={email}
               onChange={handleChange}
-              placeholder="your@gmail.com"
+              placeholder={t("emailPlaceholder")}
             />
             <Button
               type="button"
@@ -144,11 +144,11 @@ export default function ClassSearchUser() {
               onValueChange={(value) => setRole(value as ClassRole)}
             >
               <SelectTrigger className="w-32.5">
-                <SelectValue placeholder="Chọn vai trò" />
+                <SelectValue placeholder={t("rolePlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="teacher">Teacher</SelectItem>
-                <SelectItem value="student">Student</SelectItem>
+                <SelectItem value="teacher">{t("teacher")}</SelectItem>
+                <SelectItem value="student">{t("student")}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -162,7 +162,7 @@ export default function ClassSearchUser() {
                 <Loader2 className="animate-spin" />
               ) : (
                 <>
-                  <UserPlus className="mr-2 size-4" /> Add user
+                  <UserPlus className="mr-2 size-4" /> {t("addUser")}
                 </>
               )}
             </Button>

@@ -4,12 +4,14 @@ import { useClass } from "@/components/providers/class-context";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useParams, redirect } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 export default function ClassDetailLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const t = useTranslations("classes.details");
   const { classCourse, role } = useClass();
   const params = useParams();
   const classId = params.classId as string;
@@ -26,7 +28,7 @@ export default function ClassDetailLayout({
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to Course
+        {t("backToCourse")}
       </Link>
       <h1 className="font-bold text-2xl">{classCourse.name}</h1>
       <ClassNav />

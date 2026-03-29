@@ -20,6 +20,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import WidgetPreview from "@/components/widget/WidgetPreview";
 import { useOptionalCourseStructure } from "@/components/providers/course-structure-provider";
 import { LessonNodeType } from "@/types/course";
+import { useLocale } from "next-intl";
+import { getDateTimeLocale } from "@/i18n/config";
 
 export type WidgetCardProps = {
   widget: {
@@ -55,6 +57,9 @@ type UserWidget = {
 };
 
 export function WidgetCard({ widget }: WidgetCardProps) {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const { isAdmin, selectedNodeId, handleAddNode } =
     useOptionalCourseStructure() ?? {
       isAdmin: null,
@@ -147,7 +152,7 @@ export function WidgetCard({ widget }: WidgetCardProps) {
             </button>
           </SheetTrigger>
 
-          <SheetContent className="w-[600px]! max-w-none! sm:w-[540px] overflow-y-auto rounded-l-xl!">
+          <SheetContent className="w-150! max-w-none! sm:w-135 overflow-y-auto rounded-l-xl!">
             <SheetHeader>
               <SheetTitle className="flex items-center gap-3">
                 <Avatar className="h-10 w-10">
@@ -159,7 +164,7 @@ export function WidgetCard({ widget }: WidgetCardProps) {
                 <div>
                   <div className="font-semibold">{widget.user.name}</div>
                   <div className="text-sm text-muted-foreground font-normal">
-                    Widgets by this creator
+                    {isVi ? "Widget từ tác giả này" : "Widgets by this creator"}
                   </div>
                 </div>
               </SheetTitle>
@@ -169,7 +174,7 @@ export function WidgetCard({ widget }: WidgetCardProps) {
             <div className="mx-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
               {isLoadingWidgets ? (
                 <div className="col-span-full text-center py-8 text-muted-foreground">
-                  Loading widgets...
+                  {isVi ? "Đang tải widget..." : "Loading widgets..."}
                 </div>
               ) : userWidgets && userWidgets.length > 0 ? (
                 userWidgets.map((w) => (
@@ -196,11 +201,15 @@ export function WidgetCard({ widget }: WidgetCardProps) {
                             d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                           />
                         </svg>
-                        <span>{w._count.builds} builds</span>
+                        <span>
+                          {w._count.builds} {isVi ? "bản build" : "builds"}
+                        </span>
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Updated:{" "}
-                        {new Date(w.updatedAt).toLocaleDateString("vi-VN")}
+                        {isVi ? "Cập nhật" : "Updated"}:{" "}
+                        {new Date(w.updatedAt).toLocaleDateString(
+                          getDateTimeLocale(locale),
+                        )}
                       </div>
                     </div>
 
@@ -218,15 +227,20 @@ export function WidgetCard({ widget }: WidgetCardProps) {
                               }
                             >
                               {loadingHtmlIds.has(w.id)
-                                ? "Loading..."
-                                : "Preview"}
+                                ? isVi
+                                  ? "Đang tải..."
+                                  : "Loading..."
+                                : isVi
+                                  ? "Xem trước"
+                                  : "Preview"}
                             </Button>
                           </DialogTrigger>
 
                           <DialogContent className="w-[80vw]! h-[95vh]! max-w-none! p-1! flex! flex-col! min-h-0!">
                             <DialogHeader className="px-6 py-4 border-b shrink-0">
                               <DialogTitle>
-                                Widget Preview - {w.name}
+                                {isVi ? "Xem trước Widget" : "Widget Preview"} -{" "}
+                                {w.name}
                               </DialogTitle>
                             </DialogHeader>
 
@@ -236,8 +250,12 @@ export function WidgetCard({ widget }: WidgetCardProps) {
                               ) : (
                                 <div className="flex items-center justify-center h-full text-muted-foreground">
                                   {loadingHtmlIds.has(w.id)
-                                    ? "Loading preview..."
-                                    : "No preview available"}
+                                    ? isVi
+                                      ? "Đang tải bản xem trước..."
+                                      : "Loading preview..."
+                                    : isVi
+                                      ? "Không có bản xem trước"
+                                      : "No preview available"}
                                 </div>
                               )}
                             </div>
@@ -249,7 +267,7 @@ export function WidgetCard({ widget }: WidgetCardProps) {
                           className="flex-1"
                           onClick={handleAddAsHomework}
                         >
-                          Add Widget
+                          {isVi ? "Thêm Widget" : "Add Widget"}
                         </Button>
                       )}
                     </div>
@@ -257,7 +275,7 @@ export function WidgetCard({ widget }: WidgetCardProps) {
                 ))
               ) : (
                 <div className="col-span-full text-center py-8 text-muted-foreground">
-                  No widgets found
+                  {isVi ? "Không tìm thấy widget" : "No widgets found"}
                 </div>
               )}
             </div>
@@ -278,13 +296,18 @@ export function WidgetCard({ widget }: WidgetCardProps) {
               d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
             />
           </svg>
-          <span>{widget._count.builds} builds</span>
+          <span>
+            {widget._count.builds} {isVi ? "bản build" : "builds"}
+          </span>
         </div>
       </div>
 
       <div className="pt-4 border-t border-border/50 space-y-3">
         <p className="text-xs text-muted-foreground">
-          Updated: {new Date(widget.updatedAt).toLocaleDateString("vi-VN")}
+          {isVi ? "Cập nhật" : "Updated"}:{" "}
+          {new Date(widget.updatedAt).toLocaleDateString(
+            getDateTimeLocale(locale),
+          )}
         </p>
 
         <div className="flex gap-2">
@@ -298,13 +321,21 @@ export function WidgetCard({ widget }: WidgetCardProps) {
                     loadWidgetHtml(widget.id, latestBuild.buildRunId!)
                   }
                 >
-                  {loadingHtmlIds.has(widget.id) ? "Loading..." : "Preview"}
+                  {loadingHtmlIds.has(widget.id)
+                    ? isVi
+                      ? "Đang tải..."
+                      : "Loading..."
+                    : isVi
+                      ? "Xem trước"
+                      : "Preview"}
                 </Button>
               </DialogTrigger>
 
               <DialogContent className="w-[80vw]! h-[90vh]! max-w-none! p-1! flex! flex-col! min-h-0!">
                 <DialogHeader className="px-6 py-4 border-b shrink-0">
-                  <DialogTitle>Widget Preview</DialogTitle>
+                  <DialogTitle>
+                    {isVi ? "Xem trước Widget" : "Widget Preview"}
+                  </DialogTitle>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-auto min-h-0">
@@ -313,8 +344,12 @@ export function WidgetCard({ widget }: WidgetCardProps) {
                   ) : (
                     <div className="flex items-center justify-center h-full text-muted-foreground">
                       {loadingHtmlIds.has(widget.id)
-                        ? "Loading preview..."
-                        : "No preview available"}
+                        ? isVi
+                          ? "Đang tải bản xem trước..."
+                          : "Loading preview..."
+                        : isVi
+                          ? "Không có bản xem trước"
+                          : "No preview available"}
                     </div>
                   )}
                 </div>
@@ -324,7 +359,7 @@ export function WidgetCard({ widget }: WidgetCardProps) {
 
           {isAdmin && (
             <Button className="flex-1" onClick={handleAddAsHomework}>
-              Add Widget
+              {isVi ? "Thêm Widget" : "Add Widget"}
             </Button>
           )}
         </div>

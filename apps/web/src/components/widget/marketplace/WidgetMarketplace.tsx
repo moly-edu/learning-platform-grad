@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { WidgetCard } from "./WidgetCard";
 import { useDebounce } from "@/lib/use-debounce";
 import { Loader2, Search, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export type MarketplaceWidget = Parameters<typeof WidgetCard>[0]["widget"];
 
@@ -15,6 +16,7 @@ type MarketplaceProps = {
 export default function WidgetMarketplace({
   initialWidgets,
 }: MarketplaceProps) {
+  const t = useTranslations("widgetMarketplace");
   const [widgets, setWidgets] = useState(initialWidgets);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -51,10 +53,8 @@ export default function WidgetMarketplace({
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex justify-between items-center mb-6 gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Widget Marketplace</h1>
-          <p className="text-muted-foreground mt-1">
-            Explore widgets from the community
-          </p>
+          <h1 className="text-3xl font-bold">{t("title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("subtitle")}</p>
         </div>
         <div className="flex gap-2 max-w-xs w-full">
           <div className="relative flex-1">
@@ -69,7 +69,7 @@ export default function WidgetMarketplace({
 
             <Input
               type="text"
-              placeholder="Search widgets by name..."
+              placeholder={t("searchPlaceholder")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="pl-10 pr-10"
@@ -84,7 +84,7 @@ export default function WidgetMarketplace({
                   <button
                     onClick={() => setQuery("")}
                     className="text-muted-foreground hover:text-foreground"
-                    aria-label="Clear search"
+                    aria-label={t("clearSearch")}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -97,7 +97,7 @@ export default function WidgetMarketplace({
 
       {widgets.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          No widgets found
+          {t("empty")}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

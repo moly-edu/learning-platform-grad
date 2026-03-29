@@ -7,12 +7,16 @@ import { TweakpaneBuilder } from "./core/TweakpaneBuilder";
 import { Pane } from "tweakpane";
 import * as TweakpaneImagePlugin from "@kitschpatrol/tweakpane-plugin-image";
 import { AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { useLocale } from "next-intl";
 import {
   stopHostTtsPlayback,
   synthesizeWithHostTts,
 } from "./core/HostTtsClient";
 
 export default function WidgetPreview({ html }: { html: string }) {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const [widgetDef, setWidgetDef] = useState<WidgetDefinition | null>(null);
   const [config, setConfig] = useState<Record<string, any>>({});
   const [error, setError] = useState<string | null>(null);
@@ -140,13 +144,15 @@ export default function WidgetPreview({ html }: { html: string }) {
 
       if (event.data.type === "ERROR") {
         console.error("❌ Widget error:", event.data.payload);
-        setError(event.data.payload?.message || "Widget error");
+        setError(
+          event.data.payload?.message || (isVi ? "Lỗi widget" : "Widget error"),
+        );
       }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  }, [isVi]);
 
   // Helper to send messages
   const sendMessage = (message: any) => {
@@ -204,7 +210,7 @@ export default function WidgetPreview({ html }: { html: string }) {
     try {
       const pane = new Pane({
         container: paneRef.current,
-        title: "Widget Parameters",
+        title: isVi ? "Tham số widget" : "Widget Parameters",
       });
 
       pane.registerPlugin(TweakpaneImagePlugin);
@@ -240,7 +246,13 @@ export default function WidgetPreview({ html }: { html: string }) {
       }, 100);
     } catch (err) {
       console.error("❌ Tweakpane setup error:", err);
-      setError(err instanceof Error ? err.message : "Setup failed");
+      setError(
+        err instanceof Error
+          ? err.message
+          : isVi
+            ? "Thiết lập thất bại"
+            : "Setup failed",
+      );
     }
 
     return () => {
@@ -249,7 +261,7 @@ export default function WidgetPreview({ html }: { html: string }) {
         paneInstanceRef.current = null;
       }
     };
-  }, [widgetDef, iframeReady]);
+  }, [widgetDef, iframeReady, isVi]);
 
   return (
     <div className="bg-background flex h-full min-h-0">
@@ -266,7 +278,7 @@ export default function WidgetPreview({ html }: { html: string }) {
         {loading && !error && (
           <div className="text-center mt-8 text-muted-foreground flex items-center justify-center gap-2">
             <div className="animate-spin h-5 w-5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full" />
-            Loading widget...
+            {isVi ? "Đang tải widget..." : "Loading widget..."}
           </div>
         )}
 
@@ -274,7 +286,9 @@ export default function WidgetPreview({ html }: { html: string }) {
           <div className="mt-8 max-w-2xl mx-auto bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
             <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={20} />
             <div>
-              <div className="font-bold text-red-800">Lỗi</div>
+              <div className="font-bold text-red-800">
+                {isVi ? "Lỗi" : "Error"}
+              </div>
               <div className="text-sm text-red-600 mt-1">{error}</div>
             </div>
           </div>
@@ -284,7 +298,7 @@ export default function WidgetPreview({ html }: { html: string }) {
       <div className="w-80 bg-card border-l border-border flex flex-col">
         <div className="px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold text-foreground">
-            Cấu hình & Kết quả
+            {isVi ? "Cấu hình và kết quả" : "Config & Result"}
           </h3>
         </div>
 
@@ -297,7 +311,7 @@ export default function WidgetPreview({ html }: { html: string }) {
         {submission && (
           <div className="border-t border-border p-4 space-y-3">
             <div className="text-xs font-semibold text-foreground uppercase tracking-wide">
-              📊 Kết quả nộp bài
+              {isVi ? "📊 Kết quả nộp bài" : "📊 Submission result"}
             </div>
 
             <div
@@ -320,13 +334,19 @@ export default function WidgetPreview({ html }: { html: string }) {
                       : "text-red-700"
                   }`}
                 >
-                  {submission.evaluation.isCorrect ? "Đúng" : "Sai"}
+                  {submission.evaluation.isCorrect
+                    ? isVi
+                      ? "Đúng"
+                      : "Correct"
+                    : isVi
+                      ? "Sai"
+                      : "Incorrect"}
                 </span>
               </div>
 
               <div className="text-sm space-y-1">
                 <div className="text-muted-foreground">
-                  Điểm:{" "}
+                  {isVi ? "Điểm" : "Score"}:{" "}
                   <strong>
                     {submission.evaluation.score}/
                     {submission.evaluation.maxScore}
@@ -341,14 +361,14 @@ export default function WidgetPreview({ html }: { html: string }) {
                 onClick={enterReviewMode}
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium py-2 px-4 rounded-lg transition"
               >
-                🔍 Review your answers
+                {isVi ? "🔍 Xem lại đáp án" : "🔍 Review your answers"}
               </button>
             ) : (
               <button
                 onClick={exitReviewMode}
                 className="w-full bg-secondary hover:bg-secondary/80 text-secondary-foreground text-sm font-medium py-2 px-4 rounded-lg transition"
               >
-                ← Return to test mode
+                {isVi ? "← Quay lại chế độ test" : "← Return to test mode"}
               </button>
             )}
           </div>

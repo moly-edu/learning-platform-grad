@@ -16,19 +16,13 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api-client";
+import { useTranslations } from "next-intl";
 
 interface CreateClassFormProps {
   courseId: string;
   organizationId: string;
   onSuccess?: () => void;
 }
-
-const formSchema = z.object({
-  className: z
-    .string()
-    .min(2, "Class name must be at least 2 characters")
-    .max(50, "Class name cannot exceed 50 characters"),
-});
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -37,11 +31,16 @@ export function CreateClassForm({
   organizationId,
   onSuccess,
 }: CreateClassFormProps) {
+  const t = useTranslations("forms.createClass");
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     mode: "onChange",
-    resolver: standardSchemaResolver(formSchema),
+    resolver: standardSchemaResolver(
+      z.object({
+        className: z.string().min(2, t("nameMin")).max(50, t("nameMax")),
+      }),
+    ),
     defaultValues: {
       className: "",
     },
@@ -56,15 +55,15 @@ export function CreateClassForm({
         body: { name: formData.className, courseId, organizationId },
       });
       if (res.status !== 201) {
-        throw new Error((res.body as any).error || "Failed to create class");
+        throw new Error((res.body as any).error || t("createError"));
       }
 
-      toast.success("Class created successfully");
+      toast.success(t("createSuccess"));
       form.reset();
 
       if (onSuccess) onSuccess();
     } catch (err: any) {
-      const errorMessage = err.message || "An unexpected error occurred";
+      const errorMessage = err.message || t("unexpectedError");
       setSubmitError(errorMessage);
       toast.error(errorMessage);
     }
@@ -80,11 +79,11 @@ export function CreateClassForm({
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="class-name">Class Name</FieldLabel>
+                  <FieldLabel htmlFor="class-name">{t("name")}</FieldLabel>
                   <Input
                     {...field}
                     id="class-name"
-                    placeholder="e.g. Monday Morning Session"
+                    placeholder={t("namePlaceholder")}
                     disabled={isLoading}
                     autoFocus
                   />
@@ -111,7 +110,7 @@ export function CreateClassForm({
             ) : (
               <Plus className="size-4 mr-2" />
             )}
-            Create Class
+            {t("submit")}
           </Button>
         </Field>
       </CardFooter>

@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 export function OrgNav() {
+  const t = useTranslations("organization.nav");
   const pathname = usePathname();
   const params = useParams();
 
@@ -17,9 +19,9 @@ export function OrgNav() {
 
   // Tối ưu mảng tabs để code ngắn gọn hơn
   const tabs = [
-    { name: "Courses", href: basePath },
-    { name: "Members", href: `${basePath}/members` },
-    { name: "Settings", href: `${basePath}/settings` },
+    { name: t("courses"), href: basePath },
+    { name: t("members"), href: `${basePath}/members` },
+    { name: t("settings"), href: `${basePath}/settings` },
   ];
 
   return (

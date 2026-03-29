@@ -5,6 +5,7 @@ import { CheckCircle, Loader2, Send, User, Users, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useLocale } from "next-intl";
 
 interface StudentWithStatus {
   id: string;
@@ -46,6 +47,9 @@ export default function AssignmentStudentsPanel({
   assignmentId,
   onViewAnswer,
 }: AssignmentStudentsPanelProps) {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const [students, setStudents] = useState<StudentWithStatus[]>([]);
   const [groups, setGroups] = useState<GroupWithStatus[]>([]);
   const [stats, setStats] = useState({
@@ -64,7 +68,13 @@ export default function AssignmentStudentsPanel({
     try {
       setLoadingStudents(true);
       const res = await fetch(`/api/class/assignment/${assignmentId}/students`);
-      if (!res.ok) throw new Error("Không thể tải danh sách học sinh");
+      if (!res.ok) {
+        throw new Error(
+          isVi
+            ? "Không thể tải danh sách học sinh"
+            : "Unable to load student list",
+        );
+      }
       const data = await res.json();
       setStudents(data.students);
       setGroups(data.groups || []);
@@ -78,7 +88,7 @@ export default function AssignmentStudentsPanel({
 
   useEffect(() => {
     loadStudents();
-  }, [assignmentId]);
+  }, [assignmentId, isVi]);
 
   // Assign to student (single)
   const handleAssignToStudent = async (studentId: string) => {
@@ -91,13 +101,20 @@ export default function AssignmentStudentsPanel({
       });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || "Không thể giao bài");
+        throw new Error(
+          errorData.error || (isVi ? "Không thể giao bài" : "Unable to assign"),
+        );
       }
       await loadStudents();
     } catch (err) {
       console.error("Assign error:", err);
       alert(
-        "❌ " + (err instanceof Error ? err.message : "Không thể giao bài"),
+        "❌ " +
+          (err instanceof Error
+            ? err.message
+            : isVi
+              ? "Không thể giao bài"
+              : "Unable to assign"),
       );
     } finally {
       setAssigningTo(null);
@@ -122,13 +139,20 @@ export default function AssignmentStudentsPanel({
       });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || "Không thể giao bài");
+        throw new Error(
+          errorData.error || (isVi ? "Không thể giao bài" : "Unable to assign"),
+        );
       }
       await loadStudents();
     } catch (err) {
       console.error("Assign group error:", err);
       alert(
-        "❌ " + (err instanceof Error ? err.message : "Không thể giao bài"),
+        "❌ " +
+          (err instanceof Error
+            ? err.message
+            : isVi
+              ? "Không thể giao bài"
+              : "Unable to assign"),
       );
     } finally {
       setAssigningGroup(null);
@@ -153,13 +177,20 @@ export default function AssignmentStudentsPanel({
       });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || "Không thể giao bài");
+        throw new Error(
+          errorData.error || (isVi ? "Không thể giao bài" : "Unable to assign"),
+        );
       }
       await loadStudents();
     } catch (err) {
       console.error("Assign all error:", err);
       alert(
-        "❌ " + (err instanceof Error ? err.message : "Không thể giao bài"),
+        "❌ " +
+          (err instanceof Error
+            ? err.message
+            : isVi
+              ? "Không thể giao bài"
+              : "Unable to assign"),
       );
     } finally {
       setAssigningGroup(null);
@@ -173,13 +204,16 @@ export default function AssignmentStudentsPanel({
     <div className="flex flex-col h-full">
       {/* Stats header */}
       <div className="px-4 py-3 border-b border-border">
-        <h3 className="text-sm font-semibold text-foreground">Giao bài tập</h3>
+        <h3 className="text-sm font-semibold text-foreground">
+          {isVi ? "Giao bài tập" : "Assignment Delivery"}
+        </h3>
         <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
           <div>
-            Đã giao: {stats.assigned}/{stats.total}
+            {isVi ? "Đã giao" : "Assigned"}: {stats.assigned}/{stats.total}
           </div>
           <div>
-            Đã nộp: {stats.submitted}/{stats.assigned || stats.total}
+            {isVi ? "Đã nộp" : "Submitted"}: {stats.submitted}/
+            {stats.assigned || stats.total}
           </div>
         </div>
       </div>
@@ -195,7 +229,7 @@ export default function AssignmentStudentsPanel({
           }`}
         >
           <Users className="inline-block w-4 h-4 mr-1.5 -mt-0.5" />
-          Nhóm
+          {isVi ? "Nhóm" : "Groups"}
         </button>
         <button
           onClick={() => setActiveTab("individual")}
@@ -206,7 +240,7 @@ export default function AssignmentStudentsPanel({
           }`}
         >
           <User className="inline-block w-4 h-4 mr-1.5 -mt-0.5" />
-          Cá nhân
+          {isVi ? "Cá nhân" : "Individual"}
         </button>
       </div>
 
@@ -233,10 +267,11 @@ export default function AssignmentStudentsPanel({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm text-foreground">
-                    Cả lớp
+                    {isVi ? "Cả lớp" : "Whole class"}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {stats.total} học sinh · {stats.assigned} đã giao
+                    {stats.total} {isVi ? "học sinh" : "students"} ·{" "}
+                    {stats.assigned} {isVi ? "đã giao" : "assigned"}
                   </div>
                 </div>
               </div>
@@ -244,7 +279,7 @@ export default function AssignmentStudentsPanel({
                 {allAssigned ? (
                   <div className="flex items-center gap-1.5 text-xs text-green-600 font-medium">
                     <CheckCircle size={14} />
-                    Đã giao cho tất cả
+                    {isVi ? "Đã giao cho tất cả" : "Assigned to everyone"}
                   </div>
                 ) : (
                   <Button
@@ -256,13 +291,14 @@ export default function AssignmentStudentsPanel({
                     {assigningGroup === "__all__" ? (
                       <>
                         <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                        Assigning...
+                        {isVi ? "Đang giao..." : "Assigning..."}
                       </>
                     ) : (
                       <>
                         <Send className="w-3 h-3 mr-1" />
-                        Assign to class ({stats.total - stats.assigned}{" "}
-                        Unassigned)
+                        {isVi ? "Giao cho cả lớp" : "Assign to class"} ({" "}
+                        {stats.total - stats.assigned}{" "}
+                        {isVi ? "chưa giao" : "Unassigned"})
                       </>
                     )}
                   </Button>
@@ -273,7 +309,9 @@ export default function AssignmentStudentsPanel({
             {/* Group list */}
             {groups.length === 0 ? (
               <div className="text-center py-6 text-sm text-muted-foreground">
-                Chưa có nhóm nào trong lớp
+                {isVi
+                  ? "Chưa có nhóm nào trong lớp"
+                  : "No groups in this class"}
               </div>
             ) : (
               groups.map((group) => (
@@ -294,8 +332,8 @@ export default function AssignmentStudentsPanel({
                         {group.name}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {group.totalMembers} thành viên ·{" "}
-                        {group.assignedMembers} đã giao
+                        {group.totalMembers} {isVi ? "thành viên" : "members"} ·{" "}
+                        {group.assignedMembers} {isVi ? "đã giao" : "assigned"}
                       </div>
                     </div>
                   </div>
@@ -303,11 +341,13 @@ export default function AssignmentStudentsPanel({
                     {group.allAssigned ? (
                       <div className="flex items-center gap-1.5 text-xs text-green-600 font-medium">
                         <CheckCircle size={14} />
-                        Đã giao tất cả
+                        {isVi ? "Đã giao tất cả" : "Assigned to all"}
                       </div>
                     ) : group.totalMembers === 0 ? (
                       <div className="text-xs text-muted-foreground">
-                        Nhóm chưa có thành viên
+                        {isVi
+                          ? "Nhóm chưa có thành viên"
+                          : "Group has no members"}
                       </div>
                     ) : (
                       <Button
@@ -321,14 +361,14 @@ export default function AssignmentStudentsPanel({
                         {assigningGroup === group.id ? (
                           <>
                             <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                            Assigning...
+                            {isVi ? "Đang giao..." : "Assigning..."}
                           </>
                         ) : (
                           <>
                             <Send className="w-3 h-3 mr-1" />
-                            Assign to group (
+                            {isVi ? "Giao cho nhóm" : "Assign to group"} (
                             {group.totalMembers - group.assignedMembers}{" "}
-                            Unassigned)
+                            {isVi ? "chưa giao" : "Unassigned"})
                           </>
                         )}
                       </Button>
@@ -343,7 +383,9 @@ export default function AssignmentStudentsPanel({
           <div>
             {students.length === 0 ? (
               <div className="text-center py-8 text-sm text-muted-foreground">
-                Chưa có học sinh trong lớp
+                {isVi
+                  ? "Chưa có học sinh trong lớp"
+                  : "No students in this class"}
               </div>
             ) : (
               <div className="p-3 space-y-2">
@@ -401,7 +443,7 @@ export default function AssignmentStudentsPanel({
                                   onViewAnswer(student.submission!.answer)
                                 }
                               >
-                                👁️ Review answer
+                                {isVi ? "👁️ Xem bài làm" : "👁️ Review answer"}
                               </Button>
                             )}
 
@@ -409,14 +451,16 @@ export default function AssignmentStudentsPanel({
                               {student.submission.submittedAt &&
                                 new Date(
                                   student.submission.submittedAt,
-                                ).toLocaleString("vi-VN")}
+                                ).toLocaleString(isVi ? "vi-VN" : "en-US")}
                             </div>
                           </div>
                         ) : student.isAssigned ? (
                           /* CASE 2: Đã giao bài nhưng chưa làm */
                           <div className="mt-2">
                             <div className="text-xs text-amber-600 font-medium mb-1">
-                              ⏳ Assigned - Not Done
+                              {isVi
+                                ? "⏳ Đã giao - Chưa nộp"
+                                : "⏳ Assigned - Not Done"}
                             </div>
                             <Button
                               size="sm"
@@ -424,7 +468,9 @@ export default function AssignmentStudentsPanel({
                               className="w-full text-xs"
                               disabled
                             >
-                              Awaiting student submissions...
+                              {isVi
+                                ? "Đang chờ học sinh nộp bài..."
+                                : "Awaiting student submissions..."}
                             </Button>
                           </div>
                         ) : (
@@ -438,12 +484,12 @@ export default function AssignmentStudentsPanel({
                             {assigningTo === student.id ? (
                               <>
                                 <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                                Assigning...
+                                {isVi ? "Đang giao..." : "Assigning..."}
                               </>
                             ) : (
                               <>
                                 <Send className="w-3 h-3 mr-1" />
-                                Assign
+                                {isVi ? "Giao bài" : "Assign"}
                               </>
                             )}
                           </Button>

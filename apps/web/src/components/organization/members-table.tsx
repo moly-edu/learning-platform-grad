@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/table";
 import MembersTableAction from "./members-table-action";
 import { Prisma } from "@repo/db";
+import { useTranslations } from "next-intl";
 
 type MemberWithUser = Prisma.MemberGetPayload<{
   include: { user: true };
@@ -18,14 +19,16 @@ interface MembersTableProps {
 }
 
 export default function MembersTable({ members }: MembersTableProps) {
+  const t = useTranslations("organization.membersTable");
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[100px]">Username</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
+          <TableHead className="w-25">{t("username")}</TableHead>
+          <TableHead>{t("email")}</TableHead>
+          <TableHead>{t("role")}</TableHead>
+          <TableHead className="text-right">{t("actions")}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

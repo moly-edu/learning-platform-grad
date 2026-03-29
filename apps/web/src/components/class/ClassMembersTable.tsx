@@ -7,6 +7,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Prisma } from "@repo/db";
+import { useTranslations } from "next-intl";
 
 type MemberWithUser = Prisma.ClassMemberGetPayload<{
   include: { user: true };
@@ -17,14 +18,16 @@ interface MembersTableProps {
 }
 
 export default function ClassMembersTable({ members }: MembersTableProps) {
+  const t = useTranslations("classes.membersTable");
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-25">Username</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
+          <TableHead className="w-25">{t("username")}</TableHead>
+          <TableHead>{t("email")}</TableHead>
+          <TableHead>{t("role")}</TableHead>
+          <TableHead className="text-right">{t("actions")}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

@@ -1,6 +1,10 @@
 import RepoList from "@/components/dev/RepoList";
+import { getLocale } from "next-intl/server";
 
 export default async function DashboardPage() {
+  const locale = await getLocale();
+  const isVi = locale === "vi";
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Main */}
@@ -8,11 +12,12 @@ export default async function DashboardPage() {
         {/* Page header */}
         <div>
           <h2 className="text-2xl font-bold text-foreground">
-            Import Repository
+            {isVi ? "Nhập kho mã" : "Import Repository"}
           </h2>
           <p className="text-muted-foreground mt-1">
-            Connect GitHub and select a repository to build and deploy as a
-            widget
+            {isVi
+              ? "Kết nối GitHub và chọn kho mã để build, triển khai thành widget"
+              : "Connect GitHub and select a repository to build and deploy as a widget"}
           </p>
         </div>
 
@@ -31,18 +36,21 @@ export default async function DashboardPage() {
 
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-foreground">
-                Connect your GitHub account
+                {isVi
+                  ? "Kết nối tài khoản GitHub"
+                  : "Connect your GitHub account"}
               </h3>
               <p className="text-sm text-muted-foreground mt-1">
-                We’ll only access repositories you explicitly grant permission
-                to.
+                {isVi
+                  ? "Hệ thống chỉ truy cập những kho mã bạn cấp quyền rõ ràng."
+                  : "We’ll only access repositories you explicitly grant permission to."}
               </p>
 
               <a
                 href="/api/auth/github"
                 className="inline-flex mt-4 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-primary-foreground font-medium hover:bg-primary/90 transition"
               >
-                Connect with GitHub
+                {isVi ? "Kết nối với GitHub" : "Connect with GitHub"}
               </a>
             </div>
           </div>

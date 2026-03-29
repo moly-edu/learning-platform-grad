@@ -8,12 +8,16 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import WidgetPreview from "./WidgetPreview";
+import { useLocale } from "next-intl";
 
 export default function WidgetPreviewDialog({ html }: { html: string }) {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline">Preview</Button>
+        <Button variant="outline">{isVi ? "Xem trước" : "Preview"}</Button>
       </DialogTrigger>
 
       <DialogContent
@@ -28,7 +32,9 @@ export default function WidgetPreviewDialog({ html }: { html: string }) {
         "
       >
         <DialogHeader className="px-6 py-4 border-b shrink-0">
-          <DialogTitle>Widget Preview</DialogTitle>
+          <DialogTitle>
+            {isVi ? "Xem trước Widget" : "Widget Preview"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-auto min-h-0">

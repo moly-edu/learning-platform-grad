@@ -21,6 +21,7 @@ import {
 import AssignmentStudentsPanel from "./AssignmentStudentsPanel";
 import DirectAssignStudentPanel from "./DirectAssignStudentPanel";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "next-intl";
 import {
   stopHostTtsPlayback,
   synthesizeWithHostTts,
@@ -42,6 +43,9 @@ const TeacherCreateAssignment = forwardRef<
   TeacherCreateAssignmentRef,
   TeacherCreateAssignmentProps
 >(({ html, assignmentId, targetStudentId, targetStudentName }, ref) => {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const [widgetDef, setWidgetDef] = useState<WidgetDefinition | null>(null);
   const [config, setConfig] = useState<Record<string, any>>({});
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +78,11 @@ const TeacherCreateAssignment = forwardRef<
         imageCount++;
         const sizeKB = (getImageSizeFromBase64(value) / 1024).toFixed(2);
 
-        setUploadProgress(`Đang upload ảnh ${imageCount} (${sizeKB} KB)...`);
+        setUploadProgress(
+          isVi
+            ? `Đang upload ảnh ${imageCount} (${sizeKB} KB)...`
+            : `Uploading image ${imageCount} (${sizeKB} KB)...`,
+        );
         console.log(`📤 Uploading image for key: ${key} at ${currentPath}`);
 
         try {
@@ -85,7 +93,11 @@ const TeacherCreateAssignment = forwardRef<
           console.log(`✅ Image uploaded: ${processed[key]}`);
         } catch (error) {
           console.error(`❌ Failed to upload image for ${key}:`, error);
-          setUploadProgress(`⚠️ Lỗi upload ảnh ${key}, giữ nguyên base64`);
+          setUploadProgress(
+            isVi
+              ? `⚠️ Lỗi upload ảnh ${key}, giữ nguyên base64`
+              : `⚠️ Failed to upload image ${key}, keeping base64`,
+          );
           processed[key] = value;
         }
       } else if (
@@ -101,7 +113,9 @@ const TeacherCreateAssignment = forwardRef<
               imageCount++;
               const sizeKB = (getImageSizeFromBase64(item) / 1024).toFixed(2);
               setUploadProgress(
-                `Đang upload ảnh ${imageCount} (${sizeKB} KB)...`,
+                isVi
+                  ? `Đang upload ảnh ${imageCount} (${sizeKB} KB)...`
+                  : `Uploading image ${imageCount} (${sizeKB} KB)...`,
               );
 
               try {
@@ -142,7 +156,9 @@ const TeacherCreateAssignment = forwardRef<
       console.log(
         "🔄 Processing config for save (uploading images to Supabase)...",
       );
-      setUploadProgress("Đang chuẩn bị upload...");
+      setUploadProgress(
+        isVi ? "Đang chuẩn bị upload..." : "Preparing upload...",
+      );
 
       try {
         const processed = await processConfigForSave(config);
@@ -259,13 +275,15 @@ const TeacherCreateAssignment = forwardRef<
 
       if (event.data.type === "ERROR") {
         console.error("❌ Widget error:", event.data.payload);
-        setError(event.data.payload?.message || "Widget error");
+        setError(
+          event.data.payload?.message || (isVi ? "Lỗi widget" : "Widget error"),
+        );
       }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  }, [isVi]);
 
   // Helper to send messages
   const sendMessage = (message: any) => {
@@ -322,7 +340,7 @@ const TeacherCreateAssignment = forwardRef<
     try {
       const pane = new Pane({
         container: paneRef.current,
-        title: "Widget Parameters",
+        title: isVi ? "Tham số widget" : "Widget Parameters",
       });
 
       pane.registerPlugin(TweakpaneImagePlugin);
@@ -360,7 +378,13 @@ const TeacherCreateAssignment = forwardRef<
       }, 100);
     } catch (err) {
       console.error("❌ Tweakpane setup error:", err);
-      setError(err instanceof Error ? err.message : "Setup failed");
+      setError(
+        err instanceof Error
+          ? err.message
+          : isVi
+            ? "Thiết lập thất bại"
+            : "Setup failed",
+      );
     }
 
     return () => {
@@ -370,7 +394,7 @@ const TeacherCreateAssignment = forwardRef<
       }
       builderRef.current = null;
     };
-  }, [widgetDef, iframeReady]);
+  }, [widgetDef, iframeReady, isVi]);
 
   // Handle view answer from AssignmentStudentsPanel
   const handleViewAnswer = (answer: any) => {
@@ -393,7 +417,11 @@ const TeacherCreateAssignment = forwardRef<
         {viewingAnswer && (
           <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between mx-auto max-w-2xl">
             <div className="text-sm text-blue-700">
-              <strong>Reviewing student submission</strong>
+              <strong>
+                {isVi
+                  ? "Đang xem bài nộp của học sinh"
+                  : "Reviewing student submission"}
+              </strong>
             </div>
             <Button
               size="sm"
@@ -401,7 +429,7 @@ const TeacherCreateAssignment = forwardRef<
               onClick={handleResetView}
               className="text-xs"
             >
-              ← Back
+              {isVi ? "← Quay lại" : "← Back"}
             </Button>
           </div>
         )}
@@ -418,7 +446,7 @@ const TeacherCreateAssignment = forwardRef<
         {loading && !error && (
           <div className="text-center mt-8 text-muted-foreground flex items-center justify-center gap-2">
             <div className="animate-spin h-5 w-5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full" />
-            Loading widget...
+            {isVi ? "Đang tải widget..." : "Loading widget..."}
           </div>
         )}
 
@@ -433,7 +461,9 @@ const TeacherCreateAssignment = forwardRef<
           <div className="mt-8 max-w-2xl mx-auto bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
             <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={20} />
             <div>
-              <div className="font-bold text-red-800">Lỗi</div>
+              <div className="font-bold text-red-800">
+                {isVi ? "Lỗi" : "Error"}
+              </div>
               <div className="text-sm text-red-600 mt-1">{error}</div>
             </div>
           </div>
@@ -460,7 +490,7 @@ const TeacherCreateAssignment = forwardRef<
         <div className="w-80 bg-card border-l border-border flex flex-col">
           <div className="px-4 py-3 border-b border-border">
             <h3 className="text-sm font-semibold text-foreground">
-              Cấu hình & Kết quả
+              {isVi ? "Cấu hình và kết quả" : "Config & Result"}
             </h3>
           </div>
 
@@ -473,7 +503,7 @@ const TeacherCreateAssignment = forwardRef<
           {submission && (
             <div className="border-t border-border p-4 space-y-3">
               <div className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                📊 Kết quả test
+                {isVi ? "📊 Kết quả test" : "📊 Test result"}
               </div>
 
               <div
@@ -496,13 +526,19 @@ const TeacherCreateAssignment = forwardRef<
                         : "text-red-700"
                     }`}
                   >
-                    {submission.evaluation.isCorrect ? "Đúng" : "Sai"}
+                    {submission.evaluation.isCorrect
+                      ? isVi
+                        ? "Đúng"
+                        : "Correct"
+                      : isVi
+                        ? "Sai"
+                        : "Incorrect"}
                   </span>
                 </div>
 
                 <div className="text-sm space-y-1">
                   <div className="text-muted-foreground">
-                    Điểm:{" "}
+                    {isVi ? "Điểm" : "Score"}:{" "}
                     <strong>
                       {submission.evaluation.score}/
                       {submission.evaluation.maxScore}
@@ -517,14 +553,14 @@ const TeacherCreateAssignment = forwardRef<
                   onClick={enterReviewMode}
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium py-2 px-4 rounded-lg transition"
                 >
-                  🔍 Review your answers
+                  {isVi ? "🔍 Xem lại đáp án" : "🔍 Review your answers"}
                 </button>
               ) : (
                 <button
                   onClick={exitReviewMode}
                   className="w-full bg-secondary hover:bg-secondary/80 text-secondary-foreground text-sm font-medium py-2 px-4 rounded-lg transition"
                 >
-                  ← Return to test mode
+                  {isVi ? "← Quay lại chế độ test" : "← Return to test mode"}
                 </button>
               )}
             </div>

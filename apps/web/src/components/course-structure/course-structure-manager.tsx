@@ -51,6 +51,7 @@ import ClassSearchUser from "../class/ClassSearchUser";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import StudentCourseStructureContent from "@/components/course-structure/course-structure-student-content";
+import { useLocale } from "next-intl";
 
 // ===== PROPS =====
 interface CourseStructureManagerProps {
@@ -83,6 +84,7 @@ const EditableTitle: React.FC<EditableTitleProps> = ({
   isUpdating,
   className = "block w-full",
 }) => {
+  const isVi = useLocale() === "vi";
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(initialTitle);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -144,7 +146,7 @@ const EditableTitle: React.FC<EditableTitleProps> = ({
     <span
       onClick={() => setIsEditing(true)}
       className={`cursor-pointer hover:bg-muted px-2 py-1 rounded ${className}`}
-      title="Click to edit"
+      title={isVi ? "Bấm để chỉnh sửa" : "Click to edit"}
     >
       {title}
     </span>
@@ -163,6 +165,8 @@ const CourseStructureRoleContent: React.FC = () => {
 
 // ===== MAIN COMPONENT (UI Only - Logic từ Context) =====
 const CourseStructureContent: React.FC = () => {
+  const isVi = useLocale() === "vi";
+
   const {
     // Config
     classId,
@@ -448,7 +452,7 @@ const CourseStructureContent: React.FC = () => {
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold text-foreground">
-              Course Structure
+              {isVi ? "Cấu trúc khóa học" : "Course Structure"}
             </h2>
           </div>
           <div className="flex items-center gap-2 mb-2">
@@ -461,7 +465,7 @@ const CourseStructureContent: React.FC = () => {
               className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md bg-muted hover:bg-muted/80 text-foreground transition-colors mb-2"
             >
               <Users className="w-4 h-4" />
-              Manage Members
+              {isVi ? "Quản lý thành viên" : "Manage Members"}
             </Link>
           )}
           {isOwner && classId && (
@@ -472,17 +476,25 @@ const CourseStructureContent: React.FC = () => {
               <DialogTrigger asChild>
                 <Button className="w-full justify-start bg-muted hover:bg-muted/80 text-foreground mb-2">
                   <Users className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Manage Members</span>
-                  <span className="sm:hidden">Members</span>
+                  <span className="hidden sm:inline">
+                    {isVi ? "Quản lý thành viên" : "Manage Members"}
+                  </span>
+                  <span className="sm:hidden">
+                    {isVi ? "Thành viên" : "Members"}
+                  </span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>Manage Members</DialogTitle>
+                  <DialogTitle>
+                    {isVi ? "Quản lý thành viên" : "Manage Members"}
+                  </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-medium mb-2">Class Members</h3>
+                    <h3 className="text-sm font-medium mb-2">
+                      {isVi ? "Thành viên lớp" : "Class Members"}
+                    </h3>
                     {isLoadingClassData ? (
                       <div className="flex justify-center py-4">
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -492,7 +504,9 @@ const CourseStructureContent: React.FC = () => {
                     )}
                   </div>
                   <div className="border-t pt-4">
-                    <h3 className="text-sm font-medium mb-2">Add Members</h3>
+                    <h3 className="text-sm font-medium mb-2">
+                      {isVi ? "Thêm thành viên" : "Add Members"}
+                    </h3>
                     <ClassSearchUser />
                   </div>
                 </div>
@@ -509,12 +523,16 @@ const CourseStructureContent: React.FC = () => {
                   <DialogTrigger asChild>
                     <Button className="w-full bg-primary hover:bg-primary/90">
                       <Plus className="w-4 h-4" />
-                      <span className="hidden sm:inline">Class Manager</span>
+                      <span className="hidden sm:inline">
+                        {isVi ? "Quản lý lớp" : "Class Manager"}
+                      </span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
-                      <DialogTitle>Class Manager</DialogTitle>
+                      <DialogTitle>
+                        {isVi ? "Quản lý lớp" : "Class Manager"}
+                      </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                       <CreateClassForm
@@ -527,16 +545,20 @@ const CourseStructureContent: React.FC = () => {
 
                       <div className="space-y-2">
                         <p className="text-sm font-medium text-foreground">
-                          Classes you own in this course
+                          {isVi
+                            ? "Các lớp bạn sở hữu trong khóa học này"
+                            : "Classes you own in this course"}
                         </p>
 
                         {isLoadingOwnedClasses ? (
                           <p className="text-sm text-muted-foreground">
-                            Loading classes...
+                            {isVi ? "Đang tải lớp..." : "Loading classes..."}
                           </p>
                         ) : ownedClasses.length === 0 ? (
                           <p className="text-sm text-muted-foreground">
-                            You have not created any class in this course yet.
+                            {isVi
+                              ? "Bạn chưa tạo lớp nào trong khóa học này."
+                              : "You have not created any class in this course yet."}
                           </p>
                         ) : (
                           <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
@@ -550,7 +572,7 @@ const CourseStructureContent: React.FC = () => {
                                   {ownedClass.name}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
-                                  Open
+                                  {isVi ? "Mở" : "Open"}
                                 </span>
                               </Link>
                             ))}
@@ -568,14 +590,16 @@ const CourseStructureContent: React.FC = () => {
                     onClick={() => handleAddNode(LessonNodeType.module)}
                     disabled={!canAddToSelected || isPending}
                     className="flex-1 flex items-center justify-center p-1.5 bg-primary text-primary-foreground text-sm rounded hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed"
-                    title="Add Module"
+                    title={isVi ? "Thêm mô-đun" : "Add Module"}
                   >
                     {isAddingModule ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <div className="flex items-center gap-1">
                         <Plus className="w-4 h-4" />
-                        <span className="hidden sm:inline">Module</span>
+                        <span className="hidden sm:inline">
+                          {isVi ? "Mô-đun" : "Module"}
+                        </span>
                       </div>
                     )}
                   </button>
@@ -584,14 +608,16 @@ const CourseStructureContent: React.FC = () => {
                     onClick={() => handleAddNode(LessonNodeType.lesson)}
                     disabled={!canAddToSelected || isPending}
                     className="flex-1 flex items-center justify-center p-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:bg-muted disabled:cursor-not-allowed"
-                    title="Add Lesson"
+                    title={isVi ? "Thêm bài học" : "Add Lesson"}
                   >
                     {isAddingLesson ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <div className="flex items-center gap-1">
                         <Plus className="w-4 h-4" />
-                        <span className="hidden sm:inline">Lesson</span>
+                        <span className="hidden sm:inline">
+                          {isVi ? "Bài học" : "Lesson"}
+                        </span>
                       </div>
                     )}
                   </button>
@@ -613,7 +639,13 @@ const CourseStructureContent: React.FC = () => {
                 }`}
               >
                 <BarChart3 className="w-4 h-4" />
-                {showStats ? "Hide Statistics" : "View Statistics"}
+                {showStats
+                  ? isVi
+                    ? "Ẩn thống kê"
+                    : "Hide Statistics"
+                  : isVi
+                    ? "Xem thống kê"
+                    : "View Statistics"}
               </button>
             </div>
           )}
@@ -637,8 +669,12 @@ const CourseStructureContent: React.FC = () => {
               >
                 <BarChart3 className="w-4 h-4" />
                 {isTeacherStudentView
-                  ? "Hide statistics"
-                  : "View student statistics"}
+                  ? isVi
+                    ? "Ẩn thống kê"
+                    : "Hide statistics"
+                  : isVi
+                    ? "Xem thống kê học sinh"
+                    : "View student statistics"}
               </button>
 
               {/* Student pick dialog */}
@@ -648,7 +684,9 @@ const CourseStructureContent: React.FC = () => {
               >
                 <DialogContent className="max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Select Student</DialogTitle>
+                    <DialogTitle>
+                      {isVi ? "Chọn học sinh" : "Select Student"}
+                    </DialogTitle>
                   </DialogHeader>
                   <ScrollArea className="max-h-80">
                     <div className="py-1">
@@ -718,17 +756,17 @@ const CourseStructureContent: React.FC = () => {
                     <button
                       onClick={() => setShowStudentDialog(true)}
                       className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 transition-colors"
-                      title="Đổi học sinh"
+                      title={isVi ? "Đổi học sinh" : "Switch student"}
                     >
                       <ArrowRightLeft className="w-3 h-3" />
-                      Switch
+                      {isVi ? "Đổi" : "Switch"}
                     </button>
                   </div>
                   {isLoadingStudentView ? (
                     <div className="flex items-center gap-2 mt-1">
                       <Loader2 className="w-3 h-3 animate-spin text-indigo-500" />
                       <span className="text-xs text-indigo-500">
-                        Loading...
+                        {isVi ? "Đang tải..." : "Loading..."}
                       </span>
                     </div>
                   ) : (
@@ -739,7 +777,8 @@ const CourseStructureContent: React.FC = () => {
                       return (
                         <div className="text-xs text-indigo-600 mt-1">
                           {rootCounts.correct}/{rootCounts.totalAssigned}{" "}
-                          correct • {rootCounts.pending} pending
+                          {isVi ? "đúng" : "correct"} • {rootCounts.pending}{" "}
+                          {isVi ? "chưa làm" : "pending"}
                         </div>
                       );
                     })()
@@ -754,14 +793,14 @@ const CourseStructureContent: React.FC = () => {
             <div className="flex items-center justify-center p-8">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               <span className="ml-2 text-sm text-muted-foreground">
-                Loading course...
+                {isVi ? "Đang tải khóa học..." : "Loading course..."}
               </span>
             </div>
           ) : course.rootLessonNode ? (
             renderNode(course.rootLessonNode)
           ) : (
             <div className="p-4 text-sm text-muted-foreground">
-              Nothing here
+              {isVi ? "Chưa có nội dung" : "Nothing here"}
             </div>
           )}
         </div>
@@ -810,7 +849,7 @@ const CourseStructureContent: React.FC = () => {
                 <div className="border-t border-border mt-4 pt-4">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-semibold text-foreground">
-                      Homework
+                      {isVi ? "Bài tập" : "Homework"}
                     </h3>
                     {isAdmin && (
                       <Dialog>
@@ -818,13 +857,15 @@ const CourseStructureContent: React.FC = () => {
                           <Button className="px-2 py-1 bg-orange-500 text-white text-xs rounded hover:bg-orange-600">
                             <Plus className="w-2 h-2" />
                             <span className="hidden sm:inline">
-                              Add Homework
+                              {isVi ? "Thêm bài tập" : "Add Homework"}
                             </span>
                           </Button>
                         </DialogTrigger>
                         <DialogContent className="w-[90vw]! h-[95vh]! max-w-none! p-1! flex! flex-col! min-h-0!">
                           <DialogHeader className="px-6 py-4 border-b shrink-0">
-                            <DialogTitle>Widget Marketplace</DialogTitle>
+                            <DialogTitle>
+                              {isVi ? "Chợ Widget" : "Widget Marketplace"}
+                            </DialogTitle>
                           </DialogHeader>
                           <WidgetMarketplaceDialog />
                         </DialogContent>
@@ -834,7 +875,7 @@ const CourseStructureContent: React.FC = () => {
 
                   {homeworkNodes.length === 0 ? (
                     <div className="text-sm text-muted-foreground">
-                      No assignments yet.
+                      {isVi ? "Chưa có bài tập nào." : "No assignments yet."}
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -909,7 +950,7 @@ const CourseStructureContent: React.FC = () => {
                                       return stats ? (
                                         <span
                                           className={`ml-2 text-xs px-2 py-0.5 rounded-full font-semibold ${stats.colorClass}`}
-                                          title={`${homeworkCounts.correct} correct / ${homeworkCounts.totalAssigned} total (${Math.round(stats.ratio * 100)}%)`}
+                                          title={`${homeworkCounts.correct} ${isVi ? "đúng" : "correct"} / ${homeworkCounts.totalAssigned} ${isVi ? "tổng" : "total"} (${Math.round(stats.ratio * 100)}%)`}
                                         >
                                           {stats.label}
                                         </span>
@@ -922,7 +963,7 @@ const CourseStructureContent: React.FC = () => {
                                           ? "bg-red-500 text-white"
                                           : "bg-green-100 text-green-700"
                                       }`}
-                                      title={`${homeworkCounts.pending} not done / ${homeworkCounts.totalAssigned} tổng`}
+                                      title={`${homeworkCounts.pending} ${isVi ? "chưa làm" : "not done"} / ${homeworkCounts.totalAssigned} ${isVi ? "tổng" : "total"}`}
                                     >
                                       {hasPendingHomework
                                         ? `${homeworkCounts.pending}`
@@ -973,7 +1014,9 @@ const CourseStructureContent: React.FC = () => {
                                 {/* List assignments */}
                                 {hwClassLessonNodes.length === 0 ? (
                                   <div className="text-xs text-muted-foreground italic py-2">
-                                    No assignments yet.
+                                    {isVi
+                                      ? "Chưa có bài tập nào."
+                                      : "No assignments yet."}
                                   </div>
                                 ) : isTeacherStudentView ? (
                                   /* ===== TEACHER STUDENT VIEW: Split assigned/unassigned ===== */
@@ -994,7 +1037,8 @@ const CourseStructureContent: React.FC = () => {
                                         {assignedNodes.length > 0 && (
                                           <>
                                             <div className="text-xs font-semibold text-green-700 py-1 border-b border-green-200">
-                                              Assigned {selectedStudentName} (
+                                              {isVi ? "Đã giao" : "Assigned"}{" "}
+                                              {selectedStudentName} (
                                               {assignedNodes.length})
                                             </div>
                                             {assignedNodes.map(
@@ -1017,7 +1061,9 @@ const CourseStructureContent: React.FC = () => {
                                                     }`}
                                                   >
                                                     <span className="font-semibold text-orange-700 min-w-fit">
-                                                      Assignment{" "}
+                                                      {isVi
+                                                        ? "Bài"
+                                                        : "Assignment"}{" "}
                                                       {hwImplCount -
                                                         hwClassLessonNodes.indexOf(
                                                           classLessonNode,
@@ -1034,7 +1080,7 @@ const CourseStructureContent: React.FC = () => {
                                                       return (
                                                         <span
                                                           className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700"
-                                                          title={`Assigned ${aStats.assigned}/${aStats.total} · Submited ${aStats.submitted}/${aStats.assigned}`}
+                                                          title={`${isVi ? "Đã giao" : "Assigned"} ${aStats.assigned}/${aStats.total} · ${isVi ? "Đã nộp" : "Submitted"} ${aStats.submitted}/${aStats.assigned}`}
                                                         >
                                                           <Users className="w-3 h-3 inline -mt-0.5 mr-0.5" />
                                                           {aStats.assigned}/
@@ -1053,8 +1099,12 @@ const CourseStructureContent: React.FC = () => {
                                                         }`}
                                                       >
                                                         {isPendingForStudent
-                                                          ? "Not done"
-                                                          : "Done"}
+                                                          ? isVi
+                                                            ? "Chưa làm"
+                                                            : "Not done"
+                                                          : isVi
+                                                            ? "Hoàn thành"
+                                                            : "Done"}
                                                       </span>
 
                                                       {!isPendingForStudent &&
@@ -1125,7 +1175,10 @@ const CourseStructureContent: React.FC = () => {
                                         {unassignedNodes.length > 0 && (
                                           <>
                                             <div className="text-xs font-semibold text-muted-foreground py-1 border-b border-border mt-2">
-                                              Unassigned {selectedStudentName} (
+                                              {isVi
+                                                ? "Chưa giao"
+                                                : "Unassigned"}{" "}
+                                              {selectedStudentName} (
                                               {unassignedNodes.length})
                                             </div>
                                             {unassignedNodes.map(
@@ -1162,7 +1215,9 @@ const CourseStructureContent: React.FC = () => {
                                                   })()}
 
                                                   <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-muted-foreground text-background">
-                                                    Unassigned
+                                                    {isVi
+                                                      ? "Chưa giao"
+                                                      : "Unassigned"}
                                                   </span>
 
                                                   <div className="flex-1" />
@@ -1228,7 +1283,8 @@ const CourseStructureContent: React.FC = () => {
                                         >
                                           {/* Assignment number */}
                                           <span className="font-semibold text-orange-700 min-w-fit">
-                                            Assignment {hwImplCount - index}
+                                            {isVi ? "Bài" : "Assignment"}{" "}
+                                            {hwImplCount - index}
                                           </span>
 
                                           {/* Assignment stats (teacher) */}
@@ -1278,8 +1334,12 @@ const CourseStructureContent: React.FC = () => {
                                                 }`}
                                               >
                                                 {isPending
-                                                  ? "Not done"
-                                                  : "Done"}
+                                                  ? isVi
+                                                    ? "Chưa làm"
+                                                    : "Not done"
+                                                  : isVi
+                                                    ? "Hoàn thành"
+                                                    : "Done"}
                                               </span>
 
                                               {/* Evaluation result (if submitted) */}
@@ -1356,7 +1416,7 @@ const CourseStructureContent: React.FC = () => {
                     <div className="mt-4 pt-4 border-t border-border">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-sm font-semibold text-foreground">
-                          Notes
+                          {isVi ? "Ghi chú" : "Notes"}
                           {(classLessonNodeCounts.get(selectedNode.id)
                             ?.lesson_note || 0) > 0 && (
                             <span className="ml-2 text-xs text-muted-foreground bg-blue-100 px-2 py-0.5 rounded">
@@ -1379,7 +1439,7 @@ const CourseStructureContent: React.FC = () => {
                               disabled={isPending}
                               className="px-2 py-1 bg-primary text-primary-foreground text-xs rounded hover:bg-primary/90 disabled:bg-muted"
                             >
-                              + Add Note
+                              {isVi ? "+ Thêm ghi chú" : "+ Add Note"}
                             </button>
                           )}
                           <button
@@ -1412,7 +1472,9 @@ const CourseStructureContent: React.FC = () => {
                               className="flex items-center gap-2 p-2 bg-blue-50 rounded group"
                             >
                               <span className="text-sm flex-1">
-                                📝 {note.content?.text || "Note"}
+                                📝{" "}
+                                {note.content?.text ||
+                                  (isVi ? "Ghi chú" : "Note")}
                               </span>
                               {isTeacher && (
                                 <button
@@ -1441,7 +1503,9 @@ const CourseStructureContent: React.FC = () => {
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-muted-foreground">
-              Select a node to view details.
+              {isVi
+                ? "Chọn một mục để xem chi tiết."
+                : "Select a node to view details."}
             </p>
           </div>
         )}

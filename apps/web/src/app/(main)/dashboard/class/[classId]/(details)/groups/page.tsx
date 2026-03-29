@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 type GroupMember = {
   id: string;
@@ -58,6 +59,7 @@ function getInitials(name: string) {
 }
 
 export default function ClassGroupsPage() {
+  const t = useTranslations("classes.groups");
   const { classCourse, role } = useClass();
   const classId = classCourse.id;
   const isTeacherOrOwner = role === "class_teacher" || role === "class_owner";
@@ -122,9 +124,9 @@ export default function ClassGroupsPage() {
         setShowCreateDialog(false);
         setGroupName("");
         setGroupDescription("");
-        toast.success("Tạo nhóm thành công");
+        toast.success(t("createSuccess"));
       } catch {
-        toast.error("Không thể tạo nhóm");
+        toast.error(t("createError"));
       }
     });
   }
@@ -149,9 +151,9 @@ export default function ClassGroupsPage() {
         setShowEditDialog(false);
         setGroupName("");
         setGroupDescription("");
-        toast.success("Cập nhật nhóm thành công");
+        toast.success(t("updateSuccess"));
       } catch {
-        toast.error("Không thể cập nhật nhóm");
+        toast.error(t("updateError"));
       }
     });
   }
@@ -169,9 +171,9 @@ export default function ClassGroupsPage() {
         setGroups((prev) => prev.filter((g) => g.id !== selectedGroup.id));
         setSelectedGroupId(null);
         setShowDeleteDialog(false);
-        toast.success("Xoá nhóm thành công");
+        toast.success(t("deleteSuccess"));
       } catch {
-        toast.error("Không thể xoá nhóm");
+        toast.error(t("deleteError"));
       }
     });
   }
@@ -199,9 +201,9 @@ export default function ClassGroupsPage() {
               : g,
           ),
         );
-        toast.success("Thêm thành viên thành công");
+        toast.success(t("addMemberSuccess"));
       } catch {
-        toast.error("Không thể thêm thành viên");
+        toast.error(t("addMemberError"));
       }
     });
   }
@@ -228,9 +230,9 @@ export default function ClassGroupsPage() {
               : g,
           ),
         );
-        toast.success("Xoá thành viên khỏi nhóm thành công");
+        toast.success(t("removeMemberSuccess"));
       } catch {
-        toast.error("Không thể xoá thành viên");
+        toast.error(t("removeMemberError"));
       }
     });
   }
@@ -238,7 +240,7 @@ export default function ClassGroupsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="font-bold text-2xl">Nhóm</h1>
+        <h1 className="font-bold text-2xl">{t("title")}</h1>
         {isTeacherOrOwner && (
           <Button
             size="sm"
@@ -249,7 +251,7 @@ export default function ClassGroupsPage() {
             }}
           >
             <Plus className="size-4" />
-            Tạo nhóm
+            {t("createGroup")}
           </Button>
         )}
       </div>
@@ -259,14 +261,14 @@ export default function ClassGroupsPage() {
         <div className="w-72 shrink-0 border-r">
           <div className="p-3 border-b">
             <p className="text-sm font-medium text-muted-foreground">
-              {groups.length} nhóm
+              {t("groupsCount", { count: groups.length })}
             </p>
           </div>
           <ScrollArea className="h-114">
             {groups.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-40 text-muted-foreground text-sm">
                 <Users className="size-8 mb-2 opacity-50" />
-                <p>Chưa có nhóm nào</p>
+                <p>{t("emptyGroups")}</p>
               </div>
             ) : (
               <div className="flex flex-col">
@@ -289,7 +291,9 @@ export default function ClassGroupsPage() {
                         {group.name}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {group.classGroupMembers.length} thành viên
+                        {t("membersCount", {
+                          count: group.classGroupMembers.length,
+                        })}
                       </p>
                     </div>
                   </button>
@@ -304,7 +308,7 @@ export default function ClassGroupsPage() {
           {!selectedGroup ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <Users className="size-12 mb-3 opacity-30" />
-              <p className="text-sm">Chọn một nhóm để xem chi tiết</p>
+              <p className="text-sm">{t("selectGroup")}</p>
             </div>
           ) : (
             <>
@@ -350,7 +354,7 @@ export default function ClassGroupsPage() {
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                     <Input
-                      placeholder="Tìm học sinh để thêm vào nhóm..."
+                      placeholder={t("searchStudents")}
                       className="pl-9"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -383,7 +387,7 @@ export default function ClassGroupsPage() {
                   )}
                   {searchQuery && availableStudents.length === 0 && (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Không tìm thấy học sinh nào
+                      {t("noStudentFound")}
                     </p>
                   )}
                 </div>
@@ -393,16 +397,16 @@ export default function ClassGroupsPage() {
               <ScrollArea className="flex-1">
                 <div className="p-4">
                   <p className="text-sm font-medium text-muted-foreground mb-3">
-                    Thành viên ({selectedGroup.classGroupMembers.length})
+                    {t("members", {
+                      count: selectedGroup.classGroupMembers.length,
+                    })}
                   </p>
                   {selectedGroup.classGroupMembers.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-10 text-muted-foreground text-sm">
                       <Users className="size-8 mb-2 opacity-50" />
-                      <p>Chưa có thành viên nào</p>
+                      <p>{t("emptyMembers")}</p>
                       {isTeacherOrOwner && (
-                        <p className="text-xs mt-1">
-                          Sử dụng ô tìm kiếm phía trên để thêm học sinh
-                        </p>
+                        <p className="text-xs mt-1">{t("hintAddStudents")}</p>
                       )}
                     </div>
                   ) : (
@@ -451,16 +455,18 @@ export default function ClassGroupsPage() {
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Tạo nhóm mới</DialogTitle>
+            <DialogTitle>{t("createDialogTitle")}</DialogTitle>
             <DialogDescription>
-              Tạo một nhóm mới trong lớp học để quản lý học sinh.
+              {t("createDialogDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">
             <div>
-              <label className="text-sm font-medium mb-1 block">Tên nhóm</label>
+              <label className="text-sm font-medium mb-1 block">
+                {t("name")}
+              </label>
               <Input
-                placeholder="Nhập tên nhóm..."
+                placeholder={t("namePlaceholder")}
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateGroup()}
@@ -468,10 +474,10 @@ export default function ClassGroupsPage() {
             </div>
             <div>
               <label className="text-sm font-medium mb-1 block">
-                Mô tả (tuỳ chọn)
+                {t("description")}
               </label>
               <Input
-                placeholder="Nhập mô tả..."
+                placeholder={t("descriptionPlaceholder")}
                 value={groupDescription}
                 onChange={(e) => setGroupDescription(e.target.value)}
               />
@@ -482,14 +488,14 @@ export default function ClassGroupsPage() {
               variant="outline"
               onClick={() => setShowCreateDialog(false)}
             >
-              Huỷ
+              {t("cancel")}
             </Button>
             <Button
               onClick={handleCreateGroup}
               disabled={!groupName.trim() || isPending}
             >
               {isPending && <Loader2 className="size-4 animate-spin" />}
-              Tạo nhóm
+              {t("create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -499,16 +505,16 @@ export default function ClassGroupsPage() {
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Chỉnh sửa nhóm</DialogTitle>
-            <DialogDescription>
-              Thay đổi tên hoặc mô tả của nhóm.
-            </DialogDescription>
+            <DialogTitle>{t("editDialogTitle")}</DialogTitle>
+            <DialogDescription>{t("editDialogDescription")}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">
             <div>
-              <label className="text-sm font-medium mb-1 block">Tên nhóm</label>
+              <label className="text-sm font-medium mb-1 block">
+                {t("name")}
+              </label>
               <Input
-                placeholder="Nhập tên nhóm..."
+                placeholder={t("namePlaceholder")}
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleEditGroup()}
@@ -516,10 +522,10 @@ export default function ClassGroupsPage() {
             </div>
             <div>
               <label className="text-sm font-medium mb-1 block">
-                Mô tả (tuỳ chọn)
+                {t("description")}
               </label>
               <Input
-                placeholder="Nhập mô tả..."
+                placeholder={t("descriptionPlaceholder")}
                 value={groupDescription}
                 onChange={(e) => setGroupDescription(e.target.value)}
               />
@@ -527,14 +533,14 @@ export default function ClassGroupsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-              Huỷ
+              {t("cancel")}
             </Button>
             <Button
               onClick={handleEditGroup}
               disabled={!groupName.trim() || isPending}
             >
               {isPending && <Loader2 className="size-4 animate-spin" />}
-              Lưu
+              {t("save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -544,11 +550,11 @@ export default function ClassGroupsPage() {
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Xoá nhóm</DialogTitle>
+            <DialogTitle>{t("deleteDialogTitle")}</DialogTitle>
             <DialogDescription>
-              Bạn có chắc chắn muốn xoá nhóm &quot;{selectedGroup?.name}
-              &quot;? Tất cả thành viên sẽ bị xoá khỏi nhóm. Hành động này không
-              thể hoàn tác.
+              {t("deleteDialogDescription", {
+                name: selectedGroup?.name ?? "",
+              })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -556,7 +562,7 @@ export default function ClassGroupsPage() {
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
             >
-              Huỷ
+              {t("cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -564,7 +570,7 @@ export default function ClassGroupsPage() {
               disabled={isPending}
             >
               {isPending && <Loader2 className="size-4 animate-spin" />}
-              Xoá nhóm
+              {t("delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

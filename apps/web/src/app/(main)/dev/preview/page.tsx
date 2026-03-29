@@ -13,6 +13,7 @@ import {
 import { SchemaProcessor } from "@/components/widget/core/SchemaProcessor";
 import { TweakpaneBuilder } from "@/components/widget/core/TweakpaneBuilder";
 import { Submission, WidgetDefinition } from "@/components/widget/core/types";
+import { useLocale } from "next-intl";
 import {
   stopHostTtsPlayback,
   synthesizeWithHostTts,
@@ -23,7 +24,6 @@ import {
 // ============================================================
 async function validateWidget(url: string): Promise<{
   valid: boolean;
-  error?: string;
   errorType?: "cors" | "network" | "timeout" | "invalid";
 }> {
   return new Promise((resolve) => {
@@ -54,8 +54,6 @@ async function validateWidget(url: string): Promise<{
       cleanup();
       resolve({
         valid: false,
-        error:
-          "Widget không phản hồi trong 2 giây. Đây không phải widget hợp lệ của Widget Studio (thiếu event WIDGET_READY)",
         errorType: "timeout",
       });
     }, 2000);
@@ -65,7 +63,6 @@ async function validateWidget(url: string): Promise<{
       cleanup();
       resolve({
         valid: false,
-        error: "Không thể tải widget từ URL này",
         errorType: "network",
       });
     };
@@ -79,24 +76,47 @@ async function validateWidget(url: string): Promise<{
 }
 
 export default function WidgetPreviewPage() {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const [widgetUrl, setWidgetUrl] = useState<string>("");
   const [inputUrl, setInputUrl] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [validating, setValidating] = useState(false);
+
+  const getValidateErrorMessage = (
+    errorType?: "cors" | "network" | "timeout" | "invalid",
+  ) => {
+    if (errorType === "timeout") {
+      return isVi
+        ? "Widget không phản hồi trong 2 giây. Hãy kiểm tra xem widget có gửi sự kiện WIDGET_READY không."
+        : "Widget did not respond within 2 seconds. Please make sure it emits WIDGET_READY.";
+    }
+
+    if (errorType === "network") {
+      return isVi
+        ? "Không thể tải widget từ URL này"
+        : "Unable to load widget from this URL";
+    }
+
+    return isVi ? "Widget không hợp lệ" : "Invalid widget";
+  };
 
   const handleLoadWidget = async () => {
     setError("");
 
     // Validate URL format
     if (!inputUrl.trim()) {
-      setError("Vui lòng nhập URL của widget");
+      setError(
+        isVi ? "Vui lòng nhập URL của widget" : "Please enter widget URL",
+      );
       return;
     }
 
     try {
       new URL(inputUrl);
     } catch (err) {
-      setError("URL không hợp lệ.");
+      setError(isVi ? "URL không hợp lệ." : "Invalid URL.");
       return;
     }
 
@@ -106,7 +126,7 @@ export default function WidgetPreviewPage() {
     setValidating(false);
 
     if (!result.valid) {
-      setError(result.error || "Widget không hợp lệ");
+      setError(getValidateErrorMessage(result.errorType));
       return;
     }
 
@@ -140,10 +160,12 @@ export default function WidgetPreviewPage() {
             </div>
             <div>
               <h2 className="text-xl font-bold text-foreground">
-                Nhập URL Widget
+                {isVi ? "Nhập URL Widget" : "Enter Widget URL"}
               </h2>
               <p className="text-sm text-muted-foreground">
-                Paste link widget to start
+                {isVi
+                  ? "Dán link widget để bắt đầu"
+                  : "Paste widget link to start"}
               </p>
             </div>
           </div>
@@ -177,10 +199,12 @@ export default function WidgetPreviewPage() {
               {validating ? (
                 <>
                   <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                  Checking widget...
+                  {isVi ? "Đang kiểm tra widget..." : "Checking widget..."}
                 </>
-              ) : (
+              ) : isVi ? (
                 "Tải Widget"
+              ) : (
+                "Load Widget"
               )}
             </button>
           </div>
@@ -200,6 +224,9 @@ function WidgetHost({
   widgetUrl: string;
   onExit: () => void;
 }) {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const [widgetDef, setWidgetDef] = useState<WidgetDefinition | null>(null);
   const [config, setConfig] = useState<Record<string, any>>({});
   const [error, setError] = useState<string | null>(null);
@@ -324,7 +351,9 @@ function WidgetHost({
 
       if (event.data.type === "ERROR") {
         console.error("❌ Widget error:", event.data.payload);
-        setError(event.data.payload?.message || "Widget error");
+        setError(
+          event.data.payload?.message || (isVi ? "Lỗi widget" : "Widget error"),
+        );
       }
     };
 
@@ -386,7 +415,7 @@ function WidgetHost({
     try {
       const pane = new Pane({
         container: paneRef.current,
-        title: "Widget Parameters",
+        title: isVi ? "Tham số widget" : "Widget Parameters",
       });
 
       pane.registerPlugin(TweakpaneImagePlugin);
@@ -422,7 +451,13 @@ function WidgetHost({
       }, 100);
     } catch (err) {
       console.error("❌ Tweakpane setup error:", err);
-      setError(err instanceof Error ? err.message : "Setup failed");
+      setError(
+        err instanceof Error
+          ? err.message
+          : isVi
+            ? "Thiết lập thất bại"
+            : "Setup failed",
+      );
     }
 
     return () => {
@@ -431,7 +466,7 @@ function WidgetHost({
         paneInstanceRef.current = null;
       }
     };
-  }, [widgetDef, iframeReady]);
+  }, [widgetDef, iframeReady, isVi]);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -444,7 +479,7 @@ function WidgetHost({
                  bg-card shadow hover:text-foreground hover:shadow-md transition"
           >
             <ArrowLeft size={18} />
-            Back
+            {isVi ? "Quay lại" : "Back"}
           </button>
 
           {/* Widget Card */}
@@ -463,7 +498,9 @@ function WidgetHost({
         {loading && !error && (
           <div className="mt-6 flex items-center justify-center gap-3 text-muted-foreground">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-foreground" />
-            <span className="text-sm">Widget Loading...</span>
+            <span className="text-sm">
+              {isVi ? "Đang tải widget..." : "Widget Loading..."}
+            </span>
           </div>
         )}
 
@@ -471,7 +508,9 @@ function WidgetHost({
           <div className="mt-6 max-w-3xl mx-auto bg-red-50 border border-red-200 rounded-2xl p-4 flex gap-3">
             <AlertCircle className="text-red-500 mt-0.5" size={20} />
             <div>
-              <div className="font-semibold text-red-700">Error</div>
+              <div className="font-semibold text-red-700">
+                {isVi ? "Lỗi" : "Error"}
+              </div>
               <div className="text-sm text-red-600 mt-1">{error}</div>
             </div>
           </div>
@@ -482,7 +521,7 @@ function WidgetHost({
       <div className="w-80 bg-card border-l border-border flex flex-col">
         <div className="px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold text-foreground">
-            Config & Result
+            {isVi ? "Cấu hình và kết quả" : "Config & Result"}
           </h3>
         </div>
 
@@ -495,7 +534,7 @@ function WidgetHost({
         {submission && (
           <div className="border-t border-border p-4 space-y-3">
             <div className="text-xs font-semibold text-foreground uppercase tracking-wide">
-              📊 Result
+              {isVi ? "📊 Kết quả" : "📊 Result"}
             </div>
 
             <div
@@ -518,13 +557,19 @@ function WidgetHost({
                       : "text-red-700"
                   }`}
                 >
-                  {submission.evaluation.isCorrect ? "Đúng" : "Sai"}
+                  {submission.evaluation.isCorrect
+                    ? isVi
+                      ? "Đúng"
+                      : "Correct"
+                    : isVi
+                      ? "Sai"
+                      : "Incorrect"}
                 </span>
               </div>
 
               <div className="text-sm space-y-1">
                 <div className="text-foreground">
-                  Score:{" "}
+                  {isVi ? "Điểm" : "Score"}:{" "}
                   <strong>
                     {submission.evaluation.score}/
                     {submission.evaluation.maxScore}
@@ -539,14 +584,14 @@ function WidgetHost({
                 onClick={enterReviewMode}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition"
               >
-                🔍 Review your answers
+                {isVi ? "🔍 Xem lại đáp án" : "🔍 Review your answers"}
               </button>
             ) : (
               <button
                 onClick={exitReviewMode}
                 className="w-full bg-secondary hover:bg-secondary/80 text-secondary-foreground text-sm font-medium py-2 px-4 rounded-lg transition"
               >
-                ← Return to test mode
+                {isVi ? "← Quay lại chế độ làm bài" : "← Return to test mode"}
               </button>
             )}
           </div>

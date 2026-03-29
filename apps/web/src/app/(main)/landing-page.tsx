@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
+import { useLocale } from "next-intl";
 import {
   BookOpen,
   Code2,
@@ -84,6 +85,8 @@ const staggerItem = {
 // ── Components ─────────────────────────────────────────────
 
 function Nav() {
+  const isVi = useLocale() === "vi";
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -99,19 +102,19 @@ function Nav() {
             href="#features"
             className="transition-colors hover:text-foreground"
           >
-            Features
+            {isVi ? "Tính năng" : "Features"}
           </a>
           <a
             href="#how-it-works"
             className="transition-colors hover:text-foreground"
           >
-            How It Works
+            {isVi ? "Cách hoạt động" : "How It Works"}
           </a>
           <a
             href="#developers"
             className="transition-colors hover:text-foreground"
           >
-            Developers
+            {isVi ? "Nhà phát triển" : "Developers"}
           </a>
         </nav>
 
@@ -120,13 +123,13 @@ function Nav() {
             href="/signin"
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            Sign In
+            {isVi ? "Đăng nhập" : "Sign In"}
           </Link>
           <Link
             href="/signup"
             className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110"
           >
-            Get Started
+            {isVi ? "Bắt đầu" : "Get Started"}
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -136,6 +139,8 @@ function Nav() {
 }
 
 function Hero() {
+  const isVi = useLocale() === "vi";
+
   return (
     <section className="relative overflow-hidden">
       {/* Background grid + gradient */}
@@ -155,7 +160,7 @@ function Hero() {
         >
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
             <Sparkles className="h-3.5 w-3.5" />
-            Open Learning Platform
+            {isVi ? "Nền tảng học tập mở" : "Open Learning Platform"}
           </div>
         </motion.div>
 
@@ -166,11 +171,11 @@ function Hero() {
           transition={{ duration: 0.6, delay: 0.1 }}
           className="mx-auto max-w-4xl text-center text-4xl font-bold leading-[1.1] tracking-tight md:text-6xl lg:text-7xl"
         >
-          Build curricula.{" "}
+          {isVi ? "Thiết kế chương trình học." : "Build curricula."}{" "}
           <span className="bg-linear-to-r from-primary to-chart-5 bg-clip-text text-transparent">
-            Create assignments.
+            {isVi ? "Tạo bài tập." : "Create assignments."}
           </span>{" "}
-          Empower learning.
+          {isVi ? "Nâng tầm việc học." : "Empower learning."}
         </motion.h1>
 
         {/* Subtitle */}
@@ -180,9 +185,9 @@ function Hero() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="mx-auto mt-6 max-w-2xl text-center text-lg leading-relaxed text-muted-foreground md:text-xl"
         >
-          A platform where educators design structured courses, and developers
-          build infinitely diverse assignment types through a sandboxed Widget
-          SDK — like plugins for learning.
+          {isVi
+            ? "Nền tảng nơi giáo viên thiết kế khóa học có cấu trúc, và nhà phát triển xây dựng nhiều dạng bài tập tương tác qua Widget SDK chạy trong sandbox."
+            : "A platform where educators design structured courses, and developers build infinitely diverse assignment types through a sandboxed Widget SDK — like plugins for learning."}
         </motion.p>
 
         {/* CTAs */}
@@ -196,7 +201,7 @@ function Hero() {
             href="/signup"
             className="group inline-flex h-12 items-center gap-2 rounded-xl bg-primary px-6 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 hover:brightness-110"
           >
-            Get Started
+            {isVi ? "Bắt đầu" : "Get Started"}
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </motion.div>
@@ -245,26 +250,29 @@ function Hero() {
                     ))}
                     <div className="my-3 border-t border-border/40" />
                     <div className="px-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      Course Tree
+                      {isVi ? "Cấu trúc khóa học" : "Course Tree"}
                     </div>
-                    {["Module 1", "Lesson 1.1", "Lesson 1.2", "Homework"].map(
-                      (label, i) => (
+                    {[
+                      isVi ? "Mô-đun 1" : "Module 1",
+                      isVi ? "Bài học 1.1" : "Lesson 1.1",
+                      isVi ? "Bài học 1.2" : "Lesson 1.2",
+                      isVi ? "Bài tập" : "Homework",
+                    ].map((label, i) => (
+                      <div
+                        key={label}
+                        className="flex items-center gap-1.5 py-1"
+                        style={{ paddingLeft: `${12 + i * 8}px` }}
+                      >
                         <div
-                          key={label}
-                          className="flex items-center gap-1.5 py-1"
-                          style={{ paddingLeft: `${12 + i * 8}px` }}
-                        >
-                          <div
-                            className={`h-2 w-2 rounded-sm ${
-                              i === 3 ? "bg-chart-4" : "bg-muted-foreground/30"
-                            }`}
-                          />
-                          <span className="text-[10px] text-muted-foreground">
-                            {label}
-                          </span>
-                        </div>
-                      ),
-                    )}
+                          className={`h-2 w-2 rounded-sm ${
+                            i === 3 ? "bg-chart-4" : "bg-muted-foreground/30"
+                          }`}
+                        />
+                        <span className="text-[10px] text-muted-foreground">
+                          {label}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -307,42 +315,50 @@ function Hero() {
 }
 
 function Features() {
+  const isVi = useLocale() === "vi";
+
   const features = [
     {
       icon: BookOpen,
-      title: "Structured Curricula",
-      description:
-        "Organize courses into modules, lessons, and homework with an intuitive tree-based editor. Drag, drop, and nest to build your perfect syllabus.",
+      title: isVi ? "Chương trình học có cấu trúc" : "Structured Curricula",
+      description: isVi
+        ? "Tổ chức khóa học thành mô-đun, bài học và bài tập bằng trình soạn thảo dạng cây trực quan. Kéo-thả và lồng cấp dễ dàng."
+        : "Organize courses into modules, lessons, and homework with an intuitive tree-based editor. Drag, drop, and nest to build your perfect syllabus.",
     },
     {
       icon: Puzzle,
       title: "Widget SDK",
-      description:
-        "Build custom assignment types as standalone web apps. They run in sandboxed iframes — like Figma plugins or Chrome extensions for education.",
+      description: isVi
+        ? "Xây dựng loại bài tập tùy chỉnh dưới dạng web app độc lập. Chạy trong iframe sandbox, giống plugin cho học tập."
+        : "Build custom assignment types as standalone web apps. They run in sandboxed iframes — like Figma plugins or Chrome extensions for education.",
     },
     {
       icon: Shield,
-      title: "Multi-Level Permissions",
-      description:
-        "Organization owners, admins, teachers, and students — each with precisely scoped access. Hierarchical roles that just work.",
+      title: isVi ? "Phân quyền nhiều cấp" : "Multi-Level Permissions",
+      description: isVi
+        ? "Chủ tổ chức, quản trị viên, giáo viên và học sinh, mỗi vai trò có phạm vi truy cập rõ ràng theo hệ phân cấp."
+        : "Organization owners, admins, teachers, and students — each with precisely scoped access. Hierarchical roles that just work.",
     },
     {
       icon: Layers,
-      title: "Block-Based Editor",
-      description:
-        "Create beautiful lesson content with a Notion-like editor powered by BlockNote. Rich text, media, code blocks, and more.",
+      title: isVi ? "Trình soạn thảo dạng khối" : "Block-Based Editor",
+      description: isVi
+        ? "Tạo nội dung bài học đẹp mắt với editor kiểu Notion dùng BlockNote: văn bản, media, code block và hơn thế nữa."
+        : "Create beautiful lesson content with a Notion-like editor powered by BlockNote. Rich text, media, code blocks, and more.",
     },
     {
       icon: Smartphone,
       title: "Web & Mobile",
-      description:
-        "Full-featured Next.js dashboard for educators, plus a native Expo mobile app for students to learn on the go.",
+      description: isVi
+        ? "Dashboard Next.js đầy đủ cho giáo viên, cùng ứng dụng Expo native cho học sinh học mọi lúc mọi nơi."
+        : "Full-featured Next.js dashboard for educators, plus a native Expo mobile app for students to learn on the go.",
     },
     {
       icon: Users,
-      title: "Classes & Groups",
-      description:
-        "Create class instances from courses, manage students and teachers, organize study groups, and track assignment progress.",
+      title: isVi ? "Lớp học và nhóm" : "Classes & Groups",
+      description: isVi
+        ? "Tạo lớp từ khóa học, quản lý học sinh và giáo viên, tổ chức nhóm học và theo dõi tiến độ bài tập."
+        : "Create class instances from courses, manage students and teachers, organize study groups, and track assignment progress.",
     },
   ];
 
@@ -351,14 +367,17 @@ function Features() {
       <div className="mx-auto max-w-6xl px-6">
         <FadeIn className="text-center">
           <p className="text-sm font-semibold uppercase tracking-widest text-primary">
-            Features
+            {isVi ? "Tính năng" : "Features"}
           </p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-5xl">
-            Everything you need to teach and learn
+            {isVi
+              ? "Mọi thứ bạn cần để dạy và học"
+              : "Everything you need to teach and learn"}
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-            From curriculum design to interactive assignments — a complete
-            toolkit for modern education.
+            {isVi
+              ? "Từ thiết kế chương trình học đến bài tập tương tác, một bộ công cụ hoàn chỉnh cho giáo dục hiện đại."
+              : "From curriculum design to interactive assignments — a complete toolkit for modern education."}
           </p>
         </FadeIn>
 
@@ -385,21 +404,48 @@ function Features() {
 }
 
 function HowItWorks() {
+  const isVi = useLocale() === "vi";
+
   const steps = [
     {
       number: "01",
-      title: "Design Your Curriculum",
-      description:
-        "Use the tree-based course editor to organize content into modules, lessons, and homework assignments. Write rich content with the BlockNote editor.",
+      title: isVi ? "Thiết kế chương trình học" : "Design Your Curriculum",
+      description: isVi
+        ? "Dùng trình soạn thảo khóa học dạng cây để sắp xếp nội dung thành mô-đun, bài học và bài tập. Soạn nội dung phong phú với BlockNote."
+        : "Use the tree-based course editor to organize content into modules, lessons, and homework assignments. Write rich content with the BlockNote editor.",
       visual: (
         <div className="space-y-2.5">
           {[
-            { label: "Algebra Fundamentals", indent: 0, type: "course" },
-            { label: "Linear Equations", indent: 1, type: "module" },
-            { label: "Introduction", indent: 2, type: "lesson" },
-            { label: "Practice Problems", indent: 2, type: "homework" },
-            { label: "Quadratic Equations", indent: 1, type: "module" },
-            { label: "The Quadratic Formula", indent: 2, type: "lesson" },
+            {
+              label: isVi ? "Nền tảng đại số" : "Algebra Fundamentals",
+              indent: 0,
+              type: "course",
+            },
+            {
+              label: isVi ? "Phương trình bậc nhất" : "Linear Equations",
+              indent: 1,
+              type: "module",
+            },
+            {
+              label: isVi ? "Giới thiệu" : "Introduction",
+              indent: 2,
+              type: "lesson",
+            },
+            {
+              label: isVi ? "Bài tập thực hành" : "Practice Problems",
+              indent: 2,
+              type: "homework",
+            },
+            {
+              label: isVi ? "Phương trình bậc hai" : "Quadratic Equations",
+              indent: 1,
+              type: "module",
+            },
+            {
+              label: isVi ? "Công thức nghiệm" : "The Quadratic Formula",
+              indent: 2,
+              type: "lesson",
+            },
           ].map((item, i) => (
             <div
               key={i}
@@ -429,15 +475,16 @@ function HowItWorks() {
     },
     {
       number: "02",
-      title: "Create or Pick Widgets",
-      description:
-        "Browse the Widget Marketplace for interactive assignments, or build your own with the SDK. Quizzes, simulations, coding exercises — anything you can imagine.",
+      title: isVi ? "Tạo hoặc chọn Widget" : "Create or Pick Widgets",
+      description: isVi
+        ? "Duyệt Chợ Widget để chọn bài tập tương tác hoặc tự xây bằng SDK. Trắc nghiệm, mô phỏng, bài lập trình - mọi thứ bạn có thể nghĩ tới."
+        : "Browse the Widget Marketplace for interactive assignments, or build your own with the SDK. Quizzes, simulations, coding exercises — anything you can imagine.",
       visual: (
         <div className="grid grid-cols-2 gap-2.5">
           {[
-            { name: "Graph Plotter", icon: "📈" },
-            { name: "Quiz Builder", icon: "✅" },
-            { name: "Code Runner", icon: "💻" },
+            { name: isVi ? "Vẽ đồ thị" : "Graph Plotter", icon: "📈" },
+            { name: isVi ? "Tạo trắc nghiệm" : "Quiz Builder", icon: "✅" },
+            { name: isVi ? "Chạy mã" : "Code Runner", icon: "💻" },
             { name: "Geometry", icon: "📐" },
           ].map((w) => (
             <div
@@ -453,14 +500,15 @@ function HowItWorks() {
     },
     {
       number: "03",
-      title: "Teach Your Classes",
-      description:
-        "Create class instances from your courses. Add teachers and students, organize groups, and assign homework.",
+      title: isVi ? "Tổ chức lớp học" : "Teach Your Classes",
+      description: isVi
+        ? "Tạo lớp từ khóa học của bạn. Thêm giáo viên và học sinh, tổ chức nhóm và giao bài tập."
+        : "Create class instances from your courses. Add teachers and students, organize groups, and assign homework.",
       visual: (
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
-              Submissions
+              {isVi ? "Bài nộp" : "Submissions"}
             </span>
             <span className="text-xs font-semibold text-primary">24/30</span>
           </div>
@@ -488,10 +536,12 @@ function HowItWorks() {
       <div className="relative mx-auto max-w-6xl px-6">
         <FadeIn className="text-center">
           <p className="text-sm font-semibold uppercase tracking-widest text-primary">
-            How It Works
+            {isVi ? "Cách hoạt động" : "How It Works"}
           </p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-5xl">
-            From course design to classroom
+            {isVi
+              ? "Từ thiết kế khóa học đến lớp học"
+              : "From course design to classroom"}
           </h2>
         </FadeIn>
 
@@ -530,6 +580,8 @@ function HowItWorks() {
 }
 
 function DeveloperSection() {
+  const isVi = useLocale() === "vi";
+
   return (
     <section id="developers" className="relative py-24 md:py-32">
       <div className="mx-auto max-w-6xl px-6">
@@ -539,32 +591,40 @@ function DeveloperSection() {
             <FadeIn className="p-8 md:p-12 lg:p-16">
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                 <Code2 className="h-3 w-3" />
-                For Developers
+                {isVi ? "Dành cho nhà phát triển" : "For Developers"}
               </div>
 
               <h2 className="mt-6 text-3xl font-bold tracking-tight md:text-4xl">
-                Build once, teach everywhere
+                {isVi
+                  ? "Xây một lần, dạy mọi nơi"
+                  : "Build once, teach everywhere"}
               </h2>
 
               <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-                Create interactive assignment widgets as standalone web apps.
-                Publish them to the Marketplace, and every teacher on the
-                platform can use them — instantly.
+                {isVi
+                  ? "Tạo widget bài tập tương tác dưới dạng web app độc lập. Đăng lên Marketplace để mọi giáo viên trên nền tảng dùng ngay."
+                  : "Create interactive assignment widgets as standalone web apps. Publish them to the Marketplace, and every teacher on the platform can use them — instantly."}
               </p>
 
               <div className="mt-8 space-y-4">
                 {[
                   {
                     icon: Globe,
-                    text: "Widgets run in sandboxed iframes — any web technology works",
+                    text: isVi
+                      ? "Widget chạy trong iframe sandbox - dùng được mọi công nghệ web"
+                      : "Widgets run in sandboxed iframes — any web technology works",
                   },
                   {
                     icon: Blocks,
-                    text: "Simple postMessage API: READY → PARAMS → SUBMIT",
+                    text: isVi
+                      ? "API postMessage đơn giản: READY → PARAMS → SUBMIT"
+                      : "Simple postMessage API: READY → PARAMS → SUBMIT",
                   },
                   {
                     icon: GraduationCap,
-                    text: "Auto-generated config UI via Tweakpane schema",
+                    text: isVi
+                      ? "UI cấu hình tự sinh từ schema Tweakpane"
+                      : "Auto-generated config UI via Tweakpane schema",
                   },
                 ].map((item) => (
                   <div key={item.text} className="flex items-start gap-3">
@@ -586,7 +646,7 @@ function DeveloperSection() {
                   className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110"
                 >
                   <Github className="h-4 w-4" />
-                  Widget SDK
+                  {isVi ? "Bộ SDK Widget" : "Widget SDK"}
                 </a>
                 <a
                   href="https://github.com/moly-edu/widget-template"
@@ -595,7 +655,7 @@ function DeveloperSection() {
                   className="inline-flex h-11 items-center gap-2 rounded-xl border border-border bg-background px-5 text-sm font-medium transition-all hover:bg-accent"
                 >
                   <Code2 className="h-4 w-4" />
-                  Starter Template
+                  {isVi ? "Mẫu khởi đầu" : "Starter Template"}
                 </a>
               </div>
             </FadeIn>
@@ -695,35 +755,59 @@ function V({ children }: { children: React.ReactNode }) {
 }
 
 function Roles() {
+  const isVi = useLocale() === "vi";
+
   const roles = [
     {
       icon: GraduationCap,
-      title: "For Educators",
+      title: isVi ? "Dành cho giáo viên" : "For Educators",
       points: [
-        "Design tree-structured curricula with a visual editor",
-        "Write rich lesson content with BlockNote",
-        "Attach interactive widgets as homework",
-        "Track student progress and grade submissions",
+        isVi
+          ? "Thiết kế chương trình học dạng cây bằng editor trực quan"
+          : "Design tree-structured curricula with a visual editor",
+        isVi
+          ? "Soạn nội dung bài học phong phú với BlockNote"
+          : "Write rich lesson content with BlockNote",
+        isVi
+          ? "Gắn widget tương tác cho bài tập"
+          : "Attach interactive widgets as homework",
+        isVi
+          ? "Theo dõi tiến độ và chấm bài nộp"
+          : "Track student progress and grade submissions",
       ],
     },
     {
       icon: Users,
-      title: "For Students",
+      title: isVi ? "Dành cho học sinh" : "For Students",
       points: [
-        "Join classes and access course materials",
-        "Complete interactive assignments on web or mobile",
-        "View scores and review submitted work",
-        "Learn on the go with the Expo mobile app",
+        isVi
+          ? "Tham gia lớp và truy cập tài liệu khóa học"
+          : "Join classes and access course materials",
+        isVi
+          ? "Làm bài tập tương tác trên web hoặc mobile"
+          : "Complete interactive assignments on web or mobile",
+        isVi
+          ? "Xem điểm và xem lại bài đã nộp"
+          : "View scores and review submitted work",
+        isVi
+          ? "Học mọi lúc với ứng dụng Expo mobile"
+          : "Learn on the go with the Expo mobile app",
       ],
     },
     {
       icon: Code2,
-      title: "For Developers",
+      title: isVi ? "Dành cho nhà phát triển" : "For Developers",
       points: [
-        "Build assignment widgets with any web framework",
-        "Link GitHub repos for automated CI builds",
-        "Publish to the Widget Marketplace",
-        "Reach every teacher and student on the platform",
+        isVi
+          ? "Xây widget bài tập với bất kỳ web framework nào"
+          : "Build assignment widgets with any web framework",
+        isVi
+          ? "Kết nối GitHub để CI build tự động"
+          : "Link GitHub repos for automated CI builds",
+        isVi ? "Đăng lên Chợ Widget" : "Publish to the Widget Marketplace",
+        isVi
+          ? "Tiếp cận mọi giáo viên và học sinh trên nền tảng"
+          : "Reach every teacher and student on the platform",
       ],
     },
   ];
@@ -733,13 +817,17 @@ function Roles() {
       <div className="mx-auto max-w-6xl px-6">
         <FadeIn className="text-center">
           <p className="text-sm font-semibold uppercase tracking-widest text-primary">
-            For Everyone
+            {isVi ? "Dành cho mọi người" : "For Everyone"}
           </p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-5xl">
-            One platform, three perspectives
+            {isVi
+              ? "Một nền tảng, ba góc nhìn"
+              : "One platform, three perspectives"}
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-            Whether you teach, learn, or build — Moly has tools made for you.
+            {isVi
+              ? "Dù bạn dạy học, học tập hay phát triển sản phẩm, Moly đều có công cụ dành cho bạn."
+              : "Whether you teach, learn, or build — Moly has tools made for you."}
           </p>
         </FadeIn>
 

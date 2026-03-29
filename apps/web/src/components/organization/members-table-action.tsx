@@ -6,8 +6,10 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
 import { authClient } from "@/lib/auth-client";
+import { useTranslations } from "next-intl";
 
 export default function MembersTableAction({ memberId }: { memberId: string }) {
+  const t = useTranslations("organization.memberAction");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -22,7 +24,7 @@ export default function MembersTableAction({ memberId }: { memberId: string }) {
       return;
     }
     setIsLoading(false);
-    toast.success("Successfully removed member");
+    toast.success(t("removeSuccess"));
     router.refresh();
   };
 
@@ -33,7 +35,7 @@ export default function MembersTableAction({ memberId }: { memberId: string }) {
       size="sm"
       variant="destructive"
     >
-      {isLoading ? <Loader2 className="size-4 animate-spin" /> : "Remove"}
+      {isLoading ? <Loader2 className="size-4 animate-spin" /> : t("remove")}
     </Button>
   );
 }

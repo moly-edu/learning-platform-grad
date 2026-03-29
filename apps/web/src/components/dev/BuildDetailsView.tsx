@@ -3,6 +3,7 @@
 import { parseAnsiToStyledSegments } from "@/lib/github/ansi-parser";
 import { useEffect, useState } from "react";
 import WidgetPreviewDialog from "../widget/WidgetPreviewDialog";
+import { useLocale } from "next-intl";
 
 interface Widget {
   id: string;
@@ -46,6 +47,9 @@ interface Props {
 }
 
 export default function BuildDetailsView({ widget, build, widgetHtml }: Props) {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const [steps, setSteps] = useState<ParsedStep[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -62,7 +66,9 @@ export default function BuildDetailsView({ widget, build, widgetHtml }: Props) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch logs");
+        throw new Error(
+          data.error || (isVi ? "Không thể tải log" : "Failed to fetch logs"),
+        );
       }
 
       setSteps(data.steps);
@@ -124,7 +130,7 @@ export default function BuildDetailsView({ widget, build, widgetHtml }: Props) {
                 href={`/dev/deploy/${widget.id}`}
                 className="text-sm text-blue-600 hover:text-blue-800"
               >
-                ← Back to {widget.name}
+                ← {isVi ? "Quay lại" : "Back to"} {widget.name}
               </a>
               <span className="text-muted-foreground">|</span>
               <h1 className="text-lg font-semibold text-foreground">
@@ -140,31 +146,43 @@ export default function BuildDetailsView({ widget, build, widgetHtml }: Props) {
         {/* Build Summary */}
         <div className="bg-card rounded-lg shadow p-6 mb-6">
           <h2 className="text-xl font-bold text-foreground mb-4">
-            Build Information
+            {isVi ? "Thông tin build" : "Build Information"}
           </h2>
           <div className="grid grid-cols-4 gap-4 text-sm">
             <div>
-              <span className="text-muted-foreground">Version</span>
+              <span className="text-muted-foreground">
+                {isVi ? "Phiên bản" : "Version"}
+              </span>
               <p className="font-mono text-lg font-semibold text-foreground">
                 v{build.version}
               </p>
             </div>
             <div>
-              <span className="text-muted-foreground">Status</span>
+              <span className="text-muted-foreground">
+                {isVi ? "Trạng thái" : "Status"}
+              </span>
               <p className="font-medium text-foreground">{build.status}</p>
             </div>
             <div>
-              <span className="text-muted-foreground">Duration</span>
+              <span className="text-muted-foreground">
+                {isVi ? "Thời lượng" : "Duration"}
+              </span>
               <p className="font-medium text-foreground">
                 {build.duration ? `${build.duration}s` : "-"}
               </p>
             </div>
             <div>
-              <span className="text-muted-foreground">Completed</span>
+              <span className="text-muted-foreground">
+                {isVi ? "Hoàn tất" : "Completed"}
+              </span>
               <p className="font-medium text-foreground">
                 {build.completedAt
-                  ? new Date(build.completedAt).toLocaleDateString("vi-VN")
-                  : "In progress"}
+                  ? new Date(build.completedAt).toLocaleDateString(
+                      isVi ? "vi-VN" : "en-US",
+                    )
+                  : isVi
+                    ? "Đang xử lý"
+                    : "In progress"}
               </p>
             </div>
           </div>
@@ -175,20 +193,22 @@ export default function BuildDetailsView({ widget, build, widgetHtml }: Props) {
         {/* Build Steps */}
         <div className="bg-card rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-foreground">Build Steps</h2>
+            <h2 className="text-xl font-bold text-foreground">
+              {isVi ? "Các bước build" : "Build Steps"}
+            </h2>
             <div className="flex gap-2">
               <button
                 onClick={expandAll}
                 className="text-sm text-blue-600 hover:text-blue-800"
               >
-                Expand All
+                {isVi ? "Mở tất cả" : "Expand All"}
               </button>
               <span className="text-muted-foreground">|</span>
               <button
                 onClick={collapseAll}
                 className="text-sm text-blue-600 hover:text-blue-800"
               >
-                Collapse All
+                {isVi ? "Thu gọn tất cả" : "Collapse All"}
               </button>
             </div>
           </div>
@@ -197,7 +217,7 @@ export default function BuildDetailsView({ widget, build, widgetHtml }: Props) {
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               <span className="ml-3 text-muted-foreground">
-                Loading logs...
+                {isVi ? "Đang tải log..." : "Loading logs..."}
               </span>
             </div>
           ) : error ? (
@@ -206,7 +226,7 @@ export default function BuildDetailsView({ widget, build, widgetHtml }: Props) {
             </div>
           ) : steps.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No steps found
+              {isVi ? "Không có bước nào" : "No steps found"}
             </div>
           ) : (
             <div className="space-y-2">
@@ -243,6 +263,9 @@ function StepView({
   onToggle: () => void;
   onToggleGroup: (title: string) => void;
 }) {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const conclusionIcon =
     {
       success: "✅",
@@ -283,7 +306,7 @@ function StepView({
         <div className="border-t border-border bg-gray-900 p-4">
           {step.logs.length === 0 ? (
             <p className="text-muted-foreground text-sm">
-              No logs for this step
+              {isVi ? "Không có log cho bước này" : "No logs for this step"}
             </p>
           ) : (
             <div className="space-y-2">
@@ -370,6 +393,9 @@ function LogSectionView({
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const colors = {
     pending: "bg-muted text-muted-foreground",
     building: "bg-blue-100 text-blue-700",
@@ -377,11 +403,18 @@ function StatusBadge({ status }: { status: string }) {
     failed: "bg-red-100 text-red-700",
   };
 
+  const labels = {
+    pending: isVi ? "ĐANG CHỜ" : "PENDING",
+    building: isVi ? "ĐANG BUILD" : "BUILDING",
+    success: isVi ? "THÀNH CÔNG" : "SUCCESS",
+    failed: isVi ? "THẤT BẠI" : "FAILED",
+  };
+
   return (
     <span
       className={`px-3 py-1 rounded-full text-sm font-medium ${colors[status as keyof typeof colors] || colors.pending}`}
     >
-      {status.toUpperCase()}
+      {labels[status as keyof typeof labels] || labels.pending}
     </span>
   );
 }

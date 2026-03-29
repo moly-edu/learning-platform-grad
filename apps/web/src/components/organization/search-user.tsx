@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { set, z } from "zod";
+import { z } from "zod";
 import { Search, UserPlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,14 +24,14 @@ import {
 import { api } from "@/lib/api-client";
 import { type Role } from "@repo/db";
 import { useRouter } from "next/navigation";
-
-const emailSchema = z.string().email("Email không đúng định dạng");
+import { useTranslations } from "next-intl";
 
 export default function SearchUser({
   organizationId,
 }: {
   organizationId: string;
 }) {
+  const t = useTranslations("organization.searchUser");
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("member");
@@ -51,7 +51,7 @@ export default function SearchUser({
       return;
     }
 
-    const result = emailSchema.safeParse(value);
+    const result = z.string().email(t("invalidEmail")).safeParse(value);
     if (!result.success) {
       setError(result.error.errors[0].message);
     } else {
@@ -69,10 +69,10 @@ export default function SearchUser({
         setFoundUser(user);
 
         if (!user) {
-          toast.error("Not found any user with this email");
+          toast.error(t("notFound"));
         }
       } catch (err) {
-        toast.error("Something went wrong");
+        toast.error(t("somethingWentWrong"));
       }
     });
   };
@@ -88,26 +88,26 @@ export default function SearchUser({
         throw new Error((res.body as any).error || "Failed to add member");
       }
       router.refresh();
-      toast.success(`Đã thêm thành công với quyền ${role}`);
+      toast.success(t("addSuccess", { role }));
     } catch (error: any) {
       setIsLoading(false);
-      toast.error(error.message || "Đã có lỗi xảy ra khi thêm thành viên");
+      toast.error(error.message || t("addError"));
     }
   };
 
   return (
     <Card className="w-full mx-auto">
       <CardHeader>
-        <CardTitle>Add member to your organization</CardTitle>
+        <CardTitle>{t("title")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <Field data-invalid={!!error}>
-          <FieldLabel>Email search</FieldLabel>
+          <FieldLabel>{t("emailSearch")}</FieldLabel>
           <div className="flex gap-2">
             <Input
               value={email}
               onChange={handleChange}
-              placeholder="your@gmail.com"
+              placeholder={t("emailPlaceholder")}
             />
             <Button
               type="button"
@@ -141,11 +141,11 @@ export default function SearchUser({
               onValueChange={(value) => setRole(value as Role)}
             >
               <SelectTrigger className="w-32.5">
-                <SelectValue placeholder="Chọn vai trò" />
+                <SelectValue placeholder={t("rolePlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="admin">{t("admin")}</SelectItem>
+                <SelectItem value="member">{t("member")}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -159,7 +159,7 @@ export default function SearchUser({
                 <Loader2 className="animate-spin" />
               ) : (
                 <>
-                  <UserPlus className="mr-2 size-4" /> Add user
+                  <UserPlus className="mr-2 size-4" /> {t("addUser")}
                 </>
               )}
             </Button>

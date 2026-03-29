@@ -15,8 +15,12 @@ import { useCourseStructure } from "@/components/providers/course-structure-prov
 import TeacherCreateAssignment, {
   TeacherCreateAssignmentRef,
 } from "./TeacherCreateAssignment";
+import { useLocale } from "next-intl";
 
 export default function TeacherAssignmentDialog({ hwId }: { hwId: string }) {
+  const locale = useLocale();
+  const isVi = locale === "vi";
+
   const {
     handleAddClassLessonNode: handleAddClassAddon,
     selectedStudentId,
@@ -108,7 +112,7 @@ export default function TeacherAssignmentDialog({ hwId }: { hwId: string }) {
   // 3️⃣ Handle Save
   const handleSaveConfig = async () => {
     if (!widgetPreviewRef.current) {
-      alert("Widget chưa sẵn sàng");
+      alert(isVi ? "Widget chưa sẵn sàng" : "Widget is not ready");
       return;
     }
 
@@ -117,7 +121,7 @@ export default function TeacherAssignmentDialog({ hwId }: { hwId: string }) {
       await widgetPreviewRef.current!.getCurrentConfigWithUploadedImages();
 
     if (!currentConfig || Object.keys(currentConfig).length === 0) {
-      alert("Không có config để lưu");
+      alert(isVi ? "Không có cấu hình để lưu" : "No config to save");
       return;
     }
 
@@ -139,7 +143,7 @@ export default function TeacherAssignmentDialog({ hwId }: { hwId: string }) {
       }
     } catch (err) {
       console.error(err);
-      alert("Lưu thất bại");
+      alert(isVi ? "Lưu thất bại" : "Save failed");
     } finally {
       setSaving(false);
     }
@@ -158,14 +162,22 @@ export default function TeacherAssignmentDialog({ hwId }: { hwId: string }) {
       <DialogTrigger asChild>
         <Button className="w-full px-2! py-1! bg-orange-100 text-orange-700 text-xs rounded hover:bg-orange-200">
           <Plus className="w-2 h-2" />
-          <span className="hidden sm:inline">Add Assignment</span>
+          <span className="hidden sm:inline">
+            {isVi ? "Thêm bài tập" : "Add Assignment"}
+          </span>
         </Button>
       </DialogTrigger>
 
       <DialogContent className="w-[90vw]! h-[95vh]! max-w-none! p-1! flex! flex-col! min-h-0!">
         <DialogHeader className="px-6 py-4 border-b shrink-0 flex flex-row items-center justify-between">
           <DialogTitle>
-            {assignmentId ? "Giao bài tập" : "Set config for Widget"}
+            {assignmentId
+              ? isVi
+                ? "Giao bài tập"
+                : "Assign Homework"
+              : isVi
+                ? "Thiết lập cấu hình widget"
+                : "Set config for Widget"}
           </DialogTitle>
 
           {widgetId && widgetHtmlCache[widgetId] && !assignmentId && (
@@ -177,12 +189,12 @@ export default function TeacherAssignmentDialog({ hwId }: { hwId: string }) {
               {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
+                  {isVi ? "Đang lưu..." : "Saving..."}
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  Save
+                  {isVi ? "Lưu" : "Save"}
                 </>
               )}
             </Button>
@@ -193,7 +205,9 @@ export default function TeacherAssignmentDialog({ hwId }: { hwId: string }) {
         {loading ? (
           <div className="flex justify-center pt-15 w-full h-full gap-3">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-            <span className="text-lg">Loading...</span>
+            <span className="text-lg">
+              {isVi ? "Đang tải..." : "Loading..."}
+            </span>
           </div>
         ) : widgetId && widgetHtmlCache[widgetId] ? (
           <div className="flex-1 overflow-auto min-h-0">
@@ -211,7 +225,7 @@ export default function TeacherAssignmentDialog({ hwId }: { hwId: string }) {
           </div>
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground">
-            No preview available
+            {isVi ? "Không có bản xem trước" : "No preview available"}
           </div>
         )}
       </DialogContent>

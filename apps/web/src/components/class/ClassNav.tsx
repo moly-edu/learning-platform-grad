@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 export default function ClassNav() {
+  const t = useTranslations("classes.nav");
   const pathname = usePathname();
   const params = useParams();
 
@@ -15,10 +17,9 @@ export default function ClassNav() {
 
   const basePath = `/dashboard/class/${slug}`;
 
-  // Tối ưu mảng tabs để code ngắn gọn hơn
   const tabs = [
-    { name: "Members", href: `${basePath}/members` },
-    { name: "Groups", href: `${basePath}/groups` },
+    { name: t("members"), href: `${basePath}/members` },
+    { name: t("groups"), href: `${basePath}/groups` },
   ];
 
   return (

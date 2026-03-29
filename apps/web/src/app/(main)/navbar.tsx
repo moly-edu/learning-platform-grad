@@ -1,5 +1,4 @@
 // import { ModeToggle } from "@/components/mode-toggle";
-import Image from "next/image";
 import Link from "next/link";
 // import session from "../get-session";
 import { UserDropdown } from "@/components/user-dropdown";
@@ -7,6 +6,7 @@ import { auth } from "@/lib/auth-server";
 import { headers } from "next/headers";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Sparkles } from "lucide-react";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 export async function Navbar() {
   const session = await auth.api.getSession({
@@ -29,6 +29,7 @@ export async function Navbar() {
           Moly
         </Link>
         <div className="flex items-center gap-2">
+          <LanguageSwitcher />
           <ModeToggle />
           <UserDropdown user={user} />
         </div>

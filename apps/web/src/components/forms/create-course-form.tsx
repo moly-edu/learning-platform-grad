@@ -17,21 +17,20 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api-client";
+import { useTranslations } from "next-intl";
 
-const formSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters").max(50),
-  slug: z
-    .string()
-    .min(2, "Slug must be at least 2 characters")
-    .max(50)
-    .regex(
-      /^[a-z0-9-]+$/,
-      "Slug only contains lowercase letters, numbers, and hyphens",
-    ),
-  description: z.string().max(200).optional(),
-});
+const formSchema = (t: (key: string) => string) =>
+  z.object({
+    name: z.string().min(2, t("nameMin")).max(50),
+    slug: z
+      .string()
+      .min(2, t("slugMin"))
+      .max(50)
+      .regex(/^[a-z0-9-]+$/, t("slugFormat")),
+    description: z.string().max(200).optional(),
+  });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<ReturnType<typeof formSchema>>;
 
 type CreateCourseFormProps = {
   organizationId?: string;
@@ -42,12 +41,13 @@ export function CreateCourseForm({
   organizationId,
   onSuccess,
 }: CreateCourseFormProps) {
+  const t = useTranslations("forms.createCourse");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const form = useForm<FormValues>({
     mode: "onChange",
-    resolver: standardSchemaResolver(formSchema),
+    resolver: standardSchemaResolver(formSchema(t)),
     defaultValues: {
       name: "",
       slug: "",
@@ -73,7 +73,7 @@ export function CreateCourseForm({
     setSubmitError(null);
     try {
       if (!organizationId) {
-        const message = "Organization not found";
+        const message = t("orgNotFound");
         setSubmitError(message);
         toast.error(message);
         return;
@@ -88,16 +88,16 @@ export function CreateCourseForm({
         },
       });
       if (res.status !== 201) {
-        throw new Error((res.body as any).error || "Failed to create course");
+        throw new Error((res.body as any).error || t("createError"));
       }
-      toast.success("Course created successfully");
+      toast.success(t("createSuccess"));
       form.reset();
       onSuccess?.();
       await queryClient.invalidateQueries({
         queryKey: ["courses", organizationId],
       });
     } catch (err: any) {
-      const errorMessage = err.message || "An unexpected error occurred";
+      const errorMessage = err.message || t("unexpectedError");
       setSubmitError(errorMessage);
       toast.error(errorMessage);
     }
@@ -114,7 +114,7 @@ export function CreateCourseForm({
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="name">Course Name</FieldLabel>
+                  <FieldLabel htmlFor="name">{t("name")}</FieldLabel>
                   <Input {...field} id="name" disabled={isLoading} />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -129,11 +129,11 @@ export function CreateCourseForm({
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="slug">Slug</FieldLabel>
+                  <FieldLabel htmlFor="slug">{t("slug")}</FieldLabel>
                   <Input
                     {...field}
                     id="slug"
-                    placeholder="course-slug"
+                    placeholder={t("slugPlaceholder")}
                     disabled={isLoading}
                   />
                   {fieldState.invalid && (
@@ -149,7 +149,9 @@ export function CreateCourseForm({
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="description">Description</FieldLabel>
+                  <FieldLabel htmlFor="description">
+                    {t("description")}
+                  </FieldLabel>
                   <Input {...field} id="description" disabled={isLoading} />
                 </Field>
               )}
@@ -169,7 +171,7 @@ export function CreateCourseForm({
             {isLoading ? (
               <Loader className="size-4 animate-spin" />
             ) : (
-              "Create Course"
+              t("submit")
             )}
           </Button>
         </Field>
