@@ -11,6 +11,7 @@ import {
 import { useRouter } from "expo-router";
 import { API_BASE_URL } from "@/lib/config/api";
 import { authClient } from "@/lib/auth-client";
+import { useTranslation } from "react-i18next";
 
 export interface Assignment {
   id: string;
@@ -39,6 +40,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
   classId,
   onClose,
 }) => {
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -49,7 +51,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
       const { data: session } = await authClient.getSession();
 
       if (!session?.session.token) {
-        throw new Error("No session token available");
+        throw new Error(t("assignmentModal.noSessionToken"));
       }
       setLoading(true);
       setError(null);
@@ -66,22 +68,24 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
       );
 
       if (!response.ok) {
-        throw new Error("Failed to fetch assignments");
+        throw new Error(t("assignmentModal.fetchFailed"));
       }
 
       const result = await response.json();
       if (result.success && Array.isArray(result.data)) {
         setAssignments(result.data);
       } else {
-        setError(result.error || "Failed to load assignments");
+        setError(result.error || t("assignmentModal.loadFailed"));
       }
     } catch (err) {
       console.error("Error fetching assignments:", err);
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(
+        err instanceof Error ? err.message : t("assignmentModal.unknownError"),
+      );
     } finally {
       setLoading(false);
     }
-  }, [classId, homeworkNodeId]);
+  }, [classId, homeworkNodeId, t]);
 
   useEffect(() => {
     if (visible) {
@@ -104,7 +108,9 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
     const isPending = !item.hasSubmitted;
     const statusColor = isPending ? "#fef3c7" : "#dcfce7";
     const borderColor = isPending ? "#fcd34d" : "#86efac";
-    const statusText = isPending ? "Pending" : "Completed";
+    const statusText = isPending
+      ? t("assignmentModal.statusPending")
+      : t("assignmentModal.statusCompleted");
     const statusBgColor = isPending ? "#fbbf24" : "#22c55e";
 
     return (
@@ -143,7 +149,9 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
         {item.hasSubmitted && item.evaluation && (
           <View style={styles.evaluationContainer}>
             <View style={styles.evaluationRow}>
-              <Text style={styles.evaluationLabel}>Result:</Text>
+              <Text style={styles.evaluationLabel}>
+                {t("assignmentModal.result")}
+              </Text>
               <Text
                 style={[
                   styles.evaluationValue,
@@ -152,11 +160,15 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                   },
                 ]}
               >
-                {item.evaluation.isCorrect ? "✓ Correct" : "✗ Incorrect"}
+                {item.evaluation.isCorrect
+                  ? t("assignmentModal.correct")
+                  : t("assignmentModal.incorrect")}
               </Text>
             </View>
             <View style={styles.evaluationRow}>
-              <Text style={styles.evaluationLabel}>Score:</Text>
+              <Text style={styles.evaluationLabel}>
+                {t("assignmentModal.score")}
+              </Text>
               <Text style={styles.evaluationValue}>
                 {item.evaluation.score}/{item.evaluation.maxScore}
               </Text>
@@ -167,7 +179,11 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
         {/* Submitted date */}
         {item.hasSubmitted && item.submittedAt && (
           <Text style={styles.submittedDate}>
-            Submitted: {new Date(item.submittedAt).toLocaleDateString()}
+            {t("assignmentModal.submittedAt", {
+              date: new Date(item.submittedAt).toLocaleDateString(
+                i18n.language.startsWith("vi") ? "vi-VN" : "en-US",
+              ),
+            })}
           </Text>
         )}
       </Pressable>
@@ -185,7 +201,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
         <View style={styles.modalContent}>
           {/* Header */}
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Assignments</Text>
+            <Text style={styles.modalTitle}>{t("assignmentModal.title")}</Text>
             <Pressable style={styles.closeButton} onPress={onClose}>
               <Text style={styles.closeButtonText}>✕</Text>
             </Pressable>
@@ -195,7 +211,9 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
           {loading ? (
             <View style={styles.centerContainer}>
               <ActivityIndicator size="large" color="#3b82f6" />
-              <Text style={styles.loadingText}>Loading assignments...</Text>
+              <Text style={styles.loadingText}>
+                {t("assignmentModal.loading")}
+              </Text>
             </View>
           ) : error ? (
             <View style={styles.centerContainer}>
@@ -207,12 +225,12 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                 ]}
                 onPress={fetchAssignments}
               >
-                <Text style={styles.retryButtonText}>Retry</Text>
+                <Text style={styles.retryButtonText}>{t("common.retry")}</Text>
               </Pressable>
             </View>
           ) : assignments.length === 0 ? (
             <View style={styles.centerContainer}>
-              <Text style={styles.emptyText}>No assignments yet</Text>
+              <Text style={styles.emptyText}>{t("assignmentModal.empty")}</Text>
             </View>
           ) : (
             <FlatList

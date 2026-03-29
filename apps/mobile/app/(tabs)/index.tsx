@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Settings, BookOpen, Users, ClipboardList } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 
 interface ClassData {
   id: string;
@@ -32,6 +33,7 @@ interface PendingAssignments {
 }
 
 export default function IndexTab() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
   const [classes, setClasses] = useState<ClassData[]>([]);
@@ -152,7 +154,7 @@ export default function IndexTab() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0f766e" />
-          <Text style={styles.loadingText}>Loading your classes...</Text>
+          <Text style={styles.loadingText}>{t("home.loadingClasses")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -198,7 +200,9 @@ export default function IndexTab() {
               ]}
             >
               <Text style={styles.pendingBadgeText}>
-                {hasPending ? `${pending} to do` : "Done"}
+                {hasPending
+                  ? t("home.pendingToDo", { count: pending })
+                  : t("home.done")}
               </Text>
             </View>
           )}
@@ -208,13 +212,13 @@ export default function IndexTab() {
           <View style={styles.infoPill}>
             <Users size={14} color="#475569" />
             <Text style={styles.infoPillText}>
-              {item._count?.members || 0} friends
+              {t("home.friends", { count: item._count?.members || 0 })}
             </Text>
           </View>
           <View style={styles.infoPill}>
             <ClipboardList size={14} color="#475569" />
             <Text style={styles.infoPillText}>
-              {hasPending ? "Need practice" : "Great progress"}
+              {hasPending ? t("home.needPractice") : t("home.greatProgress")}
             </Text>
           </View>
         </View>
@@ -227,8 +231,8 @@ export default function IndexTab() {
       <View style={styles.container}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.greeting}>Hi learner!</Text>
-            <Text style={styles.subtitle}>Pick a class and keep going.</Text>
+            <Text style={styles.greeting}>{t("home.greeting")}</Text>
+            <Text style={styles.subtitle}>{t("home.subtitle")}</Text>
           </View>
           <Pressable
             style={({ pressed }) => [
@@ -244,10 +248,8 @@ export default function IndexTab() {
 
         {classes.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>No classes yet</Text>
-            <Text style={styles.centerText}>
-              Ask your teacher to add you to a class.
-            </Text>
+            <Text style={styles.emptyTitle}>{t("home.emptyTitle")}</Text>
+            <Text style={styles.centerText}>{t("home.emptyDescription")}</Text>
           </View>
         ) : (
           <FlatList

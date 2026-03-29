@@ -21,12 +21,14 @@ import {
   useCourseStructure,
 } from "@/components/providers/course-structure-provider";
 import { AssignmentModal } from "@/components/AssignmentModal";
+import { useTranslation } from "react-i18next";
 
 const LessonHomeworkContent: React.FC<{
   classId: string;
   lessonId: string;
   lessonTitle?: string;
 }> = ({ classId, lessonId, lessonTitle }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const { isLoading, course, getHomeworkCounts, refetchHomeworkCounts } =
     useCourseStructure();
@@ -70,7 +72,9 @@ const LessonHomeworkContent: React.FC<{
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0f766e" />
-        <Text style={styles.loadingText}>Loading homework...</Text>
+        <Text style={styles.loadingText}>
+          {t("lessonHomework.loadingHomework")}
+        </Text>
       </View>
     );
   }
@@ -78,9 +82,11 @@ const LessonHomeworkContent: React.FC<{
   if (!lessonNode) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorTitle}>Lesson not found</Text>
+        <Text style={styles.errorTitle}>
+          {t("lessonHomework.lessonNotFound")}
+        </Text>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Go back</Text>
+          <Text style={styles.backButtonText}>{t("common.goBack")}</Text>
         </Pressable>
       </View>
     );
@@ -96,11 +102,15 @@ const LessonHomeworkContent: React.FC<{
           ]}
           onPress={() => router.back()}
         >
-          <Text style={styles.backPillText}>◀ Back</Text>
+          <Text style={styles.backPillText}>
+            {t("lessonHomework.backLabel")}
+          </Text>
         </Pressable>
         <View style={styles.headerTextWrap}>
           <Text style={styles.lessonTitle} numberOfLines={1}>
-            {lessonNode.title || lessonTitle || "Lesson"}
+            {lessonNode.title ||
+              lessonTitle ||
+              t("lessonHomework.defaultLesson")}
           </Text>
           <Text style={styles.lessonStats}>
             {lessonDone}/{lessonCounts?.totalAssigned || 0}
@@ -110,7 +120,9 @@ const LessonHomeworkContent: React.FC<{
 
       {homeworkNodes.length === 0 ? (
         <View style={styles.emptyWrap}>
-          <Text style={styles.emptyTitle}>No homework yet</Text>
+          <Text style={styles.emptyTitle}>
+            {t("lessonHomework.noHomework")}
+          </Text>
         </View>
       ) : (
         <ScrollView
@@ -159,6 +171,7 @@ const LessonHomeworkContent: React.FC<{
 };
 
 export default function LessonHomeworkScreen() {
+  const { t } = useTranslation();
   const { classId, lessonId, lessonTitle } = useLocalSearchParams<{
     classId: string;
     lessonId: string;
@@ -176,11 +189,11 @@ export default function LessonHomeworkScreen() {
         const { data: session } = await authClient.getSession();
 
         if (!session?.session.token) {
-          throw new Error("No session token available");
+          throw new Error(t("lessonHomework.noSessionToken"));
         }
 
         if (!classId) {
-          setError("No class ID provided");
+          setError(t("lessonHomework.noClassId"));
           return;
         }
 
@@ -196,7 +209,7 @@ export default function LessonHomeworkScreen() {
         );
 
         if (!response.ok) {
-          throw new Error("Failed to fetch class");
+          throw new Error(t("lessonHomework.fetchClassFailed"));
         }
 
         const result = await response.json();
@@ -216,24 +229,28 @@ export default function LessonHomeworkScreen() {
           setClassData(classData);
           setCourseUI(nextCourseUI);
         } else {
-          setError(result.error || "Failed to load class");
+          setError(result.error || t("lessonHomework.loadClassFailed"));
         }
       } catch (err) {
         console.error("Error fetching class:", err);
-        setError(err instanceof Error ? err.message : "Unknown error");
+        setError(
+          err instanceof Error ? err.message : t("lessonHomework.unknownError"),
+        );
       } finally {
         setLoading(false);
       }
     };
 
     fetchClassData();
-  }, [classId]);
+  }, [classId, t]);
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0f766e" />
-        <Text style={styles.loadingText}>Loading lesson...</Text>
+        <Text style={styles.loadingText}>
+          {t("lessonHomework.loadingLesson")}
+        </Text>
       </View>
     );
   }
@@ -242,7 +259,7 @@ export default function LessonHomeworkScreen() {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorTitle}>
-          {error || "Failed to load lesson"}
+          {error || t("lessonHomework.loadLessonFailed")}
         </Text>
       </View>
     );

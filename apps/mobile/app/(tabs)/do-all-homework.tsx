@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { API_BASE_URL } from "@/lib/config/api";
 import { authClient } from "@/lib/auth-client";
 import AssignmentWidget from "@/components/AssignmentWidget";
+import { useTranslation } from "react-i18next";
 
 interface PendingAssignment {
   assignmentId: string;
@@ -28,6 +29,7 @@ interface DisplayedAssignment extends PendingAssignment {
 }
 
 export default function DoAllHomeworkScreen() {
+  const { t } = useTranslation();
   const { classId } = useLocalSearchParams<{ classId: string }>();
   const router = useRouter();
 
@@ -49,7 +51,7 @@ export default function DoAllHomeworkScreen() {
   useEffect(() => {
     const loadPendingAssignments = async () => {
       if (!classId) {
-        setError("No class ID");
+        setError(t("doAll.noClassId"));
         setLoading(false);
         return;
       }
@@ -60,7 +62,7 @@ export default function DoAllHomeworkScreen() {
 
         const { data: session } = await authClient.getSession();
         if (!session?.session.token) {
-          throw new Error("No session token");
+          throw new Error(t("doAll.noSessionToken"));
         }
 
         const response = await fetch(
@@ -75,7 +77,7 @@ export default function DoAllHomeworkScreen() {
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to load assignments");
+          throw new Error(errorData.error || t("doAll.loadAssignmentsFailed"));
         }
 
         const result = await response.json();
@@ -88,18 +90,18 @@ export default function DoAllHomeworkScreen() {
             setCurrentAssignmentId(assignments[0].assignmentId);
           }
         } else {
-          throw new Error(result.error || "Failed to load assignments");
+          throw new Error(result.error || t("doAll.loadAssignmentsFailed"));
         }
       } catch (err) {
         console.error("Load pending assignments error:", err);
-        setError(err instanceof Error ? err.message : "Unknown error");
+        setError(err instanceof Error ? err.message : t("doAll.unknownError"));
       } finally {
         setLoading(false);
       }
     };
 
     loadPendingAssignments();
-  }, [classId]);
+  }, [classId, t]);
 
   const displayedAssignments: DisplayedAssignment[] = useMemo(
     () =>
@@ -171,7 +173,7 @@ export default function DoAllHomeworkScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#0f766e" />
-          <Text style={styles.loadingText}>Preparing assignments...</Text>
+          <Text style={styles.loadingText}>{t("doAll.preparing")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -184,7 +186,7 @@ export default function DoAllHomeworkScreen() {
           <Text style={styles.errorIcon}>⚠️</Text>
           <Text style={styles.errorText}>{error}</Text>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Go back</Text>
+            <Text style={styles.backButtonText}>{t("common.goBack")}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -196,12 +198,14 @@ export default function DoAllHomeworkScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centerContainer}>
           <Text style={styles.successIcon}>🎉</Text>
-          <Text style={styles.successTitle}>Nothing pending</Text>
+          <Text style={styles.successTitle}>
+            {t("doAll.nothingPendingTitle")}
+          </Text>
           <Text style={styles.successText}>
-            You already finished all homework for this class.
+            {t("doAll.nothingPendingDescription")}
           </Text>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Back to class</Text>
+            <Text style={styles.backButtonText}>{t("doAll.backToClass")}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -213,12 +217,14 @@ export default function DoAllHomeworkScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centerContainer}>
           <Text style={styles.successIcon}>🏆</Text>
-          <Text style={styles.successTitle}>Awesome work!</Text>
+          <Text style={styles.successTitle}>{t("doAll.awesomeWork")}</Text>
           <Text style={styles.successText}>
-            You finished all {displayedAssignments.length} assignments.
+            {t("doAll.allDoneDescription", {
+              count: displayedAssignments.length,
+            })}
           </Text>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Done</Text>
+            <Text style={styles.backButtonText}>{t("common.done")}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -253,7 +259,9 @@ export default function DoAllHomeworkScreen() {
             />
           ) : (
             <View style={styles.centerContainerSmall}>
-              <Text style={styles.emptyText}>No assignment selected.</Text>
+              <Text style={styles.emptyText}>
+                {t("doAll.noAssignmentSelected")}
+              </Text>
             </View>
           )}
         </View>
@@ -268,7 +276,7 @@ export default function DoAllHomeworkScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Assignments</Text>
+              <Text style={styles.modalTitle}>{t("doAll.assignments")}</Text>
               <Pressable
                 style={styles.modalCloseButton}
                 onPress={() => setShowAssignmentsModal(false)}
@@ -304,13 +312,16 @@ export default function DoAllHomeworkScreen() {
                       <Text style={styles.assignmentStatus}>
                         {item.isCompleted
                           ? isCorrect === false
-                            ? "Try again"
-                            : "Done"
-                          : "Pending"}
+                            ? t("doAll.statusTryAgain")
+                            : t("doAll.statusDone")
+                          : t("doAll.statusPending")}
                       </Text>
                     </View>
                     <Text style={styles.assignmentTitle} numberOfLines={1}>
-                      {item.title || `Assignment ${item.index}`}
+                      {item.title ||
+                        t("doAll.defaultAssignmentTitle", {
+                          index: item.index,
+                        })}
                     </Text>
                     <Text style={styles.assignmentSubtitle} numberOfLines={1}>
                       {item.homeworkTitle}

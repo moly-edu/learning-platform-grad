@@ -2,8 +2,10 @@ import React from "react";
 import { View, Text, StyleSheet, Pressable, SafeAreaView } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import AssignmentWidget from "@/components/AssignmentWidget";
+import { useTranslation } from "react-i18next";
 
 export default function AssignmentDetailScreen() {
+  const { t } = useTranslation();
   const { assignmentId } = useLocalSearchParams<{ assignmentId: string }>();
   const router = useRouter();
 
@@ -12,10 +14,14 @@ export default function AssignmentDetailScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centerContainer}>
           <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>Missing assignment</Text>
-          <Text style={styles.errorText}>No assignment ID provided.</Text>
+          <Text style={styles.errorTitle}>
+            {t("assignmentDetail.missingTitle")}
+          </Text>
+          <Text style={styles.errorText}>
+            {t("assignmentDetail.missingDescription")}
+          </Text>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Go back</Text>
+            <Text style={styles.backButtonText}>{t("common.goBack")}</Text>
           </Pressable>
         </View>
       </SafeAreaView>

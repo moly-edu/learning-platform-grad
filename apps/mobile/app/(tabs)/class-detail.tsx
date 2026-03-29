@@ -22,6 +22,7 @@ import {
   useCourseStructure,
 } from "@/components/providers/course-structure-provider";
 import { authClient } from "@/lib/auth-client";
+import { useTranslation } from "react-i18next";
 
 const LESSON_COLORS = ["#4ECDC4", "#FF6B6B", "#FFD166", "#118AB2"];
 
@@ -45,6 +46,7 @@ function collectLessonNodes(root: LessonNodeUI | null): LessonNodeUI[] {
 }
 
 const DoAllHomeworkButton: React.FC<{ classId: string }> = ({ classId }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const { homeworkCountsMap, course } = useCourseStructure();
 
@@ -56,7 +58,9 @@ const DoAllHomeworkButton: React.FC<{ classId: string }> = ({ classId }) => {
   if (totalPending === 0) {
     return (
       <View style={[styles.card3d, styles.playButtonDone]}>
-        <Text style={styles.playButtonDoneText}>ALL DONE</Text>
+        <Text style={styles.playButtonDoneText}>
+          {t("classDetail.allDone")}
+        </Text>
       </View>
     );
   }
@@ -75,7 +79,9 @@ const DoAllHomeworkButton: React.FC<{ classId: string }> = ({ classId }) => {
         pressed && styles.card3dPressed,
       ]}
     >
-      <Text style={styles.playButtonText}>PLAY NOW ({totalPending})</Text>
+      <Text style={styles.playButtonText}>
+        {t("classDetail.playNow", { count: totalPending })}
+      </Text>
     </Pressable>
   );
 };
@@ -83,6 +89,7 @@ const DoAllHomeworkButton: React.FC<{ classId: string }> = ({ classId }) => {
 const ClassDetailContent: React.FC<{
   classData: ClassData;
 }> = ({ classData }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const { isLoading, course, getHomeworkCounts, refetchHomeworkCounts } =
     useCourseStructure();
@@ -102,7 +109,9 @@ const ClassDetailContent: React.FC<{
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0f766e" />
-        <Text style={styles.loadingText}>Loading lessons...</Text>
+        <Text style={styles.loadingText}>
+          {t("classDetail.loadingLessons")}
+        </Text>
       </View>
     );
   }
@@ -128,9 +137,11 @@ const ClassDetailContent: React.FC<{
         >
           {lessons.length === 0 ? (
             <View style={[styles.card3d, styles.emptyCard]}>
-              <Text style={styles.emptyTitle}>NO LESSONS YET</Text>
+              <Text style={styles.emptyTitle}>
+                {t("classDetail.noLessonsTitle")}
+              </Text>
               <Text style={styles.emptyText}>
-                Ask your teacher to add lessons.
+                {t("classDetail.noLessonsDescription")}
               </Text>
             </View>
           ) : (
@@ -197,7 +208,7 @@ const ClassDetailContent: React.FC<{
             <View style={[styles.card3d, styles.finishBox]}>
               <Text style={styles.finishEmoji}>👑</Text>
             </View>
-            <Text style={styles.finishText}>FINISH</Text>
+            <Text style={styles.finishText}>{t("classDetail.finish")}</Text>
           </View>
         </ScrollView>
       </View>
@@ -206,6 +217,7 @@ const ClassDetailContent: React.FC<{
 };
 
 export default function ClassDetailScreen() {
+  const { t } = useTranslation();
   const { classId } = useLocalSearchParams<{ classId: string }>();
   const [classData, setClassData] = useState<ClassData | null>(null);
   const [courseUI, setCourseUI] = useState<CourseUI | null>(null);
@@ -218,11 +230,11 @@ export default function ClassDetailScreen() {
         const { data: session } = await authClient.getSession();
 
         if (!session?.session.token) {
-          throw new Error("No session token available");
+          throw new Error(t("classDetail.noSessionToken"));
         }
 
         if (!classId) {
-          setError("No class ID provided");
+          setError(t("classDetail.noClassId"));
           return;
         }
 
@@ -238,7 +250,7 @@ export default function ClassDetailScreen() {
         );
 
         if (!response.ok) {
-          throw new Error("Failed to fetch class");
+          throw new Error(t("classDetail.fetchClassFailed"));
         }
 
         const result = await response.json();
@@ -258,24 +270,26 @@ export default function ClassDetailScreen() {
           setClassData(classData);
           setCourseUI(nextCourseUI);
         } else {
-          setError(result.error || "Failed to load class");
+          setError(result.error || t("classDetail.loadClassFailed"));
         }
       } catch (err) {
         console.error("Error fetching class:", err);
-        setError(err instanceof Error ? err.message : "Unknown error");
+        setError(
+          err instanceof Error ? err.message : t("classDetail.unknownError"),
+        );
       } finally {
         setLoading(false);
       }
     };
 
     fetchClassData();
-  }, [classId]);
+  }, [classId, t]);
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0f766e" />
-        <Text style={styles.loadingText}>Loading class...</Text>
+        <Text style={styles.loadingText}>{t("classDetail.loadingClass")}</Text>
       </View>
     );
   }
@@ -283,8 +297,12 @@ export default function ClassDetailScreen() {
   if (error || !classData || !courseUI) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorTitle}>Could not open class</Text>
-        <Text style={styles.errorText}>{error || "Failed to load class"}</Text>
+        <Text style={styles.errorTitle}>
+          {t("classDetail.couldNotOpenClass")}
+        </Text>
+        <Text style={styles.errorText}>
+          {error || t("classDetail.loadClassFailed")}
+        </Text>
       </View>
     );
   }

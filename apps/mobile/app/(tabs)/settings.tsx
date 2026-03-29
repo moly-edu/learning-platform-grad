@@ -17,8 +17,11 @@ import {
   Mail,
   CheckCircle,
 } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 
 export default function SettingsTab() {
+  const { t } = useTranslation();
   const { data: session } = authClient.useSession();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -33,9 +36,9 @@ export default function SettingsTab() {
     setLoading(false);
 
     if (signOutError) {
-      setError(signOutError.message || "Sign out failed. Please try again.");
+      setError(signOutError.message || t("settings.signOutFailed"));
     } else {
-      setSuccess("Signed out successfully.");
+      setSuccess(t("settings.signOutSuccess"));
     }
   }
 
@@ -43,8 +46,8 @@ export default function SettingsTab() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.pageContent}>
         <View style={styles.headerCard}>
-          <Text style={styles.title}>Settings</Text>
-          <Text style={styles.subtitle}>Manage your account information</Text>
+          <Text style={styles.title}>{t("settings.title")}</Text>
+          <Text style={styles.subtitle}>{t("settings.subtitle")}</Text>
         </View>
 
         {error ? (
@@ -80,9 +83,9 @@ export default function SettingsTab() {
               <User size={18} color="#334155" />
             </View>
             <View style={styles.infoTextWrap}>
-              <Text style={styles.infoLabel}>Name</Text>
+              <Text style={styles.infoLabel}>{t("settings.name")}</Text>
               <Text style={styles.infoValue}>
-                {session?.user.name || "No name available"}
+                {session?.user.name || t("settings.noName")}
               </Text>
             </View>
           </View>
@@ -92,10 +95,58 @@ export default function SettingsTab() {
               <Mail size={18} color="#334155" />
             </View>
             <View style={styles.infoTextWrap}>
-              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoLabel}>{t("settings.email")}</Text>
               <Text style={styles.infoValue}>
-                {session?.user.email || "No email available"}
+                {session?.user.email || t("settings.noEmail")}
               </Text>
+            </View>
+          </View>
+
+          <View style={styles.languageSection}>
+            <Text style={styles.languageTitle}>
+              {t("settings.languageTitle")}
+            </Text>
+            <Text style={styles.languageHint}>
+              {t("settings.languageHint")}
+            </Text>
+            <View style={styles.languageButtons}>
+              <Pressable
+                onPress={() => i18n.changeLanguage("en")}
+                style={({ pressed }) => [
+                  styles.languageButton,
+                  i18n.language.startsWith("en") && styles.languageButtonActive,
+                  pressed && styles.card3dPressed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.languageButtonText,
+                    i18n.language.startsWith("en") &&
+                      styles.languageButtonTextActive,
+                  ]}
+                >
+                  {t("settings.english")}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => i18n.changeLanguage("vi")}
+                style={({ pressed }) => [
+                  styles.languageButton,
+                  i18n.language.startsWith("vi") && styles.languageButtonActive,
+                  pressed && styles.card3dPressed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.languageButtonText,
+                    i18n.language.startsWith("vi") &&
+                      styles.languageButtonTextActive,
+                  ]}
+                >
+                  {t("settings.vietnamese")}
+                </Text>
+              </Pressable>
             </View>
           </View>
         </View>
@@ -114,7 +165,9 @@ export default function SettingsTab() {
           ) : (
             <View style={styles.signOutRow}>
               <LogOutIcon size={20} color="#ffffff" />
-              <Text style={styles.signOutButtonText}>Sign out</Text>
+              <Text style={styles.signOutButtonText}>
+                {t("settings.signOut")}
+              </Text>
             </View>
           )}
         </Pressable>
@@ -253,6 +306,52 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#0f172a",
+  },
+  languageSection: {
+    marginTop: 8,
+    backgroundColor: "#f8fafc",
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: "#334155",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  languageTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  languageHint: {
+    marginTop: 2,
+    fontSize: 12,
+    color: "#64748b",
+  },
+  languageButtons: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 10,
+  },
+  languageButton: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#334155",
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  languageButtonActive: {
+    backgroundColor: "#ccfbf1",
+    borderColor: "#0f766e",
+  },
+  languageButtonText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#334155",
+  },
+  languageButtonTextActive: {
+    color: "#0f766e",
   },
   signOutButton: {
     minHeight: 50,

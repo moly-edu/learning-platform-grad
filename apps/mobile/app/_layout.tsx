@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import React from "react";
 import { StatusBar } from "react-native";
 import { authClient } from "@/lib/auth-client";
+import "@/lib/i18n";
 
 export default function RootLayout() {
   const { data: session } = authClient.useSession();

@@ -10,8 +10,10 @@ import {
   StyleSheet,
   SafeAreaView,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 
 export default function SignInPage() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -21,7 +23,7 @@ export default function SignInPage() {
     setError("");
 
     if (!email || !password) {
-      setError("Please enter both email and password.");
+      setError(t("signIn.missingCredentials"));
       return;
     }
 
@@ -33,10 +35,7 @@ export default function SignInPage() {
     setLoading(false);
 
     if (authError) {
-      setError(
-        authError.message ||
-          "Login failed. Please check your credentials and try again.",
-      );
+      setError(authError.message || t("signIn.loginFailed"));
     }
   };
 
@@ -44,8 +43,8 @@ export default function SignInPage() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.heroCard}>
-          <Text style={styles.title}>Welcome back</Text>
-          <Text style={styles.subtitle}>Sign in to start learning</Text>
+          <Text style={styles.title}>{t("signIn.title")}</Text>
+          <Text style={styles.subtitle}>{t("signIn.subtitle")}</Text>
         </View>
 
         {error ? (
@@ -57,9 +56,9 @@ export default function SignInPage() {
 
         <View style={styles.formCard}>
           <View style={styles.inputWrapper}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>{t("signIn.email")}</Text>
             <TextInput
-              placeholder="example@email.com"
+              placeholder={t("signIn.emailPlaceholder")}
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
@@ -74,9 +73,9 @@ export default function SignInPage() {
           </View>
 
           <View style={styles.inputWrapper}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>{t("signIn.password")}</Text>
             <TextInput
-              placeholder="Password"
+              placeholder={t("signIn.passwordPlaceholder")}
               value={password}
               onChangeText={(text) => {
                 setPassword(text);
@@ -108,7 +107,7 @@ export default function SignInPage() {
                   color="#ffffff"
                   style={styles.buttonIcon}
                 />
-                <Text style={styles.buttonText}>Sign in</Text>
+                <Text style={styles.buttonText}>{t("signIn.submit")}</Text>
               </View>
             )}
           </Pressable>

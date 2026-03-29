@@ -7,6 +7,7 @@ import {
   stopHostTtsPlayback,
   synthesizeWithHostTts,
 } from "@/components/widget/core/HostTtsClient";
+import { useTranslation } from "react-i18next";
 
 interface AssignmentData {
   assignmentId: string;
@@ -95,6 +96,7 @@ export default function AssignmentWidget({
   onEvaluationUpdate,
   onError,
 }: AssignmentWidgetProps) {
+  const { t } = useTranslation();
   const [assignmentData, setAssignmentData] = useState<AssignmentData | null>(
     null,
   );
@@ -133,7 +135,7 @@ export default function AssignmentWidget({
   useEffect(() => {
     const loadAssignment = async () => {
       if (!assignmentId) {
-        setError("No assignment ID provided");
+        setError(t("assignmentWidget.noAssignmentId"));
         setLoading(false);
         return;
       }
@@ -144,7 +146,7 @@ export default function AssignmentWidget({
 
         const { data: session } = await authClient.getSession();
         if (!session?.session.token) {
-          throw new Error("No session token");
+          throw new Error(t("assignmentWidget.noSessionToken"));
         }
 
         // Load assignment info
@@ -160,7 +162,9 @@ export default function AssignmentWidget({
 
         if (!assignmentRes.ok) {
           const errorData = await assignmentRes.json();
-          throw new Error(errorData.error || "Failed to load assignment");
+          throw new Error(
+            errorData.error || t("assignmentWidget.loadAssignmentFailed"),
+          );
         }
 
         const data: AssignmentData = await assignmentRes.json();
@@ -178,7 +182,7 @@ export default function AssignmentWidget({
         );
 
         if (!widgetRes.ok) {
-          throw new Error("Failed to load widget");
+          throw new Error(t("assignmentWidget.loadWidgetFailed"));
         }
 
         const widgetData: { html: string } = await widgetRes.json();
@@ -186,7 +190,7 @@ export default function AssignmentWidget({
       } catch (err) {
         console.error("❌ Load assignment error:", err);
         const errorMessage =
-          err instanceof Error ? err.message : "Unknown error";
+          err instanceof Error ? err.message : t("classDetail.unknownError");
         setError(errorMessage);
         onError?.(errorMessage);
       } finally {
@@ -195,7 +199,7 @@ export default function AssignmentWidget({
     };
 
     loadAssignment();
-  }, [assignmentId, onError]);
+  }, [assignmentId, onError, t]);
 
   // Handle messages from WebView
   const handleWebViewMessage = (event: WebViewMessageEvent) => {
@@ -272,7 +276,8 @@ export default function AssignmentWidget({
 
       if (message.type === "ERROR") {
         console.error("❌ Widget error:", message.payload);
-        const errorMessage = message.payload?.message || "Widget error";
+        const errorMessage =
+          message.payload?.message || t("assignmentWidget.failedToLoadWidget");
         setError(errorMessage);
         onError?.(errorMessage);
       }
@@ -290,7 +295,7 @@ export default function AssignmentWidget({
     try {
       const { data: session } = await authClient.getSession();
       if (!session?.session.token) {
-        throw new Error("No session");
+        throw new Error(t("assignmentWidget.noSessionToken"));
       }
 
       console.log("💾 Saving submission...");
@@ -312,7 +317,7 @@ export default function AssignmentWidget({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to save submission");
+        throw new Error(errorData.error || t("assignmentWidget.saveFailed"));
       }
 
       console.log("✅ Submission saved");
@@ -349,7 +354,8 @@ export default function AssignmentWidget({
       onCompleted?.(submission);
     } catch (err) {
       console.error("❌ Submit error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Submit failed";
+      const errorMessage =
+        err instanceof Error ? err.message : t("assignmentWidget.submitFailed");
       setError(errorMessage);
       onError?.(errorMessage);
     } finally {
@@ -362,7 +368,9 @@ export default function AssignmentWidget({
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#3b82f6" />
-        <Text style={styles.loadingText}>Loading assignment...</Text>
+        <Text style={styles.loadingText}>
+          {t("assignmentWidget.loadingAssignment")}
+        </Text>
       </View>
     );
   }
@@ -381,7 +389,9 @@ export default function AssignmentWidget({
   if (!assignmentData || !widgetHtml) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.emptyText}>No assignment data</Text>
+        <Text style={styles.emptyText}>
+          {t("assignmentWidget.noAssignmentData")}
+        </Text>
       </View>
     );
   }
@@ -406,10 +416,14 @@ export default function AssignmentWidget({
               {assignmentData.submissionData.evaluation.isCorrect ? "✓" : "✗"}
             </Text>
             <View style={styles.statusInfo}>
-              <Text style={styles.statusTitle}>Completed</Text>
+              <Text style={styles.statusTitle}>
+                {t("assignmentWidget.completed")}
+              </Text>
               <Text style={styles.statusScore}>
-                Score: {assignmentData.submissionData.evaluation.score}/
-                {assignmentData.submissionData.evaluation.maxScore}
+                {t("assignmentWidget.score", {
+                  score: assignmentData.submissionData.evaluation.score,
+                  maxScore: assignmentData.submissionData.evaluation.maxScore,
+                })}
               </Text>
             </View>
           </View>
@@ -426,8 +440,8 @@ export default function AssignmentWidget({
           >
             <Text style={styles.statusBadgeText}>
               {assignmentData.submissionData.evaluation.isCorrect
-                ? "Correct"
-                : "Incorrect"}
+                ? t("assignmentWidget.correct")
+                : t("assignmentWidget.incorrect")}
             </Text>
           </View>
         </View>
@@ -452,7 +466,7 @@ export default function AssignmentWidget({
           onError={(syntheticEvent) => {
             const { nativeEvent } = syntheticEvent;
             console.error("❌ WebView error:", nativeEvent);
-            setError("Failed to load widget");
+            setError(t("assignmentWidget.failedToLoadWidget"));
             setWebViewLoading(false);
           }}
         />
@@ -461,7 +475,9 @@ export default function AssignmentWidget({
         {webViewLoading && (
           <View style={styles.webViewLoading}>
             <ActivityIndicator size="large" color="#3b82f6" />
-            <Text style={styles.loadingText}>Loading widget...</Text>
+            <Text style={styles.loadingText}>
+              {t("assignmentWidget.loadingWidget")}
+            </Text>
           </View>
         )}
       </View>
@@ -471,7 +487,9 @@ export default function AssignmentWidget({
         <View style={styles.overlay}>
           <View style={styles.overlayContent}>
             <ActivityIndicator size="large" color="#3b82f6" />
-            <Text style={styles.overlayText}>Saving your answer...</Text>
+            <Text style={styles.overlayText}>
+              {t("assignmentWidget.savingAnswer")}
+            </Text>
           </View>
         </View>
       )}
