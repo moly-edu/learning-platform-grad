@@ -229,7 +229,10 @@ export default function DoAllHomeworkScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <Pressable
-          style={styles.progressBarButton}
+          style={({ pressed }) => [
+            styles.progressBarButton,
+            pressed && styles.card3dPressed,
+          ]}
           onPress={() => setShowAssignmentsModal(true)}
         >
           <View style={styles.progressTrack}>
@@ -285,13 +288,14 @@ export default function DoAllHomeworkScreen() {
 
                 return (
                   <Pressable
-                    style={[
+                    style={({ pressed }) => [
                       styles.assignmentItem,
                       isCurrent && styles.assignmentItemCurrent,
                       item.isCompleted &&
                         (isCorrect === false
                           ? styles.assignmentItemWrong
                           : styles.assignmentItemDone),
+                      pressed && styles.card3dPressed,
                     ]}
                     onPress={() => selectAssignment(item.assignmentId)}
                   >
@@ -325,7 +329,7 @@ export default function DoAllHomeworkScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#f0fdfa",
+    backgroundColor: "#fefce8",
   },
   container: {
     flex: 1,
@@ -339,7 +343,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
-    backgroundColor: "#f0fdfa",
+    backgroundColor: "#fefce8",
   },
   centerContainerSmall: {
     minHeight: 220,
@@ -385,6 +389,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#0f766e",
+    borderWidth: 2,
+    borderColor: "#042f2e",
+    shadowColor: "#042f2e",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 0,
+    elevation: 8,
   },
   backButtonText: {
     color: "#ffffff",
@@ -393,14 +404,24 @@ const styles = StyleSheet.create({
   },
   progressBarButton: {
     borderRadius: 999,
-    paddingVertical: 6,
-    paddingHorizontal: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderWidth: 2,
+    borderColor: "#854d0e",
+    backgroundColor: "#ffffff",
+    shadowColor: "#854d0e",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 0,
+    elevation: 8,
   },
   progressTrack: {
-    height: 14,
+    height: 16,
     borderRadius: 999,
-    backgroundColor: "#dbeafe",
+    backgroundColor: "#fde68a",
     overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: "#92400e",
   },
   progressFill: {
     height: "100%",
@@ -409,12 +430,17 @@ const styles = StyleSheet.create({
   },
   widgetWrap: {
     flex: 1,
-    borderRadius: 14,
+    borderRadius: 18,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
+    borderWidth: 2,
+    borderColor: "#854d0e",
     backgroundColor: "#ffffff",
     minHeight: 320,
+    shadowColor: "#854d0e",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 0,
+    elevation: 10,
   },
   emptyText: {
     fontSize: 15,
@@ -428,9 +454,11 @@ const styles = StyleSheet.create({
   modalContent: {
     height: "70%",
     backgroundColor: "#ffffff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingTop: 12,
+    borderWidth: 2,
+    borderColor: "#854d0e",
   },
   modalHeader: {
     paddingHorizontal: 14,
@@ -452,7 +480,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#f1f5f9",
+    backgroundColor: "#fde68a",
+    borderWidth: 1.5,
+    borderColor: "#854d0e",
   },
   modalCloseText: {
     fontSize: 18,
@@ -465,23 +495,28 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   assignmentItem: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#dbeafe",
-    backgroundColor: "#f8fafc",
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#854d0e",
+    backgroundColor: "#ffffff",
     paddingHorizontal: 12,
     paddingVertical: 10,
+    shadowColor: "#854d0e",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.12,
+    shadowRadius: 0,
+    elevation: 6,
   },
   assignmentItemCurrent: {
-    borderColor: "#38bdf8",
-    backgroundColor: "#e0f2fe",
+    borderColor: "#0f766e",
+    backgroundColor: "#ecfeff",
   },
   assignmentItemDone: {
-    borderColor: "#86efac",
+    borderColor: "#16a34a",
     backgroundColor: "#f0fdf4",
   },
   assignmentItemWrong: {
-    borderColor: "#fecaca",
+    borderColor: "#dc2626",
     backgroundColor: "#fef2f2",
   },
   assignmentTopRow: {
@@ -509,5 +544,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 13,
     color: "#64748b",
+  },
+  card3dPressed: {
+    transform: [{ translateY: 2 }],
+    shadowOpacity: 0.08,
+    elevation: 3,
   },
 });

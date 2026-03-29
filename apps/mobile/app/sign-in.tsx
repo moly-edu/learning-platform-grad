@@ -92,7 +92,12 @@ export default function SignInPage() {
           <Pressable
             onPress={handleLogin}
             disabled={loading}
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={({ pressed }) => [
+              styles.button,
+              styles.card3d,
+              loading && styles.buttonDisabled,
+              pressed && styles.card3dPressed,
+            ]}
           >
             {loading ? (
               <ActivityIndicator color="#ffffff" />
@@ -116,7 +121,7 @@ export default function SignInPage() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#f0fdfa",
+    backgroundColor: "#ecfeff",
   },
   container: {
     flex: 1,
@@ -125,11 +130,16 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#bae6fd",
+    borderWidth: 2,
+    borderColor: "#0f172a",
     borderRadius: 20,
     padding: 16,
     marginBottom: 12,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 0,
+    elevation: 8,
   },
   title: {
     fontSize: 32,
@@ -145,11 +155,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fef2f2",
-    borderWidth: 1,
-    borderColor: "#fecaca",
+    borderWidth: 2,
+    borderColor: "#991b1b",
     borderRadius: 14,
     padding: 12,
     marginBottom: 12,
+    shadowColor: "#7f1d1d",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 0,
+    elevation: 5,
   },
   errorIcon: {
     marginRight: 10,
@@ -161,10 +176,15 @@ const styles = StyleSheet.create({
   },
   formCard: {
     backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#bae6fd",
+    borderWidth: 2,
+    borderColor: "#0f172a",
     borderRadius: 20,
     padding: 16,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 0,
+    elevation: 10,
   },
   inputWrapper: {
     marginBottom: 14,
@@ -177,8 +197,8 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
+    borderWidth: 2,
+    borderColor: "#334155",
     borderRadius: 12,
     paddingHorizontal: 14,
     minHeight: 48,
@@ -192,6 +212,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#0f766e",
+    borderWidth: 2,
+    borderColor: "#042f2e",
   },
   buttonDisabled: {
     opacity: 0.75,
@@ -207,5 +229,17 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontWeight: "800",
     fontSize: 17,
+  },
+  card3d: {
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 0,
+    elevation: 8,
+  },
+  card3dPressed: {
+    transform: [{ translateY: 2 }],
+    shadowOpacity: 0.08,
+    elevation: 3,
   },
 });

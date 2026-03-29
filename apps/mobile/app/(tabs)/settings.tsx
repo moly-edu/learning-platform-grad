@@ -103,7 +103,11 @@ export default function SettingsTab() {
         <Pressable
           onPress={handleSignOut}
           disabled={loading}
-          style={[styles.signOutButton, loading && styles.buttonDisabled]}
+          style={({ pressed }) => [
+            styles.signOutButton,
+            loading && styles.buttonDisabled,
+            pressed && styles.card3dPressed,
+          ]}
         >
           {loading ? (
             <ActivityIndicator color="#ffffff" />
@@ -122,7 +126,7 @@ export default function SettingsTab() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#f0fdfa",
+    backgroundColor: "#ecfeff",
   },
   pageContent: {
     paddingHorizontal: 16,
@@ -133,9 +137,14 @@ const styles = StyleSheet.create({
   headerCard: {
     backgroundColor: "#ffffff",
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#bae6fd",
+    borderWidth: 2,
+    borderColor: "#0f172a",
     padding: 16,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 0,
+    elevation: 8,
   },
   title: {
     fontSize: 30,
@@ -149,12 +158,17 @@ const styles = StyleSheet.create({
   },
   messageBox: {
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 2,
     paddingHorizontal: 12,
     paddingVertical: 10,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    shadowColor: "#334155",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 0,
+    elevation: 4,
   },
   errorBox: {
     backgroundColor: "#fef2f2",
@@ -177,10 +191,15 @@ const styles = StyleSheet.create({
   profileCard: {
     backgroundColor: "#ffffff",
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#bae6fd",
+    borderWidth: 2,
+    borderColor: "#0f172a",
     padding: 16,
     gap: 10,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 0,
+    elevation: 10,
   },
   avatarWrap: {
     alignItems: "center",
@@ -206,10 +225,10 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#f1f5f9",
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderWidth: 2,
+    borderColor: "#334155",
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 10,
@@ -241,6 +260,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#ef4444",
+    borderWidth: 2,
+    borderColor: "#7f1d1d",
+    shadowColor: "#7f1d1d",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 0,
+    elevation: 8,
   },
   buttonDisabled: {
     opacity: 0.75,
@@ -254,5 +280,10 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 16,
     fontWeight: "800",
+  },
+  card3dPressed: {
+    transform: [{ translateY: 2 }],
+    shadowOpacity: 0.08,
+    elevation: 3,
   },
 });

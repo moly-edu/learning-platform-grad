@@ -164,7 +164,11 @@ export default function IndexTab() {
 
     return (
       <Pressable
-        style={styles.classCard}
+        style={({ pressed }) => [
+          styles.classCard,
+          styles.card3d,
+          pressed && styles.card3dPressed,
+        ]}
         onPress={() =>
           router.push({
             pathname: "/(tabs)/class-detail",
@@ -227,7 +231,11 @@ export default function IndexTab() {
             <Text style={styles.subtitle}>Pick a class and keep going.</Text>
           </View>
           <Pressable
-            style={styles.settingsButton}
+            style={({ pressed }) => [
+              styles.settingsButton,
+              styles.card3dMini,
+              pressed && styles.card3dPressed,
+            ]}
             onPress={() => router.push("/(tabs)/settings")}
           >
             <Settings size={20} color="#0f172a" />
@@ -266,7 +274,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingTop: 12,
-    backgroundColor: "#f0fdfa",
+    backgroundColor: "#ecfeff",
   },
   loadingContainer: {
     flex: 1,
@@ -303,13 +311,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#bae6fd",
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 5,
-    elevation: 2,
   },
   listContent: {
     paddingBottom: 24,
@@ -322,8 +323,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderRadius: 24,
     marginTop: 8,
-    borderWidth: 1,
-    borderColor: "#dbeafe",
+    borderWidth: 2,
+    borderColor: "#0f172a",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 0,
+    elevation: 8,
   },
   emptyTitle: {
     fontSize: 24,
@@ -341,13 +347,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#bfdbfe",
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 2,
+    borderColor: "#0f172a",
   },
   cardTopRow: {
     flexDirection: "row",
@@ -377,12 +378,14 @@ const styles = StyleSheet.create({
     color: "#475569",
   },
   pendingBadge: {
-    borderRadius: 999,
+    borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 6,
     minWidth: 68,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#0f172a",
   },
   pendingBadgeDanger: {
     backgroundColor: "#fee2e2",
@@ -415,5 +418,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#475569",
     fontWeight: "700",
+  },
+  card3d: {
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 0,
+    elevation: 8,
+  },
+  card3dMini: {
+    borderWidth: 2,
+    borderColor: "#0f172a",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 0,
+    elevation: 6,
+  },
+  card3dPressed: {
+    transform: [{ translateY: 2 }],
+    shadowOpacity: 0.08,
+    elevation: 3,
   },
 });

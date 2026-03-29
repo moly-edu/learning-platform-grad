@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,13 +8,13 @@ import {
   StyleSheet,
   SafeAreaView,
 } from "react-native";
-import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { API_BASE_URL } from "@/lib/config/api";
 import {
   ClassData,
   CourseUI,
-  LessonNodeUI,
   LessonNodeType,
+  LessonNodeUI,
 } from "@/types/course";
 import { buildTreeFromFlatList } from "@/lib/utils/course-structure";
 import {
@@ -22,373 +22,27 @@ import {
   useCourseStructure,
 } from "@/components/providers/course-structure-provider";
 import { authClient } from "@/lib/auth-client";
-import { AssignmentModal } from "@/components/AssignmentModal";
 
-interface TreeNodeProps {
-  node: LessonNodeUI;
-  level: number;
-  isExpanded: boolean;
-  onToggleExpand: (node: LessonNodeUI) => void;
-  onSelectNode: (nodeId: string | null) => void;
-  isSelected: boolean;
-  homeworkCounts?: { totalAssigned: number; pending: number; correct: number };
-  showStats?: boolean;
-}
+const LESSON_COLORS = ["#4ECDC4", "#FF6B6B", "#FFD166", "#118AB2"];
 
-function getNodeTypeLabel(type: LessonNodeType | string) {
-  if (type === LessonNodeType.course) return "Course";
-  if (type === LessonNodeType.module) return "Module";
-  if (type === LessonNodeType.lesson) return "Lesson";
-  return "Node";
-}
+function collectLessonNodes(root: LessonNodeUI | null): LessonNodeUI[] {
+  if (!root) return [];
 
-function getNodeIcon(type: LessonNodeType | string) {
-  if (type === LessonNodeType.course) return "📚";
-  if (type === LessonNodeType.module) return "📦";
-  if (type === LessonNodeType.lesson) return "📝";
-  return "📘";
-}
+  const lessons: LessonNodeUI[] = [];
 
-function getStatsBadge(
-  correct: number,
-  total: number,
-): {
-  label: string;
-  bgColor: string;
-  textColor: string;
-} | null {
-  if (total === 0) return null;
-  const ratio = correct / total;
+  const traverse = (node: LessonNodeUI) => {
+    if (node.type === LessonNodeType.lesson) {
+      lessons.push(node);
+    }
 
-  if (ratio >= 0.7) {
-    return {
-      label: `${correct}/${total}`,
-      bgColor: "#dcfce7",
-      textColor: "#166534",
-    };
-  }
-
-  if (ratio >= 0.4) {
-    return {
-      label: `${correct}/${total}`,
-      bgColor: "#fef3c7",
-      textColor: "#92400e",
-    };
-  }
-
-  return {
-    label: `${correct}/${total}`,
-    bgColor: "#fee2e2",
-    textColor: "#991b1b",
-  };
-}
-
-const TreeNode: React.FC<TreeNodeProps> = ({
-  node,
-  level,
-  isExpanded,
-  onToggleExpand,
-  onSelectNode,
-  isSelected,
-  homeworkCounts,
-  showStats = false,
-}) => {
-  if (node.type === LessonNodeType.homework) return null;
-
-  const hasChildren = node._count.children > 0;
-  const canExpand = hasChildren && node.type !== LessonNodeType.lesson;
-  const leftPadding = 12 + level * 16;
-
-  const handlePress = () => {
-    onSelectNode(node.id);
-    if (canExpand) {
-      onToggleExpand(node);
+    for (const child of node.children) {
+      traverse(child);
     }
   };
 
-  const statsBadge =
-    showStats && homeworkCounts
-      ? getStatsBadge(homeworkCounts.correct, homeworkCounts.totalAssigned)
-      : null;
-
-  return (
-    <View style={styles.treeNodeWrap}>
-      <Pressable
-        style={[
-          styles.treeNode,
-          {
-            marginLeft: leftPadding,
-          },
-          isSelected && styles.treeNodeSelected,
-        ]}
-        onPress={handlePress}
-      >
-        <View style={styles.treeNodeRow}>
-          <View style={styles.treeNodeMainInfo}>
-            <Text style={styles.nodeChevron}>
-              {canExpand ? (isExpanded ? "▼" : "▶") : "•"}
-            </Text>
-            <Text style={styles.nodeIcon}>{getNodeIcon(node.type)}</Text>
-            <View style={styles.nodeTextGroup}>
-              <Text style={styles.nodeTitle}>{node.title}</Text>
-              <Text style={styles.nodeTypeLabel}>
-                {getNodeTypeLabel(node.type)}
-              </Text>
-            </View>
-          </View>
-
-          {homeworkCounts && homeworkCounts.totalAssigned > 0 ? (
-            showStats ? (
-              statsBadge ? (
-                <View
-                  style={[
-                    styles.badge,
-                    { backgroundColor: statsBadge.bgColor },
-                  ]}
-                >
-                  <Text
-                    style={[styles.badgeText, { color: statsBadge.textColor }]}
-                  >
-                    {statsBadge.label}
-                  </Text>
-                </View>
-              ) : null
-            ) : (
-              <View
-                style={[
-                  styles.badge,
-                  homeworkCounts.pending > 0
-                    ? styles.badgePending
-                    : styles.badgeCompleted,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.badgeText,
-                    homeworkCounts.pending > 0
-                      ? styles.badgePendingText
-                      : styles.badgeCompletedText,
-                  ]}
-                >
-                  {homeworkCounts.pending > 0
-                    ? `${homeworkCounts.pending}`
-                    : "✓"}
-                </Text>
-              </View>
-            )
-          ) : null}
-        </View>
-      </Pressable>
-
-      {isExpanded && node.children.length > 0 ? (
-        <View>
-          {node.children.map((child) => (
-            <TreeNodeRenderer
-              key={child.id}
-              node={child}
-              level={level + 1}
-              showStats={showStats}
-            />
-          ))}
-        </View>
-      ) : null}
-    </View>
-  );
-};
-
-const TreeNodeRenderer: React.FC<{
-  node: LessonNodeUI;
-  level: number;
-  showStats?: boolean;
-}> = ({ node, level, showStats = false }) => {
-  const {
-    selectedNodeId,
-    expandedNodeIds,
-    setSelectedNodeId,
-    toggleNodeExpanded,
-    getHomeworkCounts,
-  } = useCourseStructure();
-
-  return (
-    <TreeNode
-      node={node}
-      level={level}
-      isExpanded={expandedNodeIds.has(node.id)}
-      onToggleExpand={toggleNodeExpanded}
-      onSelectNode={setSelectedNodeId}
-      isSelected={selectedNodeId === node.id}
-      homeworkCounts={getHomeworkCounts(node.id)}
-      showStats={showStats}
-    />
-  );
-};
-
-const DetailPanel: React.FC<{ classId: string; showStats?: boolean }> = ({
-  classId,
-  showStats = false,
-}) => {
-  const { selectedNode, getHomeworkCounts } = useCourseStructure();
-  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
-  const [selectedHomeworkId, setSelectedHomeworkId] = useState<string | null>(
-    null,
-  );
-
-  if (!selectedNode) {
-    return (
-      <View style={styles.detailPlaceholder}>
-        <Text style={styles.detailPlaceholderTitle}>Pick a lesson</Text>
-        <Text style={styles.detailPlaceholderText}>
-          Tap a card above to see details and assignments.
-        </Text>
-      </View>
-    );
-  }
-
-  const homeworkNodes =
-    selectedNode.type === LessonNodeType.lesson
-      ? selectedNode.children.filter(
-          (child) => child.type === LessonNodeType.homework,
-        )
-      : [];
-
-  const handleHomeworkPress = (homeworkId: string) => {
-    setSelectedHomeworkId(homeworkId);
-    setShowAssignmentModal(true);
-  };
-
-  return (
-    <View style={styles.detailPanel}>
-      <View style={styles.detailHeaderRow}>
-        <View style={styles.typeTag}>
-          <Text style={styles.typeTagText}>
-            {getNodeTypeLabel(selectedNode.type)}
-          </Text>
-        </View>
-        <Text style={styles.detailEmoji}>{getNodeIcon(selectedNode.type)}</Text>
-      </View>
-
-      <Text style={styles.detailTitle}>{selectedNode.title}</Text>
-
-      <View style={styles.sectionWrap}>
-        <Text style={styles.sectionTitle}>Description</Text>
-        <Text style={styles.sectionText}>
-          {(selectedNode.content as { description?: string })?.description ||
-            "No description yet."}
-        </Text>
-      </View>
-
-      {selectedNode.type === LessonNodeType.lesson ? (
-        <View style={styles.sectionWrap}>
-          <Text style={styles.sectionTitle}>
-            Homework ({homeworkNodes.length})
-          </Text>
-          {homeworkNodes.length === 0 ? (
-            <Text style={styles.emptyText}>
-              No homework for this lesson yet.
-            </Text>
-          ) : (
-            <View style={styles.homeworkList}>
-              {homeworkNodes.map((hw) => {
-                const counts = getHomeworkCounts(hw.id);
-                const hasAssignments = counts.totalAssigned > 0;
-                const hasPending = counts.pending > 0;
-                const stats = getStatsBadge(
-                  counts.correct,
-                  counts.totalAssigned,
-                );
-
-                return (
-                  <Pressable
-                    key={hw.id}
-                    style={[
-                      styles.homeworkCard,
-                      !hasAssignments && styles.homeworkCardDisabled,
-                    ]}
-                    onPress={() => hasAssignments && handleHomeworkPress(hw.id)}
-                    disabled={!hasAssignments}
-                  >
-                    <View style={styles.homeworkTopRow}>
-                      <Text
-                        style={[
-                          styles.homeworkTitle,
-                          !hasAssignments && styles.homeworkMuted,
-                        ]}
-                      >
-                        📋 {hw.title}
-                      </Text>
-
-                      {hasAssignments ? (
-                        showStats ? (
-                          stats ? (
-                            <View
-                              style={[
-                                styles.badge,
-                                { backgroundColor: stats.bgColor },
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.badgeText,
-                                  { color: stats.textColor },
-                                ]}
-                              >
-                                {stats.label}
-                              </Text>
-                            </View>
-                          ) : null
-                        ) : (
-                          <View
-                            style={[
-                              styles.badge,
-                              hasPending
-                                ? styles.badgePending
-                                : styles.badgeCompleted,
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.badgeText,
-                                hasPending
-                                  ? styles.badgePendingText
-                                  : styles.badgeCompletedText,
-                              ]}
-                            >
-                              {hasPending ? `${counts.pending}` : "✓"}
-                            </Text>
-                          </View>
-                        )
-                      ) : null}
-                    </View>
-
-                    <Text
-                      style={[
-                        styles.homeworkSubtitle,
-                        !hasAssignments && styles.homeworkMuted,
-                      ]}
-                    >
-                      {hasAssignments
-                        ? `${counts.totalAssigned} assignment${counts.totalAssigned > 1 ? "s" : ""} · ${counts.pending} pending`
-                        : "No assignments yet"}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
-        </View>
-      ) : null}
-
-      {selectedHomeworkId ? (
-        <AssignmentModal
-          visible={showAssignmentModal}
-          onClose={() => setShowAssignmentModal(false)}
-          homeworkNodeId={selectedHomeworkId}
-          classId={classId}
-        />
-      ) : null}
-    </View>
-  );
-};
+  traverse(root);
+  return lessons;
+}
 
 const DoAllHomeworkButton: React.FC<{ classId: string }> = ({ classId }) => {
   const router = useRouter();
@@ -401,25 +55,27 @@ const DoAllHomeworkButton: React.FC<{ classId: string }> = ({ classId }) => {
 
   if (totalPending === 0) {
     return (
-      <View style={styles.doAllButtonDone}>
-        <Text style={styles.doAllButtonDoneText}>🎉 All homework done</Text>
+      <View style={[styles.card3d, styles.playButtonDone]}>
+        <Text style={styles.playButtonDoneText}>ALL DONE</Text>
       </View>
     );
   }
 
   return (
     <Pressable
-      style={styles.doAllButton}
       onPress={() =>
         router.push({
           pathname: "/(tabs)/do-all-homework",
           params: { classId },
         })
       }
+      style={({ pressed }) => [
+        styles.card3d,
+        styles.playButton,
+        pressed && styles.card3dPressed,
+      ]}
     >
-      <Text style={styles.doAllButtonText}>
-        ▶ Do all homework ({totalPending})
-      </Text>
+      <Text style={styles.playButtonText}>PLAY NOW ({totalPending})</Text>
     </Pressable>
   );
 };
@@ -427,9 +83,9 @@ const DoAllHomeworkButton: React.FC<{ classId: string }> = ({ classId }) => {
 const ClassDetailContent: React.FC<{
   classData: ClassData;
 }> = ({ classData }) => {
-  const { isLoading, course, homeworkCountsMap, refetchHomeworkCounts } =
+  const router = useRouter();
+  const { isLoading, course, getHomeworkCounts, refetchHomeworkCounts } =
     useCourseStructure();
-  const [showStats, setShowStats] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -437,89 +93,113 @@ const ClassDetailContent: React.FC<{
     }, [refetchHomeworkCounts]),
   );
 
-  const rootCounts = course.rootLessonNodeId
-    ? homeworkCountsMap.get(course.rootLessonNodeId)
-    : null;
-  const totalAssigned = rootCounts?.totalAssigned || 0;
-  const totalCorrect = rootCounts?.correct || 0;
+  const lessons = useMemo(
+    () => collectLessonNodes(course.rootLessonNode),
+    [course.rootLessonNode],
+  );
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0f766e" />
-        <Text style={styles.loadingText}>Loading course structure...</Text>
+        <Text style={styles.loadingText}>Loading lessons...</Text>
       </View>
     );
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.horizontalLayout}>
-        <View style={styles.leftPane}>
-          <View style={styles.heroCard}>
-            <Text style={styles.className}>{classData.name}</Text>
-            <Text style={styles.courseName}>Course: {course.name}</Text>
+      <View style={styles.headerWrap}>
+        <View style={[styles.card3d, styles.headerCard]}>
+          <View style={styles.headerTextWrap}>
+            <Text style={styles.className}>{classData.name.toUpperCase()}</Text>
+            <Text style={styles.courseName}>{course.name}</Text>
+          </View>
+          <DoAllHomeworkButton classId={classData.id} />
+        </View>
+      </View>
 
-            {totalAssigned > 0 ? (
-              <View style={styles.heroActionsRow}>
-                <View style={styles.heroActionItem}>
-                  <DoAllHomeworkButton classId={classData.id} />
-                </View>
+      <View style={styles.timelineWrap}>
+        <View style={styles.timelinePath} />
 
-                <Pressable
-                  style={[
-                    styles.statsToggleButton,
-                    styles.heroActionItem,
-                    showStats && styles.statsToggleButtonActive,
-                  ]}
-                  onPress={() => setShowStats((prev) => !prev)}
-                >
-                  <Text
-                    style={[
-                      styles.statsToggleText,
-                      showStats && styles.statsToggleTextActive,
-                    ]}
-                    numberOfLines={1}
+        <ScrollView
+          contentContainerStyle={styles.timelineContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {lessons.length === 0 ? (
+            <View style={[styles.card3d, styles.emptyCard]}>
+              <Text style={styles.emptyTitle}>NO LESSONS YET</Text>
+              <Text style={styles.emptyText}>
+                Ask your teacher to add lessons.
+              </Text>
+            </View>
+          ) : (
+            lessons.map((lesson, index) => {
+              const stats = getHomeworkCounts(lesson.id);
+              const done = Math.max(0, stats.totalAssigned - stats.pending);
+              const isPerfect =
+                stats.totalAssigned > 0 && done === stats.totalAssigned;
+              const alignLeft = index % 2 === 0;
+              const cardColor = LESSON_COLORS[index % LESSON_COLORS.length];
+
+              return (
+                <View key={lesson.id} style={styles.timelineRow}>
+                  <View
+                    style={[styles.nodeCenter, isPerfect && styles.nodePerfect]}
                   >
-                    {showStats
-                      ? `📊 ${totalCorrect}/${totalAssigned}`
-                      : "📊 Stats"}
-                  </Text>
-                </Pressable>
-              </View>
-            ) : (
-              <DoAllHomeworkButton classId={classData.id} />
-            )}
-          </View>
+                    <Text
+                      style={[
+                        styles.nodeCenterText,
+                        isPerfect && styles.nodePerfectText,
+                      ]}
+                    >
+                      {isPerfect ? "🏆" : index + 1}
+                    </Text>
+                  </View>
 
-          <View style={[styles.panelCard, styles.treePanelCard]}>
-            <Text style={styles.panelTitle}>Course map</Text>
-            <Text style={styles.panelSubtitle}>
-              Tap a card to select and open it.
-            </Text>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.card3d,
+                      styles.lessonCard,
+                      alignLeft ? styles.leftCard : styles.rightCard,
+                      { backgroundColor: cardColor },
+                      pressed && styles.card3dPressed,
+                    ]}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(tabs)/lesson-homework",
+                        params: {
+                          classId: classData.id,
+                          lessonId: lesson.id,
+                          lessonTitle: lesson.title,
+                        },
+                      })
+                    }
+                  >
+                    <View style={styles.lessonTopRow}>
+                      <Text style={styles.lessonTitle} numberOfLines={2}>
+                        {lesson.title}
+                      </Text>
 
-            <ScrollView contentContainerStyle={styles.treeScrollContent}>
-              {course.rootLessonNode ? (
-                <TreeNodeRenderer
-                  node={course.rootLessonNode}
-                  level={0}
-                  showStats={showStats}
-                />
-              ) : (
-                <Text style={styles.emptyText}>No course structure yet.</Text>
-              )}
-            </ScrollView>
-          </View>
-        </View>
+                      <View style={styles.statsBadge}>
+                        <Text style={styles.statsText}>
+                          ⭐ {done}/{stats.totalAssigned}
+                        </Text>
+                      </View>
+                    </View>
+                  </Pressable>
+                </View>
+              );
+            })
+          )}
 
-        <View style={styles.rightPane}>
-          <View style={[styles.panelCard, styles.detailPanelCard]}>
-            <Text style={styles.panelTitle}>Lesson details</Text>
-            <ScrollView contentContainerStyle={styles.detailScrollContent}>
-              <DetailPanel classId={classData.id} showStats={showStats} />
-            </ScrollView>
+          <View style={styles.finishWrap}>
+            <View style={[styles.card3d, styles.finishBox]}>
+              <Text style={styles.finishEmoji}>👑</Text>
+            </View>
+            <Text style={styles.finishText}>FINISH</Text>
           </View>
-        </View>
+        </ScrollView>
       </View>
     </SafeAreaView>
   );
@@ -619,319 +299,212 @@ export default function ClassDetailScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#f0fdfa",
+    backgroundColor: "#F0FDF4",
   },
-  horizontalLayout: {
-    flex: 1,
-    flexDirection: "row",
-    gap: 10,
+  headerWrap: {
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingTop: 8,
   },
-  leftPane: {
-    width: "42%",
-    gap: 10,
+  card3d: {
+    borderWidth: 3,
+    borderColor: "#1E293B",
+    borderBottomWidth: 8,
   },
-  rightPane: {
-    flex: 1,
+  card3dPressed: {
+    transform: [{ translateY: 4 }],
+    borderBottomWidth: 4,
   },
-  heroCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#bae6fd",
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  heroActionsRow: {
+  headerCard: {
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "space-between",
+    gap: 10,
   },
-  heroActionItem: {
+  headerTextWrap: {
     flex: 1,
   },
   className: {
     fontSize: 18,
-    fontWeight: "800",
-    color: "#0f172a",
+    fontWeight: "900",
+    color: "#1E293B",
   },
   courseName: {
-    fontSize: 13,
-    color: "#475569",
     marginTop: 2,
-    marginBottom: 8,
-  },
-  doAllButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#0f766e",
-    borderRadius: 10,
-    minHeight: 40,
-    paddingHorizontal: 10,
-  },
-  doAllButtonText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#ffffff",
-  },
-  doAllButtonDone: {
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#dcfce7",
-    borderRadius: 10,
-    minHeight: 40,
-    paddingHorizontal: 10,
-  },
-  doAllButtonDoneText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#166534",
-  },
-  statsToggleButton: {
-    minHeight: 40,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f8fafc",
-    paddingHorizontal: 8,
-  },
-  statsToggleButtonActive: {
-    backgroundColor: "#fef3c7",
-    borderColor: "#fde68a",
-  },
-  statsToggleText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#334155",
+    color: "#64748B",
   },
-  statsToggleTextActive: {
-    color: "#92400e",
-  },
-  panelCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: "#bae6fd",
-    padding: 12,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  treePanelCard: {
-    flex: 1,
-  },
-  detailPanelCard: {
-    flex: 1,
-  },
-  treeScrollContent: {
-    paddingBottom: 12,
-  },
-  detailScrollContent: {
-    paddingBottom: 16,
-  },
-  panelTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#0f172a",
-    marginBottom: 2,
-  },
-  panelSubtitle: {
-    fontSize: 14,
-    color: "#64748b",
-    marginBottom: 10,
-  },
-  treeNodeWrap: {
-    marginBottom: 8,
-  },
-  treeNode: {
-    backgroundColor: "#f8fafc",
-    borderWidth: 1,
-    borderColor: "#dbeafe",
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    marginRight: 2,
-  },
-  treeNodeSelected: {
-    backgroundColor: "#e0f2fe",
-    borderColor: "#38bdf8",
-  },
-  treeNodeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  treeNodeMainInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  nodeChevron: {
-    fontSize: 14,
-    width: 18,
-    color: "#334155",
-    textAlign: "center",
-  },
-  nodeIcon: {
-    fontSize: 18,
-    marginRight: 8,
-  },
-  nodeTextGroup: {
-    flex: 1,
-  },
-  nodeTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0f172a",
-  },
-  nodeTypeLabel: {
-    fontSize: 12,
-    color: "#64748b",
-    marginTop: 1,
-  },
-  badge: {
-    minWidth: 34,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  badgePending: {
-    backgroundColor: "#fee2e2",
-  },
-  badgeCompleted: {
-    backgroundColor: "#dcfce7",
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  badgePendingText: {
-    color: "#991b1b",
-  },
-  badgeCompletedText: {
-    color: "#166534",
-  },
-  detailPanel: {
-    marginTop: 2,
-  },
-  detailHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  detailEmoji: {
-    fontSize: 24,
-  },
-  typeTag: {
-    alignSelf: "flex-start",
-    borderRadius: 999,
-    backgroundColor: "#ecfeff",
-    borderWidth: 1,
-    borderColor: "#a5f3fc",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  typeTagText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#0f766e",
-  },
-  detailTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#0f172a",
-    marginTop: 8,
-  },
-  sectionWrap: {
-    marginTop: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#334155",
-    marginBottom: 6,
-  },
-  sectionText: {
-    fontSize: 16,
-    color: "#475569",
-    lineHeight: 24,
-  },
-  homeworkList: {
-    gap: 8,
-  },
-  homeworkCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#fde68a",
-    backgroundColor: "#fffbeb",
+  playButton: {
+    minHeight: 42,
+    borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  homeworkCardDisabled: {
-    borderColor: "#e2e8f0",
-    backgroundColor: "#f8fafc",
-  },
-  homeworkTopRow: {
-    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FF6B6B",
+  },
+  playButtonText: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#FFFFFF",
+  },
+  playButtonDone: {
+    minHeight: 42,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FEF08A",
+  },
+  playButtonDoneText: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#B45309",
+  },
+  timelineWrap: {
+    flex: 1,
+    marginTop: 8,
+  },
+  timelinePath: {
+    position: "absolute",
+    left: "50%",
+    top: 14,
+    bottom: 76,
+    borderLeftWidth: 4,
+    borderLeftColor: "#CBD5E1",
+    borderStyle: "dashed",
+    zIndex: 0,
+  },
+  timelineContent: {
+    paddingHorizontal: 8,
+    paddingBottom: 20,
+    gap: 16,
+  },
+  timelineRow: {
+    position: "relative",
+    minHeight: 108,
+    justifyContent: "center",
+  },
+  nodeCenter: {
+    position: "absolute",
+    left: "50%",
+    marginLeft: -25,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 3,
+    borderColor: "#1E293B",
+    borderBottomWidth: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+  },
+  nodePerfect: {
+    backgroundColor: "#FEF08A",
+    borderColor: "#B45309",
+  },
+  nodeCenterText: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#1E293B",
+  },
+  nodePerfectText: {
+    color: "#B45309",
+    fontSize: 16,
+  },
+  lessonCard: {
+    width: "42%",
+    minHeight: 100,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    justifyContent: "flex-start",
+    zIndex: 5,
+  },
+  lessonTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 8,
   },
-  homeworkTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#92400e",
+  leftCard: {
+    alignSelf: "flex-start",
+    marginLeft: "5%",
+  },
+  rightCard: {
+    alignSelf: "flex-end",
+    marginRight: "5%",
+  },
+  lessonTitle: {
     flex: 1,
+    fontSize: 18,
+    lineHeight: 23,
+    fontWeight: "900",
+    color: "#FFFFFF",
   },
-  homeworkSubtitle: {
-    marginTop: 5,
-    fontSize: 14,
-    color: "#b45309",
+  statsBadge: {
+    alignSelf: "flex-start",
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.88)",
+    borderWidth: 1.5,
+    borderColor: "#1E293B",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
-  homeworkMuted: {
-    color: "#94a3b8",
+  statsText: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#1E293B",
   },
-  emptyText: {
-    fontSize: 14,
-    color: "#94a3b8",
-    fontStyle: "italic",
-  },
-  detailPlaceholder: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    backgroundColor: "#f8fafc",
-    padding: 14,
+  finishWrap: {
+    alignItems: "center",
     marginTop: 8,
   },
-  detailPlaceholderTitle: {
+  finishBox: {
+    width: 76,
+    height: 76,
+    borderRadius: 20,
+    backgroundColor: "#A855F7",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  finishEmoji: {
+    fontSize: 36,
+  },
+  finishText: {
+    marginTop: 6,
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#9333EA",
+    letterSpacing: 2,
+  },
+  emptyCard: {
+    marginTop: 4,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  emptyTitle: {
     fontSize: 18,
-    fontWeight: "800",
+    fontWeight: "900",
     color: "#334155",
     marginBottom: 4,
   },
-  detailPlaceholderText: {
+  emptyText: {
     fontSize: 14,
-    color: "#64748b",
+    color: "#64748B",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f0fdfa",
+    backgroundColor: "#F0FDF4",
     padding: 16,
   },
   loadingText: {

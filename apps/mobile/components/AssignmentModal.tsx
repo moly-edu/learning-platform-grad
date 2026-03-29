@@ -109,12 +109,13 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
     return (
       <Pressable
-        style={[
+        style={({ pressed }) => [
           styles.assignmentItem,
           {
             borderLeftColor: borderColor,
             backgroundColor: statusColor,
           },
+          pressed && styles.card3dPressed,
         ]}
         onPress={() => handleAssignmentPress(item.id)}
       >
@@ -199,7 +200,13 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
           ) : error ? (
             <View style={styles.centerContainer}>
               <Text style={styles.errorText}>{error}</Text>
-              <Pressable style={styles.retryButton} onPress={fetchAssignments}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.retryButton,
+                  pressed && styles.card3dPressed,
+                ]}
+                onPress={fetchAssignments}
+              >
                 <Text style={styles.retryButtonText}>Retry</Text>
               </Pressable>
             </View>
@@ -225,15 +232,17 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(20, 35, 20, 0.45)",
     justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: "white",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     height: "80%",
     paddingTop: 16,
+    borderWidth: 2,
+    borderColor: "#0f172a",
   },
   modalHeader: {
     flexDirection: "row",
@@ -241,8 +250,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+    borderBottomWidth: 2,
+    borderBottomColor: "#0f172a",
   },
   modalTitle: {
     fontSize: 24,
@@ -255,7 +264,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 12,
-    backgroundColor: "#f1f5f9",
+    backgroundColor: "#fde68a",
+    borderWidth: 1.5,
+    borderColor: "#92400e",
+    shadowColor: "#92400e",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 0,
+    elevation: 5,
   },
   closeButtonText: {
     fontSize: 20,
@@ -286,6 +302,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#0f766e",
     borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#042f2e",
+    shadowColor: "#042f2e",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 0,
+    elevation: 8,
   },
   retryButtonText: {
     color: "white",
@@ -305,6 +328,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderRadius: 14,
     borderLeftWidth: 4,
+    borderWidth: 2,
+    borderColor: "#0f172a",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.12,
+    shadowRadius: 0,
+    elevation: 6,
   },
   assignmentHeader: {
     marginBottom: 8,
@@ -361,5 +391,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#64748b",
     fontStyle: "italic",
+  },
+  card3dPressed: {
+    transform: [{ translateY: 2 }],
+    shadowOpacity: 0.08,
+    elevation: 3,
   },
 });

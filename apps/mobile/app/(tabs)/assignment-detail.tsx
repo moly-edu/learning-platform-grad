@@ -25,16 +25,18 @@ export default function AssignmentDetailScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <AssignmentWidget
-          key={assignmentId}
-          assignmentId={assignmentId}
-          onCompleted={(submission) => {
-            console.log("Assignment completed:", submission);
-          }}
-          onError={(error) => {
-            console.error("Assignment error:", error);
-          }}
-        />
+        <View style={styles.widgetFrame}>
+          <AssignmentWidget
+            key={assignmentId}
+            assignmentId={assignmentId}
+            onCompleted={(submission) => {
+              console.log("Assignment completed:", submission);
+            }}
+            onError={(error) => {
+              console.error("Assignment error:", error);
+            }}
+          />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -43,17 +45,32 @@ export default function AssignmentDetailScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#f0fdfa",
+    backgroundColor: "#fefce8",
   },
   container: {
     flex: 1,
-    backgroundColor: "#f0fdfa",
+    backgroundColor: "#fefce8",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  widgetFrame: {
+    flex: 1,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: "#854d0e",
+    overflow: "hidden",
+    backgroundColor: "#ffffff",
+    shadowColor: "#854d0e",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 0,
+    elevation: 10,
   },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f0fdfa",
+    backgroundColor: "#fefce8",
     padding: 18,
   },
   errorIcon: {
@@ -79,6 +96,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#0f766e",
     borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#042f2e",
+    shadowColor: "#042f2e",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 0,
+    elevation: 8,
   },
   backButtonText: {
     color: "white",
