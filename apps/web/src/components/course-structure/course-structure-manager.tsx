@@ -41,6 +41,7 @@ import {
 } from "@/components/providers/course-structure-provider";
 import WidgetMarketplaceDialog from "../widget/marketplace/WidgetMarketplaceDialog";
 import TeacherAssignmentDialog from "../widget/homework/TeacherCreateAssignmentDialog";
+import TeacherQuickAssignDialog from "../widget/homework/TeacherQuickAssignDialog";
 import TeacherViewAssignmentDialog from "../widget/homework/TeacherViewAssignmentDialog";
 import StudentViewAssignmentDialog from "../widget/homework/StudentViewAssignmentDialog";
 import TeacherStudentAssignmentViewDialog from "../widget/homework/TeacherStudentAssignmentViewDialog";
@@ -1006,8 +1007,9 @@ const CourseStructureContent: React.FC = () => {
                               <div className="ml-6 mt-2 space-y-1">
                                 {/* Add button for teacher */}
                                 {isTeacher && (
-                                  <div className="mb-2">
+                                  <div className="mb-2 grid grid-cols-2 gap-2">
                                     <TeacherAssignmentDialog hwId={hw.id} />
+                                    <TeacherQuickAssignDialog hwId={hw.id} />
                                   </div>
                                 )}
 
