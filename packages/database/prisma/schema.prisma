@@ -181,7 +181,8 @@ model LessonNode {
 
   order Int?
 
-  classChildren ClassLessonNode[] @relation("NodeRoot")
+  classChildren           ClassLessonNode[]        @relation("NodeRoot")
+  autoAssignmentSchedules AutoAssignmentSchedule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -206,8 +207,9 @@ model Class {
 
   members ClassMember[]
 
-  classLessonNodes ClassLessonNode[] @relation("ClassLessonNode")
-  groups           ClassGroup[]
+  classLessonNodes        ClassLessonNode[]        @relation("ClassLessonNode")
+  groups                  ClassGroup[]
+  autoAssignmentSchedules AutoAssignmentSchedule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -236,6 +238,17 @@ enum ClassRole {
   owner
   teacher
   student
+}
+
+enum AssignmentSource {
+  teacher
+  system
+}
+
+enum ScheduleIntervalUnit {
+  minute
+  hour
+  day
 }
 
 model ClassGroup {
@@ -283,6 +296,46 @@ model ClassLessonNode {
   @@map("class_lesson_node")
 }
 
+model AutoAssignmentSchedule {
+  id String @id @default(cuid())
+
+  classId String
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  // Homework root node (LessonNodeType.homework)
+  homeworkNodeId String
+  homeworkNode   LessonNode @relation(fields: [homeworkNodeId], references: [id], onDelete: Cascade)
+
+  createdBy String
+
+  startAt DateTime
+
+  intervalValue Int                  @default(2)
+  intervalUnit  ScheduleIntervalUnit @default(day)
+
+  // Window-based auto new assignment formula uses this multiplier
+  decayFactor Float @default(0.5)
+  minAutoNew  Int   @default(1)
+
+  // Initial retry interval for pending/incorrect attempts
+  initialReviewDelayMinutes Int @default(30)
+  // Stop creating retries after this number of retries per student/root
+  maxRetryPerRoot           Int @default(6)
+
+  isActive      Boolean   @default(true)
+  lastAutoRunAt DateTime?
+  runCount      Int       @default(0)
+
+  assignments StudentAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([classId, homeworkNodeId])
+  @@index([isActive, startAt])
+  @@map("auto_assignment_schedule")
+}
+
 enum ClassAddonType {
   lesson_note
   homework_imp
@@ -297,6 +350,18 @@ model StudentAssignment {
   assignmentId String
   assignment   ClassLessonNode @relation("StudentAssignments", fields: [assignmentId], references: [id], onDelete: Cascade)
 
+  // Unified tracking for manual/quick/system assignment flows
+  source AssignmentSource @default(teacher)
+
+  scheduleId String?
+  schedule   AutoAssignmentSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+
+  // Keep the same root for retries of a logical assignment thread
+  rootAssignmentId String?
+
+  // Scheduler uses this to determine when to generate next retry assignment
+  reviewDueAt DateTime?
+
   submissionData Json?
 
   submittedAt DateTime?
@@ -306,6 +371,8 @@ model StudentAssignment {
   @@unique([studentId, assignmentId])
   @@index([studentId])
   @@index([assignmentId])
+  @@index([scheduleId, source, reviewDueAt])
+  @@index([studentId, rootAssignmentId])
   @@map("student_assignment")
 }
 

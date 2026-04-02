@@ -34,3 +34,41 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Auto Assignment Tick Setup
+
+Auto assignment generation runs when the internal tick endpoint is called:
+
+- `GET/POST /api/internal/auto-assign/tick`
+
+### Required env vars
+
+Set these values in `.env`:
+
+- `AUTO_ASSIGN_CRON_SECRET` - bearer token for tick endpoint auth.
+- `AUTO_ASSIGN_DEFAULT_INTERVAL_UNIT` - `minute`, `hour`, or `day`.
+- `AUTO_ASSIGN_DEFAULT_INTERVAL_VALUE` - interval value (for example `1`).
+- `AUTO_ASSIGN_DEFAULT_DECAY_FACTOR` - multiplier for auto-created assignments.
+- `AUTO_ASSIGN_DEFAULT_MIN_AUTO_NEW` - minimum number of auto-created assignments.
+- `AUTO_ASSIGN_DEFAULT_REVIEW_DELAY_MINUTES` - initial review delay.
+- `AUTO_ASSIGN_DEFAULT_MAX_RETRY_PER_ROOT` - retry limit per root assignment.
+
+### Local manual trigger example (PowerShell)
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "http://localhost:3000/api/internal/auto-assign/tick" -Headers @{ Authorization = "Bearer change_me_auto_assign_secret" }
+```
+
+### Local automatic tick (no manual call)
+
+In development, auto tick is enabled by default via `src/instrumentation.ts`.
+
+- `AUTO_ASSIGN_DEV_AUTO_TICK=true` enables periodic local tick.
+- `AUTO_ASSIGN_DEV_TICK_MS=60000` sets interval in milliseconds.
+
+For fast local testing, set `AUTO_ASSIGN_DEV_TICK_MS=10000` (10 seconds), then restart dev server.
+
+### Production cron
+
+`vercel.json` includes a 1-minute cron job that calls `/api/internal/auto-assign/tick`.
+On Vercel, configure `CRON_SECRET` (or `AUTO_ASSIGN_CRON_SECRET`) to match the expected bearer token.

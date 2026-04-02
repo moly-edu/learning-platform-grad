@@ -2,8 +2,20 @@
 
 import { auth } from "@/lib/auth-server";
 import prisma from "@/lib/prisma";
+import {
+  getActiveScheduleForHomework,
+  getScheduleById,
+} from "@/server/auto-assignment";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+
+function isCorrectSubmission(submissionData: unknown) {
+  if (!submissionData || typeof submissionData !== "object") return false;
+  const evaluation = (
+    submissionData as { evaluation?: { isCorrect?: boolean } }
+  ).evaluation;
+  return evaluation?.isCorrect === true;
+}
 
 export async function POST(
   request: Request,
@@ -41,6 +53,11 @@ export async function POST(
     // Kiểm tra assignment tồn tại
     const assignment = await prisma.classLessonNode.findUnique({
       where: { id: assignmentId },
+      select: {
+        id: true,
+        classId: true,
+        lessonNodeId: true,
+      },
     });
 
     if (!assignment) {
@@ -48,6 +65,67 @@ export async function POST(
         { error: "Assignment not found" },
         { status: 404 },
       );
+    }
+
+    const existingAssignment = await prisma.studentAssignment.findUnique({
+      where: {
+        studentId_assignmentId: {
+          studentId: session.user.id,
+          assignmentId,
+        },
+      },
+      select: {
+        id: true,
+        source: true,
+        scheduleId: true,
+        rootAssignmentId: true,
+      },
+    });
+
+    const activeSchedule = existingAssignment?.scheduleId
+      ? await getScheduleById(existingAssignment.scheduleId)
+      : await getActiveScheduleForHomework(
+          assignment.classId,
+          assignment.lessonNodeId,
+        );
+
+    const scheduleId =
+      activeSchedule?.id ?? existingAssignment?.scheduleId ?? null;
+    const rootAssignmentId =
+      existingAssignment?.rootAssignmentId ?? assignmentId;
+
+    let reviewDueAt: Date | null = null;
+
+    if (!evaluation.isCorrect && activeSchedule && scheduleId) {
+      const incorrectAttempts = await prisma.studentAssignment.findMany({
+        where: {
+          studentId: session.user.id,
+          scheduleId,
+          rootAssignmentId,
+          assignmentId: {
+            not: assignmentId,
+          },
+        },
+        select: {
+          submissionData: true,
+        },
+      });
+
+      const previousIncorrectCount = incorrectAttempts.filter((attempt) => {
+        if (attempt.submissionData === null) return false;
+        return !isCorrectSubmission(attempt.submissionData);
+      }).length;
+
+      const incorrectCount = previousIncorrectCount + 1;
+
+      if (incorrectCount < activeSchedule.maxRetryPerRoot) {
+        const delayMinutes = Math.min(
+          14 * 24 * 60,
+          Math.max(1, activeSchedule.initialReviewDelayMinutes) *
+            2 ** Math.max(0, incorrectCount - 1),
+        );
+        reviewDueAt = new Date(Date.now() + delayMinutes * 60 * 1000);
+      }
     }
 
     // Lưu submission (upsert để tránh duplicate)
@@ -60,12 +138,16 @@ export async function POST(
       },
       create: {
         studentId: session.user.id,
-        assignmentId: assignmentId,
+        assignmentId,
         submissionData: {
           answer,
           evaluation,
         },
         submittedAt: new Date(),
+        source: existingAssignment?.source ?? "teacher",
+        scheduleId,
+        rootAssignmentId,
+        reviewDueAt,
       },
       update: {
         submissionData: {
@@ -73,6 +155,9 @@ export async function POST(
           evaluation,
         },
         submittedAt: new Date(),
+        scheduleId,
+        rootAssignmentId,
+        reviewDueAt,
       },
     });
 

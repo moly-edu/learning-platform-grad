@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/internal/auto-assign/tick",
+      "schedule": "*/1 * * * *"
+    }
+  ]
+}

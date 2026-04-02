@@ -2,6 +2,10 @@
 
 import { auth } from "@/lib/auth-server";
 import prisma from "@/lib/prisma";
+import {
+  assignStudentsToAssignment,
+  getOrCreateActiveScheduleForHomework,
+} from "@/server/auto-assignment";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -38,6 +42,7 @@ export async function POST(
       select: {
         id: true,
         classId: true,
+        lessonNodeId: true,
       },
     });
 
@@ -84,39 +89,32 @@ export async function POST(
       );
     }
 
-    // 4️⃣ Lấy danh sách đã được giao rồi để skip
-    const existingAssignments = await prisma.studentAssignment.findMany({
-      where: {
-        assignmentId: assignmentId,
-        studentId: { in: validStudentIds },
-      },
-      select: { studentId: true },
+    const activeSchedule = await getOrCreateActiveScheduleForHomework(
+      assignment.classId,
+      assignment.lessonNodeId,
+      session.user.id,
+    );
+
+    const reviewDueAt = activeSchedule
+      ? new Date(
+          Date.now() + activeSchedule.initialReviewDelayMinutes * 60 * 1000,
+        )
+      : null;
+
+    const assignResult = await assignStudentsToAssignment({
+      assignmentId,
+      studentIds: validStudentIds,
+      source: "teacher",
+      scheduleId: activeSchedule?.id,
+      rootAssignmentId: assignmentId,
+      reviewDueAt,
     });
-
-    const alreadyAssignedIds = new Set(
-      existingAssignments.map((a) => a.studentId),
-    );
-    const newStudentIds = validStudentIds.filter(
-      (id) => !alreadyAssignedIds.has(id),
-    );
-
-    // 5️⃣ Tạo StudentAssignment cho những người chưa được giao
-    if (newStudentIds.length > 0) {
-      await prisma.studentAssignment.createMany({
-        data: newStudentIds.map((sid) => ({
-          studentId: sid,
-          assignmentId: assignmentId,
-          submittedAt: null,
-        })),
-        skipDuplicates: true,
-      });
-    }
 
     return NextResponse.json({
       success: true,
-      assigned: newStudentIds.length,
-      skipped: alreadyAssignedIds.size,
-      total: validStudentIds.length,
+      assigned: assignResult.assigned,
+      skipped: assignResult.skipped,
+      total: assignResult.total,
     });
   } catch (error) {
     console.error("[ASSIGN_TO_STUDENT_ERROR]", error);
