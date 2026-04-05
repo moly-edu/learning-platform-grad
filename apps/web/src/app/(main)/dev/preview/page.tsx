@@ -12,12 +12,98 @@ import {
 } from "lucide-react";
 import { SchemaProcessor } from "@/components/widget/core/SchemaProcessor";
 import { TweakpaneBuilder } from "@/components/widget/core/TweakpaneBuilder";
-import { Submission, WidgetDefinition } from "@/components/widget/core/types";
+import {
+  DifficultyLevel,
+  Submission,
+  WidgetDefinition,
+} from "@/components/widget/core/types";
 import { useLocale } from "next-intl";
 import {
   stopHostTtsPlayback,
   synthesizeWithHostTts,
 } from "@/components/widget/core/HostTtsClient";
+
+function getSchemaFieldByPath(schema: Record<string, any>, path: string): any {
+  const parts = path.split(".").filter((part) => part.length > 0);
+  let current: any = schema;
+
+  for (const part of parts) {
+    if (!current) return null;
+
+    if (current[part]) {
+      current = current[part];
+    } else if (current.fields && current.fields[part]) {
+      current = current.fields[part];
+    } else {
+      return null;
+    }
+  }
+
+  return current;
+}
+
+function setValueByPath(
+  target: Record<string, any>,
+  path: string,
+  value: any,
+): boolean {
+  const parts = path.split(".").filter((part) => part.length > 0);
+  if (parts.length < 1) {
+    return false;
+  }
+
+  let container = target;
+  for (let index = 0; index < parts.length - 1; index++) {
+    const part = parts[index];
+    const current = container[part];
+
+    if (!current || typeof current !== "object" || Array.isArray(current)) {
+      container[part] = {};
+    }
+
+    container = container[part] as Record<string, any>;
+  }
+
+  container[parts[parts.length - 1]] = value;
+  return true;
+}
+
+function applyInitialDifficultyToConfig(
+  initialConfig: Record<string, any>,
+  widgetDef: WidgetDefinition,
+  initialDifficulty: DifficultyLevel,
+) {
+  const difficultyPath =
+    widgetDef.difficultySync?.difficultyPath || "difficulty";
+  const difficultyField = getSchemaFieldByPath(
+    widgetDef.schema,
+    difficultyPath,
+  );
+
+  let normalizedDifficulty: string = initialDifficulty;
+  if (
+    difficultyField?.type === "select" &&
+    Array.isArray(difficultyField.options) &&
+    difficultyField.options.length > 0
+  ) {
+    const options = difficultyField.options as string[];
+    if (!options.includes(normalizedDifficulty)) {
+      normalizedDifficulty = options.includes("medium") ? "medium" : options[0];
+    }
+  }
+
+  const applied = setValueByPath(
+    initialConfig,
+    difficultyPath,
+    normalizedDifficulty,
+  );
+  if (
+    !applied &&
+    Object.prototype.hasOwnProperty.call(initialConfig, "difficulty")
+  ) {
+    initialConfig.difficulty = normalizedDifficulty;
+  }
+}
 
 // ============================================================
 // WIDGET VALIDATOR - CHỈ SỬA HÀM NÀY
@@ -81,6 +167,8 @@ export default function WidgetPreviewPage() {
 
   const [widgetUrl, setWidgetUrl] = useState<string>("");
   const [inputUrl, setInputUrl] = useState<string>("");
+  const [inputDifficulty, setInputDifficulty] =
+    useState<DifficultyLevel>("medium");
   const [error, setError] = useState<string>("");
   const [validating, setValidating] = useState(false);
 
@@ -141,7 +229,13 @@ export default function WidgetPreviewPage() {
   };
 
   if (widgetUrl) {
-    return <WidgetHost widgetUrl={widgetUrl} onExit={() => setWidgetUrl("")} />;
+    return (
+      <WidgetHost
+        widgetUrl={widgetUrl}
+        initialDifficulty={inputDifficulty}
+        onExit={() => setWidgetUrl("")}
+      />
+    );
   }
 
   return (
@@ -181,6 +275,31 @@ export default function WidgetPreviewPage() {
               disabled={validating}
             />
 
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-foreground">
+                {isVi
+                  ? "Độ khó đầu vào (giao tự động)"
+                  : "Initial difficulty (auto assignment)"}
+              </label>
+              <select
+                value={inputDifficulty}
+                onChange={(e) =>
+                  setInputDifficulty(e.target.value as DifficultyLevel)
+                }
+                className="w-full px-4 py-3 border-2 border-border rounded-xl focus:border-primary focus:outline-none transition-colors text-foreground bg-card"
+                disabled={validating}
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {isVi
+                  ? "Giá trị này sẽ được áp vào cấu hình ban đầu trước lần gửi tham số đầu tiên."
+                  : "This value is applied to the initial widget config before the first parameter sync."}
+              </p>
+            </div>
+
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2">
                 <AlertCircle
@@ -219,9 +338,11 @@ export default function WidgetPreviewPage() {
 // ============================================================
 function WidgetHost({
   widgetUrl,
+  initialDifficulty,
   onExit,
 }: {
   widgetUrl: string;
+  initialDifficulty: DifficultyLevel;
   onExit: () => void;
 }) {
   const locale = useLocale();
@@ -425,6 +546,12 @@ function WidgetHost({
         widgetDef.resolvedDefaults ??
         SchemaProcessor.extractDefaultsFromSchema(widgetDef.schema);
 
+      applyInitialDifficultyToConfig(
+        initialConfig,
+        widgetDef,
+        initialDifficulty,
+      );
+
       console.log("🎯 Initial config extracted:", initialConfig);
 
       const handleConfigChange = (newConfig: Record<string, any>) => {
@@ -440,6 +567,7 @@ function WidgetHost({
         pane,
         initialConfig,
         widgetDef.schema,
+        widgetDef.difficultySync,
         handleConfigChange,
       );
 
@@ -466,7 +594,7 @@ function WidgetHost({
         paneInstanceRef.current = null;
       }
     };
-  }, [widgetDef, iframeReady, isVi]);
+  }, [widgetDef, iframeReady, isVi, initialDifficulty]);
 
   return (
     <div className="min-h-screen bg-background flex">

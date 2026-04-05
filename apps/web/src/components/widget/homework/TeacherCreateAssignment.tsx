@@ -366,6 +366,7 @@ const TeacherCreateAssignment = forwardRef<
         pane,
         defaults,
         widgetDef.schema,
+        widgetDef.difficultySync,
         handleConfigChange,
       );
 

@@ -235,6 +235,7 @@ export default function WidgetPreview({ html }: { html: string }) {
         pane,
         initialConfig,
         widgetDef.schema,
+        widgetDef.difficultySync,
         handleConfigChange,
       );
 
