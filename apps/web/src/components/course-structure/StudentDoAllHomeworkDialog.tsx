@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -22,9 +22,16 @@ interface PendingAssignment {
   isCorrect?: boolean; // NEW: Track if the submission is correct
 }
 
-export default function StudentDoAllHomeworkDialog() {
+type StudentDoAllHomeworkDialogProps = {
+  variant?: "classic" | "threeD";
+};
+
+export default function StudentDoAllHomeworkDialog({
+  variant = "classic",
+}: StudentDoAllHomeworkDialogProps) {
   const isVi = useLocale() === "vi";
   const { studentSubmissionStatus, isStudent } = useCourseStructure();
+  const isThreeD = variant === "threeD";
 
   const [open, setOpen] = useState(false);
   const [currentAssignmentId, setCurrentAssignmentId] = useState<string>();
@@ -36,19 +43,22 @@ export default function StudentDoAllHomeworkDialog() {
   >(new Map());
 
   // 📊 Get current pending assignments from studentSubmissionStatus
-  const pendingAssignments: PendingAssignment[] = [];
-  let index = 1;
+  const pendingAssignments = useMemo(() => {
+    const items: PendingAssignment[] = [];
+    let index = 1;
 
-  studentSubmissionStatus.forEach((status, assignmentId) => {
-    // Chỉ lấy những assignment chưa làm (hasSubmitted = false)
-    if (!status.hasSubmitted) {
-      pendingAssignments.push({
-        classLessonNodeId: assignmentId,
-        index: index++,
-        isCompleted: false,
-      });
-    }
-  });
+    studentSubmissionStatus.forEach((status, assignmentId) => {
+      if (!status.hasSubmitted) {
+        items.push({
+          classLessonNodeId: assignmentId,
+          index: index++,
+          isCompleted: false,
+        });
+      }
+    });
+
+    return items;
+  }, [studentSubmissionStatus]);
 
   // Nếu chưa track pending khi mở dialog thì track ngay
   useEffect(() => {
@@ -116,6 +126,13 @@ export default function StudentDoAllHomeworkDialog() {
       studentSubmissionStatus.get(assignmentId)?.hasSubmitted || false,
   }));
 
+  const completedCount = displayedAssignments.filter(
+    (assignment) => assignment.isCompleted,
+  ).length;
+  const totalCount = displayedAssignments.length;
+  const progressPercent =
+    totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
   const currentAssignment = displayedAssignments.find(
     (a) => a.classLessonNodeId === currentAssignmentId,
   );
@@ -124,7 +141,11 @@ export default function StudentDoAllHomeworkDialog() {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button
-          className={`w-full bg-purple-500 hover:bg-purple-600 text-white ${
+          className={`w-full ${
+            isThreeD
+              ? "rounded-xl border-2 border-slate-900 bg-amber-300 font-extrabold text-slate-900 shadow-[0_4px_0_0_rgba(15,23,42,0.25)] transition-transform hover:bg-amber-200 active:translate-y-px active:shadow-[0_2px_0_0_rgba(15,23,42,0.25)]"
+              : "bg-purple-500 text-white hover:bg-purple-600"
+          } ${
             pendingAssignments.length === 0
               ? "opacity-50 cursor-not-allowed"
               : ""
@@ -136,24 +157,65 @@ export default function StudentDoAllHomeworkDialog() {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="w-[95vw]! h-[95vh]! max-w-none! p-0! flex! flex-col! min-h-0!">
-        <DialogHeader className="px-6 py-4 border-b shrink-0 flex flex-row items-center justify-between">
-          <DialogTitle>{isVi ? "Làm bài tập" : "Do homework"}</DialogTitle>
-          <div className="text-sm text-muted-foreground">
-            {allCompleted ? (
-              <span className="text-green-600 font-semibold">
-                ✅ {isVi ? "Hoàn tất!" : "Done!"}
-              </span>
-            ) : currentAssignment ? (
-              <span>
-                {displayedAssignments.findIndex(
-                  (a) => a.classLessonNodeId === currentAssignmentId,
-                ) + 1}
-                /{displayedAssignments.length}
-              </span>
-            ) : (
-              <span>0/{displayedAssignments.length}</span>
-            )}
+      <DialogContent
+        className={`w-[95vw]! h-[95vh]! max-w-none! p-0! flex! min-h-0! flex-col! ${
+          isThreeD
+            ? "rounded-2xl! border-2! border-slate-900! bg-linear-to-b from-amber-50 via-sky-50 to-white shadow-[0_10px_0_0_rgba(15,23,42,0.24)]"
+            : ""
+        }`}
+      >
+        <DialogHeader
+          className={`shrink-0 border-b px-6 py-4 ${
+            isThreeD ? "border-slate-900 bg-white/80" : "border-border"
+          }`}
+        >
+          <div className="flex flex-row items-center justify-between">
+            <DialogTitle className={isThreeD ? "text-slate-900" : ""}>
+              {isVi ? "Làm bài tập" : "Do homework"}
+            </DialogTitle>
+            <div
+              className={`text-sm ${
+                isThreeD
+                  ? "font-semibold text-slate-700"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {allCompleted ? (
+                <span className="font-semibold text-green-600">
+                  ✅ {isVi ? "Hoàn tất!" : "Done!"}
+                </span>
+              ) : currentAssignment ? (
+                <span>
+                  {displayedAssignments.findIndex(
+                    (a) => a.classLessonNodeId === currentAssignmentId,
+                  ) + 1}
+                  /{displayedAssignments.length}
+                </span>
+              ) : (
+                <span>0/{displayedAssignments.length}</span>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-3 space-y-1">
+            <div
+              className={`h-2.5 overflow-hidden rounded-full border ${
+                isThreeD
+                  ? "border-slate-900 bg-amber-100"
+                  : "border-border bg-muted"
+              }`}
+            >
+              <div
+                className={`h-full transition-all duration-300 ${
+                  isThreeD ? "bg-sky-500" : "bg-purple-500"
+                }`}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {completedCount}/{totalCount} {isVi ? "bài" : "assignments"} •{" "}
+              {progressPercent}%
+            </div>
           </div>
         </DialogHeader>
 
@@ -177,10 +239,20 @@ export default function StudentDoAllHomeworkDialog() {
             </Button>
           </div>
         ) : currentAssignment ? (
-          <div className="flex-1 min-h-0 flex gap-4 p-4 overflow-hidden">
+          <div className="flex min-h-0 flex-1 gap-4 overflow-hidden p-4">
             {/* LEFT: Assignment list */}
-            <div className="w-80 bg-card border border-border rounded-lg flex flex-col shrink-0">
-              <div className="px-4 py-3 border-b border-border">
+            <div
+              className={`w-80 shrink-0 rounded-lg border bg-card ${
+                isThreeD
+                  ? "border-slate-900 shadow-[0_6px_0_0_rgba(15,23,42,0.2)]"
+                  : "border-border"
+              } flex flex-col`}
+            >
+              <div
+                className={`border-b px-4 py-3 ${
+                  isThreeD ? "border-slate-900" : "border-border"
+                }`}
+              >
                 <h3 className="font-semibold text-foreground">
                   {isVi ? "📋 Danh sách bài tập" : "📋 Assignment list"}
                 </h3>
@@ -199,9 +271,6 @@ export default function StudentDoAllHomeworkDialog() {
                       assignment.classLessonNodeId,
                     );
                     const isCorrect = evaluation?.isCorrect;
-                    const isLoadingEvaluation =
-                      assignment.isCompleted && isCorrect === undefined;
-
                     return (
                       <button
                         key={assignment.classLessonNodeId}
@@ -258,7 +327,13 @@ export default function StudentDoAllHomeworkDialog() {
             </div>
 
             {/* RIGHT: Assignment view */}
-            <div className="flex-1 min-h-0 bg-card rounded-lg border border-border overflow-hidden">
+            <div
+              className={`min-h-0 flex-1 overflow-hidden rounded-lg border bg-card ${
+                isThreeD
+                  ? "border-slate-900 shadow-[0_6px_0_0_rgba(15,23,42,0.2)]"
+                  : "border-border"
+              }`}
+            >
               <StudentAssignmentView
                 key={currentAssignmentId}
                 assignmentId={currentAssignmentId!}
