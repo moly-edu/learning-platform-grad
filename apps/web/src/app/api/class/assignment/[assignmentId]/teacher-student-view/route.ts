@@ -94,8 +94,41 @@ export async function GET(
         id: true,
         submissionData: true,
         submittedAt: true,
+        latestSubmissionData: true,
+        latestSubmittedAt: true,
+        attemptCount: true,
+        correctAttemptCount: true,
+        attempts: {
+          orderBy: {
+            attemptNumber: "asc",
+          },
+          select: {
+            id: true,
+            attemptNumber: true,
+            submissionData: true,
+            isCorrect: true,
+            submittedAt: true,
+          },
+        },
       },
     });
+
+    const attempts =
+      studentSubmission?.attempts.map((attempt) => {
+        const parsedSubmission = attempt.submissionData as
+          | Record<string, any>
+          | null;
+
+        return {
+          id: attempt.id,
+          attemptNumber: attempt.attemptNumber,
+          submissionData: attempt.submissionData,
+          answer: parsedSubmission?.answer ?? null,
+          evaluation: parsedSubmission?.evaluation ?? null,
+          isCorrect: attempt.isCorrect,
+          submittedAt: attempt.submittedAt,
+        };
+      }) ?? [];
 
     return NextResponse.json({
       assignmentId: assignment.id,
@@ -106,9 +139,14 @@ export async function GET(
       ),
       widgetId,
       buildRunId,
-      hasSubmitted: !!studentSubmission?.submittedAt,
+      hasSubmitted: !!studentSubmission?.submissionData,
       submissionData: studentSubmission?.submissionData || null,
       submittedAt: studentSubmission?.submittedAt || null,
+      latestSubmissionData: studentSubmission?.latestSubmissionData || null,
+      latestSubmittedAt: studentSubmission?.latestSubmittedAt || null,
+      attemptCount: studentSubmission?.attemptCount || 0,
+      correctAttemptCount: studentSubmission?.correctAttemptCount || 0,
+      attempts,
     });
   } catch (error) {
     console.error("[TEACHER_STUDENT_VIEW_ERROR]", error);

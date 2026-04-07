@@ -7,6 +7,35 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLocale } from "next-intl";
 
+interface SubmissionEvaluation {
+  isCorrect: boolean;
+  score: number;
+  maxScore: number;
+}
+
+interface SubmissionAttempt {
+  id: string;
+  attemptNumber: number;
+  answer: any;
+  evaluation: SubmissionEvaluation | null;
+  isCorrect: boolean;
+  submittedAt: string | null;
+}
+
+interface ViewSubmissionPayload {
+  studentId: string;
+  studentName: string;
+  answer: any;
+  attemptNumber: number;
+  evaluation: SubmissionEvaluation | null;
+  submittedAt: string | null;
+}
+
+interface ActiveReviewSubmission {
+  studentId: string;
+  attemptNumber: number;
+}
+
 interface StudentWithStatus {
   id: string;
   name: string;
@@ -17,12 +46,16 @@ interface StudentWithStatus {
   submission: {
     id: string;
     submittedAt: string | null;
+    latestSubmittedAt: string | null;
+    attemptCount: number;
+    correctAttemptCount: number;
     evaluation: {
       isCorrect: boolean;
       score: number;
       maxScore: number;
     };
     answer: any;
+    attempts: SubmissionAttempt[];
   } | null;
 }
 
@@ -40,12 +73,16 @@ type TabType = "groups" | "individual";
 
 interface AssignmentStudentsPanelProps {
   assignmentId: string;
-  onViewAnswer?: (answer: any) => void;
+  onViewAnswer?: (payload: ViewSubmissionPayload) => void;
+  onExitReview?: () => void;
+  activeReviewSubmission?: ActiveReviewSubmission | null;
 }
 
 export default function AssignmentStudentsPanel({
   assignmentId,
   onViewAnswer,
+  onExitReview,
+  activeReviewSubmission,
 }: AssignmentStudentsPanelProps) {
   const locale = useLocale();
   const isVi = locale === "vi";
@@ -62,6 +99,9 @@ export default function AssignmentStudentsPanel({
   const [assigningTo, setAssigningTo] = useState<string | null>(null);
   const [assigningGroup, setAssigningGroup] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("groups");
+  const [selectedAttemptsByStudent, setSelectedAttemptsByStudent] = useState<
+    Record<string, number>
+  >({});
 
   // Load students list
   const loadStudents = async () => {
@@ -79,6 +119,25 @@ export default function AssignmentStudentsPanel({
       setStudents(data.students);
       setGroups(data.groups || []);
       setStats(data.stats);
+      setSelectedAttemptsByStudent((prev) => {
+        const next = { ...prev };
+
+        (data.students as StudentWithStatus[]).forEach((student) => {
+          const attempts = student.submission?.attempts ?? [];
+          if (!student.hasSubmitted || attempts.length === 0) {
+            delete next[student.id];
+            return;
+          }
+
+          const latestAttemptNumber =
+            attempts[attempts.length - 1]?.attemptNumber ?? 1;
+          if (typeof next[student.id] !== "number") {
+            next[student.id] = latestAttemptNumber;
+          }
+        });
+
+        return next;
+      });
     } catch (err) {
       console.error("Load students error:", err);
     } finally {
@@ -419,40 +478,182 @@ export default function AssignmentStudentsPanel({
                         {/* CASE 1: Đã làm bài */}
                         {student.hasSubmitted && student.submission ? (
                           <div className="mt-2 space-y-2">
-                            <div className="flex items-center gap-2">
-                              {student.submission.evaluation?.isCorrect ? (
-                                <CheckCircle
-                                  className="text-green-600"
-                                  size={16}
-                                />
-                              ) : (
-                                <XCircle className="text-red-600" size={16} />
-                              )}
-                              <span className="text-xs font-semibold">
-                                {student.submission.evaluation?.score || 0}/
-                                {student.submission.evaluation?.maxScore || 100}
-                              </span>
-                            </div>
+                            {(() => {
+                              const fallbackAttempt: SubmissionAttempt = {
+                                id: `${student.submission.id}-fallback`,
+                                attemptNumber: 1,
+                                answer: student.submission!.answer,
+                                evaluation: student.submission!.evaluation,
+                                isCorrect:
+                                  student.submission!.evaluation?.isCorrect ??
+                                  false,
+                                submittedAt: student.submission!.submittedAt,
+                              };
+                              const attempts =
+                                student.submission!.attempts?.length > 0
+                                  ? student.submission!.attempts
+                                  : [fallbackAttempt];
+                              const selectedAttemptNumber =
+                                selectedAttemptsByStudent[student.id] ??
+                                attempts[attempts.length - 1]?.attemptNumber ??
+                                1;
+                              const selectedAttempt =
+                                attempts.find(
+                                  (attempt) =>
+                                    attempt.attemptNumber ===
+                                    selectedAttemptNumber,
+                                ) ?? attempts[attempts.length - 1];
+                              const selectedEvaluation =
+                                selectedAttempt.evaluation ??
+                                student.submission!.evaluation;
+                              const isViewingCurrentAttempt =
+                                activeReviewSubmission?.studentId ===
+                                  student.id &&
+                                activeReviewSubmission?.attemptNumber ===
+                                  selectedAttempt.attemptNumber;
 
-                            {onViewAnswer && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="w-full text-xs"
-                                onClick={() =>
-                                  onViewAnswer(student.submission!.answer)
-                                }
-                              >
-                                {isVi ? "👁️ Xem bài làm" : "👁️ Review answer"}
-                              </Button>
-                            )}
+                              return (
+                                <div className="flex flex-col gap-2 text-xs text-left">
+                                  {/* Row 1: Score + Correct */}
+                                  <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                      {selectedEvaluation?.isCorrect ? (
+                                        <CheckCircle
+                                          className="text-green-600"
+                                          size={16}
+                                        />
+                                      ) : (
+                                        <XCircle
+                                          className="text-red-600"
+                                          size={16}
+                                        />
+                                      )}
+                                      <span className="font-semibold">
+                                        {selectedEvaluation?.score || 0}/
+                                        {selectedEvaluation?.maxScore || 100}
+                                      </span>
+                                    </div>
 
-                            <div className="text-xs text-muted-foreground">
-                              {student.submission.submittedAt &&
-                                new Date(
-                                  student.submission.submittedAt,
-                                ).toLocaleString(isVi ? "vi-VN" : "en-US")}
-                            </div>
+                                    <div className="text-muted-foreground">
+                                      {isVi ? "Đúng" : "Correct"}:{" "}
+                                      {student.submission.correctAttemptCount}/
+                                      {Math.max(
+                                        student.submission.attemptCount,
+                                        1,
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Row 2: Select + Button */}
+                                  <div className="flex items-center gap-2">
+                                    <select
+                                      id={`student-attempt-${student.id}`}
+                                      value={selectedAttempt.attemptNumber}
+                                      onChange={(event) => {
+                                        const nextAttemptNumber = Number(
+                                          event.target.value,
+                                        );
+
+                                        setSelectedAttemptsByStudent(
+                                          (prev) => ({
+                                            ...prev,
+                                            [student.id]: nextAttemptNumber,
+                                          }),
+                                        );
+
+                                        const nextAttempt =
+                                          attempts.find(
+                                            (attempt) =>
+                                              attempt.attemptNumber ===
+                                              nextAttemptNumber,
+                                          ) ?? selectedAttempt;
+
+                                        const nextEvaluation =
+                                          nextAttempt.evaluation ??
+                                          student.submission!.evaluation;
+
+                                        onViewAnswer?.({
+                                          studentId: student.id,
+                                          studentName: student.name,
+                                          answer: nextAttempt.answer,
+                                          attemptNumber:
+                                            nextAttempt.attemptNumber,
+                                          evaluation: nextEvaluation,
+                                          submittedAt:
+                                            nextAttempt.submittedAt ?? null,
+                                        });
+                                      }}
+                                      className="flex-1 h-7 rounded-md border border-border bg-background px-2"
+                                    >
+                                      {attempts.map((attempt) => {
+                                        const evaluation =
+                                          attempt.evaluation ??
+                                          student.submission!.evaluation;
+
+                                        const status = evaluation?.isCorrect
+                                          ? isVi
+                                            ? "Đúng"
+                                            : "Correct"
+                                          : isVi
+                                            ? "Sai"
+                                            : "Incorrect";
+
+                                        return (
+                                          <option
+                                            key={attempt.id}
+                                            value={attempt.attemptNumber}
+                                          >
+                                            {`${isVi ? "Lần" : "Attempt"} ${
+                                              attempt.attemptNumber
+                                            } • ${status} ${
+                                              evaluation?.score ?? 0
+                                            }/${evaluation?.maxScore ?? 100}`}
+                                          </option>
+                                        );
+                                      })}
+                                    </select>
+
+                                    {onViewAnswer && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className={`text-xs whitespace-nowrap ${
+                                          isViewingCurrentAttempt
+                                            ? "border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                                            : ""
+                                        }`}
+                                        onClick={() => {
+                                          if (isViewingCurrentAttempt) {
+                                            onExitReview?.();
+                                            return;
+                                          }
+
+                                          onViewAnswer({
+                                            studentId: student.id,
+                                            studentName: student.name,
+                                            answer: selectedAttempt.answer,
+                                            attemptNumber:
+                                              selectedAttempt.attemptNumber,
+                                            evaluation: selectedEvaluation,
+                                            submittedAt:
+                                              selectedAttempt.submittedAt ??
+                                              null,
+                                          });
+                                        }}
+                                      >
+                                        {isViewingCurrentAttempt
+                                          ? isVi
+                                            ? "↩ Thoát"
+                                            : "↩ Exit"
+                                          : isVi
+                                            ? "👁️ Xem"
+                                            : "👁️ Review"}
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
                         ) : student.isAssigned ? (
                           /* CASE 2: Đã giao bài nhưng chưa làm */

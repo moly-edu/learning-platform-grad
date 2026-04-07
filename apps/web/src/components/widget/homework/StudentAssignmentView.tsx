@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { AlertCircle, CheckCircle, Loader2, XCircle } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CheckCircle, Loader2, RotateCcw, XCircle } from "lucide-react";
 import { Submission, WidgetDefinition } from "../core/types";
 import { useCourseStructure } from "@/components/providers/course-structure-provider";
 import { useLocale } from "next-intl";
@@ -16,6 +16,27 @@ interface StudentAssignmentViewProps {
   onEvaluationUpdate?: (assignmentId: string, isCorrect: boolean) => void; // NEW: Callback to notify parent about evaluation
 }
 
+interface AssignmentEvaluation {
+  isCorrect: boolean;
+  score: number;
+  maxScore: number;
+}
+
+interface AssignmentSubmissionData {
+  answer: any;
+  evaluation: AssignmentEvaluation;
+}
+
+interface AssignmentAttempt {
+  id: string;
+  attemptNumber: number;
+  submissionData: AssignmentSubmissionData | null;
+  answer: any;
+  evaluation: AssignmentEvaluation | null;
+  isCorrect: boolean;
+  submittedAt: string | null;
+}
+
 interface AssignmentData {
   assignmentId: string;
   classId: string;
@@ -24,15 +45,13 @@ interface AssignmentData {
   widgetId: string;
   buildRunId: string;
   hasSubmitted: boolean;
-  submissionData: {
-    answer: any;
-    evaluation: {
-      isCorrect: boolean;
-      score: number;
-      maxScore: number;
-    };
-  } | null;
+  submissionData: AssignmentSubmissionData | null;
   submittedAt: string | null;
+  latestSubmissionData: AssignmentSubmissionData | null;
+  latestSubmittedAt: string | null;
+  attemptCount: number;
+  correctAttemptCount: number;
+  attempts: AssignmentAttempt[];
 }
 
 export default function StudentAssignmentView({
@@ -53,6 +72,10 @@ export default function StudentAssignmentView({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
+  const [isRetryMode, setIsRetryMode] = useState(false);
+  const [selectedAttemptNumber, setSelectedAttemptNumber] = useState<
+    number | null
+  >(null);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const messageQueueRef = useRef<any[]>([]);
@@ -95,9 +118,73 @@ export default function StudentAssignmentView({
         }
 
         const data: AssignmentData = await assignmentRes.json();
-        console.log("📦 Assignment data:", data);
+        const normalizedAttempts: AssignmentAttempt[] = (data.attempts ?? [])
+          .map((attempt) => {
+            const parsedSubmission =
+              (attempt.submissionData as Record<string, any> | null) ?? null;
+            const evaluation =
+              attempt.evaluation ??
+              (parsedSubmission?.evaluation as any) ??
+              null;
+            const answer =
+              typeof attempt.answer === "undefined"
+                ? parsedSubmission?.answer
+                : attempt.answer;
 
-        setAssignmentData(data);
+            if (!evaluation) {
+              return null;
+            }
+
+            return {
+              ...attempt,
+              submissionData: attempt.submissionData ?? {
+                answer: answer ?? null,
+                evaluation,
+              },
+              answer: answer ?? null,
+              evaluation,
+              isCorrect:
+                typeof attempt.isCorrect === "boolean"
+                  ? attempt.isCorrect
+                  : evaluation.isCorrect,
+              submittedAt: attempt.submittedAt ?? null,
+            } as AssignmentAttempt;
+          })
+          .filter((attempt): attempt is AssignmentAttempt => attempt !== null);
+
+        if (
+          normalizedAttempts.length === 0 &&
+          data.submissionData?.evaluation
+        ) {
+          normalizedAttempts.push({
+            id: `first-${data.assignmentId}`,
+            attemptNumber: 1,
+            submissionData: data.submissionData,
+            answer: data.submissionData.answer,
+            evaluation: data.submissionData.evaluation,
+            isCorrect: data.submissionData.evaluation.isCorrect,
+            submittedAt: data.submittedAt,
+          });
+        }
+
+        const normalizedData: AssignmentData = {
+          ...data,
+          latestSubmissionData:
+            data.latestSubmissionData ?? data.submissionData ?? null,
+          latestSubmittedAt: data.latestSubmittedAt ?? data.submittedAt ?? null,
+          attemptCount: data.attemptCount ?? (data.hasSubmitted ? 1 : 0),
+          correctAttemptCount:
+            data.correctAttemptCount ??
+            (data.submissionData?.evaluation?.isCorrect ? 1 : 0),
+          attempts: normalizedAttempts,
+        };
+        console.log("📦 Assignment data:", normalizedData);
+
+        setAssignmentData(normalizedData);
+        setIsRetryMode(false);
+        setSelectedAttemptNumber(
+          normalizedData.attempts[0]?.attemptNumber ?? null,
+        );
 
         // Load widget HTML
         const widgetRes = await fetch(
@@ -241,6 +328,51 @@ export default function StudentAssignmentView({
     return () => window.removeEventListener("message", handleMessage);
   }, [assignmentData, isVi]);
 
+  useEffect(() => {
+    if (!assignmentData?.attempts?.length) {
+      setSelectedAttemptNumber(null);
+      return;
+    }
+
+    const selectedAttemptExists = assignmentData.attempts.some(
+      (attempt) => attempt.attemptNumber === selectedAttemptNumber,
+    );
+
+    if (selectedAttemptNumber === null || !selectedAttemptExists) {
+      setSelectedAttemptNumber(assignmentData.attempts[0].attemptNumber);
+    }
+  }, [assignmentData?.attempts, selectedAttemptNumber]);
+
+  const selectedAttempt = useMemo(() => {
+    if (!assignmentData?.attempts?.length) {
+      return null;
+    }
+
+    if (selectedAttemptNumber === null) {
+      return assignmentData.attempts[0];
+    }
+
+    return (
+      assignmentData.attempts.find(
+        (attempt) => attempt.attemptNumber === selectedAttemptNumber,
+      ) ?? assignmentData.attempts[0]
+    );
+  }, [assignmentData?.attempts, selectedAttemptNumber]);
+
+  const selectedEvaluation =
+    selectedAttempt?.evaluation ??
+    selectedAttempt?.submissionData?.evaluation ??
+    assignmentData?.submissionData?.evaluation ??
+    null;
+  const selectedAnswer =
+    selectedAttempt?.answer ??
+    selectedAttempt?.submissionData?.answer ??
+    assignmentData?.submissionData?.answer ??
+    null;
+  const selectedSubmittedAt =
+    selectedAttempt?.submittedAt ?? assignmentData?.submittedAt ?? null;
+  const selectedAttemptLabel = selectedAttempt?.attemptNumber ?? 1;
+
   // 5️⃣ Submit to database
   const handleSubmitToDatabase = async (submission: Submission) => {
     if (!assignmentData) return;
@@ -275,38 +407,88 @@ export default function StudentAssignmentView({
       const result = await response.json();
       console.log("✅ Submission saved:", result);
 
+      const apiSubmission = result?.submission;
+      const latestSubmittedAt =
+        apiSubmission?.latestSubmittedAt ?? new Date().toISOString();
+      const isFirstAttempt = Boolean(result?.isFirstAttempt);
+      const nextAttemptCount =
+        typeof apiSubmission?.attemptCount === "number"
+          ? apiSubmission.attemptCount
+          : (assignmentData.attemptCount || 0) + 1;
+      const nextCorrectAttemptCount =
+        typeof apiSubmission?.correctAttemptCount === "number"
+          ? apiSubmission.correctAttemptCount
+          : (assignmentData.correctAttemptCount || 0) +
+            (submission.evaluation.isCorrect ? 1 : 0);
+
       // Cập nhật local state
       setAssignmentData((prev) => {
         if (!prev) return prev;
-        return {
-          ...prev,
-          hasSubmitted: true,
+
+        const hasFirstSubmission = prev.hasSubmitted && !!prev.submissionData;
+        const newAttempt: AssignmentAttempt = {
+          id: `attempt-${nextAttemptCount}-${Date.now()}`,
+          attemptNumber: nextAttemptCount,
           submissionData: {
             answer: submission.answer,
             evaluation: submission.evaluation,
           },
-          submittedAt: new Date().toISOString(),
+          answer: submission.answer,
+          evaluation: submission.evaluation,
+          isCorrect: submission.evaluation.isCorrect,
+          submittedAt: latestSubmittedAt,
+        };
+
+        const nextAttempts = [
+          ...prev.attempts.filter(
+            (attempt) => attempt.attemptNumber !== nextAttemptCount,
+          ),
+          newAttempt,
+        ].sort((a, b) => a.attemptNumber - b.attemptNumber);
+
+        return {
+          ...prev,
+          hasSubmitted: true,
+          submissionData: hasFirstSubmission
+            ? prev.submissionData
+            : {
+                answer: submission.answer,
+                evaluation: submission.evaluation,
+              },
+          submittedAt: hasFirstSubmission
+            ? prev.submittedAt
+            : latestSubmittedAt,
+          latestSubmissionData: {
+            answer: submission.answer,
+            evaluation: submission.evaluation,
+          },
+          latestSubmittedAt,
+          attemptCount: nextAttemptCount,
+          correctAttemptCount: nextCorrectAttemptCount,
+          attempts: nextAttempts,
         };
       });
 
-      // TỰ ĐỘNG hiển thị kết quả
-      setTimeout(() => {
-        console.log("📤 Sending answer back to widget for display");
-        sendMessage({
-          type: "PARAMS_UPDATE",
-          payload: {
-            ...assignmentData.assignmentConfig,
-            __answer: submission.answer,
-          },
-        });
-      }, 100);
+      setIsRetryMode(false);
+      setSelectedAttemptNumber(nextAttemptCount);
 
       // 🎯 Update provider state (update UI everywhere)
-      await updateAssignmentStatus(assignmentId);
+      await updateAssignmentStatus(assignmentId, {
+        submittedAt: isFirstAttempt
+          ? latestSubmittedAt
+          : assignmentData.submittedAt,
+        evaluation: submission.evaluation,
+        attemptCount: nextAttemptCount,
+        correctAttemptCount: nextCorrectAttemptCount,
+        isFirstAttempt,
+      });
 
       // 🎯 Notify evaluation update (for color indication in parent dialog)
       if (onEvaluationUpdate) {
-        onEvaluationUpdate(assignmentId, submission.evaluation.isCorrect);
+        const firstAttemptCorrect =
+          assignmentData.submissionData?.evaluation.isCorrect ??
+          submission.evaluation.isCorrect;
+        onEvaluationUpdate(assignmentId, firstAttemptCorrect);
       }
 
       // 🎯 Call callback to notify parent (for auto-next assignment)
@@ -337,14 +519,18 @@ export default function StudentAssignmentView({
 
     console.log("📤 Sending config to widget");
 
-    // Nếu ĐÃ LÀM RỒI → Gửi config + __answer để hiển thị kết quả
-    if (assignmentData.hasSubmitted && assignmentData.submissionData) {
+    // Nếu ĐÃ LÀM RỒI và không ở chế độ làm lại -> hiển thị kết quả lần đầu.
+    if (
+      assignmentData.hasSubmitted &&
+      assignmentData.submissionData &&
+      !isRetryMode
+    ) {
       console.log("✅ Student đã làm → Hiển thị kết quả");
       sendMessage({
         type: "PARAMS_UPDATE",
         payload: {
           ...assignmentData.assignmentConfig,
-          __answer: assignmentData.submissionData.answer,
+          __answer: selectedAnswer,
         },
       });
     } else {
@@ -355,7 +541,7 @@ export default function StudentAssignmentView({
         payload: assignmentData.assignmentConfig,
       });
     }
-  }, [iframeReady, widgetDef, assignmentData]);
+  }, [iframeReady, widgetDef, assignmentData, isRetryMode, selectedAnswer]);
 
   // LOADING STATE
   if (loading) {
@@ -399,7 +585,7 @@ export default function StudentAssignmentView({
         <div className="shrink-0 border-b border-border bg-linear-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 px-6 py-3">
           <div className="flex items-center justify-between max-w-6xl mx-auto">
             <div className="flex items-center gap-3">
-              {assignmentData.submissionData.evaluation.isCorrect ? (
+              {selectedEvaluation?.isCorrect ? (
                 <CheckCircle className="text-green-600" size={24} />
               ) : (
                 <XCircle className="text-red-600" size={24} />
@@ -410,33 +596,93 @@ export default function StudentAssignmentView({
                     ? "Bạn đã hoàn thành bài tập này"
                     : "You have completed this assignment"}
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  {isVi ? "Điểm" : "Score"}:{" "}
+                <div className="text-xs text-muted-foreground">
+                  {isVi ? "Số lần làm" : "Attempts"}:{" "}
+                  <strong>{assignmentData.attemptCount}</strong>
+                  {" • "}
+                  {isVi ? "Đúng" : "Correct"}:{" "}
                   <strong>
-                    {assignmentData.submissionData.evaluation.score}/
-                    {assignmentData.submissionData.evaluation.maxScore}
-                  </strong>{" "}
-                  •{" "}
-                  {new Date(assignmentData.submittedAt!).toLocaleString(
-                    isVi ? "vi-VN" : "en-US",
-                  )}
+                    {assignmentData.correctAttemptCount}/
+                    {Math.max(assignmentData.attemptCount, 1)}
+                  </strong>
                 </div>
+                {assignmentData.attempts.length > 0 && !isRetryMode && (
+                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                    <label htmlFor={`student-attempt-select-${assignmentId}`}>
+                      {isVi ? "Chọn lần làm" : "Select attempt"}
+                    </label>
+                    <select
+                      id={`student-attempt-select-${assignmentId}`}
+                      className="h-8 rounded-md border border-border bg-background px-2 text-xs"
+                      value={selectedAttemptNumber ?? ""}
+                      onChange={(event) =>
+                        setSelectedAttemptNumber(Number(event.target.value))
+                      }
+                    >
+                      {assignmentData.attempts.map((attempt) => {
+                        const evaluation =
+                          attempt.evaluation ??
+                          attempt.submissionData?.evaluation;
+                        const status = evaluation?.isCorrect
+                          ? isVi
+                            ? "Đúng"
+                            : "Correct"
+                          : isVi
+                            ? "Sai"
+                            : "Incorrect";
+                        const scoreText = evaluation
+                          ? ` ${evaluation.score}/${evaluation.maxScore}`
+                          : "";
+
+                        return (
+                          <option
+                            key={attempt.id}
+                            value={attempt.attemptNumber}
+                          >
+                            {`${isVi ? "Lần" : "Attempt"} ${attempt.attemptNumber} • ${status}${scoreText}`}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
-            <div
-              className={`px-4 py-2 rounded-full text-sm font-semibold ${
-                assignmentData.submissionData.evaluation.isCorrect
-                  ? "bg-green-100 text-green-700"
-                  : "bg-red-100 text-red-700"
-              }`}
-            >
-              {assignmentData.submissionData.evaluation.isCorrect
-                ? isVi
-                  ? "Đúng"
-                  : "Correct"
-                : isVi
-                  ? "Sai"
-                  : "Incorrect"}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsRetryMode((prev) => !prev)}
+                disabled={submitting}
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-all disabled:opacity-50 ${
+                  isRetryMode
+                    ? "border-blue-300 bg-blue-100 text-blue-700 hover:bg-blue-200"
+                    : "border-orange-500 bg-orange-500 text-white hover:bg-orange-600 ring-2 ring-orange-200 animate-pulse"
+                }`}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                {isRetryMode
+                  ? isVi
+                    ? "Xem kết quả lần đầu"
+                    : "View first result"
+                  : isVi
+                    ? "Làm lại"
+                    : "Retry"}
+              </button>
+              <div
+                className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                  selectedEvaluation?.isCorrect
+                    ? "bg-green-100 text-green-700"
+                    : "bg-red-100 text-red-700"
+                }`}
+              >
+                {selectedEvaluation?.isCorrect
+                  ? isVi
+                    ? `Lần ${selectedAttemptLabel}: Đúng`
+                    : `Attempt ${selectedAttemptLabel}: Correct`
+                  : isVi
+                    ? `Lần ${selectedAttemptLabel}: Sai`
+                    : `Attempt ${selectedAttemptLabel}: Incorrect`}
+              </div>
             </div>
           </div>
         </div>

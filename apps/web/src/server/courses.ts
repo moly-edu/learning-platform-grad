@@ -443,6 +443,8 @@ export async function _getStudentHomeworkStatusByClassInternal(
         assignmentId: true,
         submissionData: true,
         submittedAt: true,
+        attemptCount: true,
+        correctAttemptCount: true,
       },
     });
 
@@ -495,6 +497,8 @@ export async function _getStudentHomeworkStatusByClassInternal(
       {
         hasSubmitted: boolean;
         submittedAt: string | null;
+        attemptCount: number;
+        correctAttemptCount: number;
         evaluation?: {
           isCorrect: boolean;
           score: number;
@@ -508,6 +512,8 @@ export async function _getStudentHomeworkStatusByClassInternal(
       submissionsByAssignmentId[sa.assignmentId] = {
         hasSubmitted: sa.submissionData !== null,
         submittedAt: sa.submittedAt ? sa.submittedAt.toISOString() : null,
+        attemptCount: sa.attemptCount,
+        correctAttemptCount: sa.correctAttemptCount,
         evaluation: submissionData?.evaluation,
       };
     });

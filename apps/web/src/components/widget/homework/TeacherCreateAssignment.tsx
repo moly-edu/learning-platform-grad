@@ -44,6 +44,19 @@ interface TeacherCreateAssignmentProps {
   targetStudentName?: string;
 }
 
+interface ReviewSubmissionPayload {
+  studentId: string;
+  studentName: string;
+  answer: any;
+  attemptNumber: number;
+  submittedAt: string | null;
+  evaluation: {
+    isCorrect: boolean;
+    score: number;
+    maxScore: number;
+  } | null;
+}
+
 const TeacherCreateAssignment = forwardRef<
   TeacherCreateAssignmentRef,
   TeacherCreateAssignmentProps
@@ -60,7 +73,8 @@ const TeacherCreateAssignment = forwardRef<
 
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [isReviewMode, setIsReviewMode] = useState(false);
-  const [viewingAnswer, setViewingAnswer] = useState<any>(null);
+  const [viewingSubmission, setViewingSubmission] =
+    useState<ReviewSubmissionPayload | null>(null);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const paneRef = useRef<HTMLDivElement>(null);
@@ -406,24 +420,31 @@ const TeacherCreateAssignment = forwardRef<
   }, [widgetDef, iframeReady, isVi]);
 
   // Handle view answer from AssignmentStudentsPanel
-  const handleViewAnswer = (answer: any) => {
-    setViewingAnswer(answer);
+  const handleViewAnswer = (payload: ReviewSubmissionPayload) => {
+    setViewingSubmission(payload);
     sendMessage({
       type: "PARAMS_UPDATE",
-      payload: { ...config, __answer: answer },
+      payload: { ...config, __answer: payload.answer },
     });
   };
 
   // Reset view to default config
   const handleResetView = () => {
-    setViewingAnswer(null);
+    setViewingSubmission(null);
     sendMessage({ type: "PARAMS_UPDATE", payload: config });
   };
+
+  const activeReviewSubmission = viewingSubmission
+    ? {
+        studentId: viewingSubmission.studentId,
+        attemptNumber: viewingSubmission.attemptNumber,
+      }
+    : null;
 
   return (
     <div className="bg-background flex h-full min-h-0">
       <div className="flex-1 p-2 min-h-0">
-        {viewingAnswer && (
+        {viewingSubmission && (
           <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between mx-auto max-w-2xl">
             <div className="text-sm text-blue-700">
               <strong>
@@ -431,6 +452,26 @@ const TeacherCreateAssignment = forwardRef<
                   ? "Đang xem bài nộp của học sinh"
                   : "Reviewing student submission"}
               </strong>
+              <div className="text-xs text-blue-700 mt-1">
+                {viewingSubmission.studentName} • {isVi ? "Lần" : "Attempt"} #
+                {viewingSubmission.attemptNumber}
+                {viewingSubmission.evaluation && (
+                  <>
+                    {" • "}
+                    {isVi ? "Điểm" : "Score"}:{" "}
+                    {viewingSubmission.evaluation.score}/
+                    {viewingSubmission.evaluation.maxScore}
+                  </>
+                )}
+                {viewingSubmission.submittedAt && (
+                  <>
+                    {" • "}
+                    {new Date(viewingSubmission.submittedAt).toLocaleString(
+                      isVi ? "vi-VN" : "en-US",
+                    )}
+                  </>
+                )}
+              </div>
             </div>
             <Button
               size="sm"
@@ -492,6 +533,8 @@ const TeacherCreateAssignment = forwardRef<
             <AssignmentStudentsPanel
               assignmentId={assignmentId}
               onViewAnswer={handleViewAnswer}
+              onExitReview={handleResetView}
+              activeReviewSubmission={activeReviewSubmission}
             />
           )}
         </div>

@@ -1134,6 +1134,25 @@ const CourseStructureContent: React.FC = () => {
                                                             </span>
                                                           </div>
                                                         )}
+
+                                                      {!isPendingForStudent &&
+                                                        submissionStatus && (
+                                                          <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">
+                                                            {isVi ? "Lần" : "Attempts"}: {" "}
+                                                            {submissionStatus.attemptCount ?? 0} • {isVi ? "Đúng" : "Correct"}: {" "}
+                                                            {(submissionStatus.correctAttemptCount ??
+                                                              (submissionStatus
+                                                                .evaluation
+                                                                ?.isCorrect
+                                                                ? 1
+                                                                : 0))}
+                                                            /
+                                                            {Math.max(
+                                                              submissionStatus.attemptCount ?? 0,
+                                                              1,
+                                                            )}
+                                                          </span>
+                                                        )}
                                                     </div>
 
                                                     <div className="flex-1" />
@@ -1367,6 +1386,23 @@ const CourseStructureContent: React.FC = () => {
                                                     </span>
                                                   </div>
                                                 )}
+
+                                              {!isPending && submissionStatus && (
+                                                <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">
+                                                  {isVi ? "Lần" : "Attempts"}: {" "}
+                                                  {submissionStatus.attemptCount ?? 0} • {isVi ? "Đúng" : "Correct"}: {" "}
+                                                  {(submissionStatus.correctAttemptCount ??
+                                                    (submissionStatus.evaluation
+                                                      ?.isCorrect
+                                                      ? 1
+                                                      : 0))}
+                                                  /
+                                                  {Math.max(
+                                                    submissionStatus.attemptCount ?? 0,
+                                                    1,
+                                                  )}
+                                                </span>
+                                              )}
                                             </div>
                                           )}
 

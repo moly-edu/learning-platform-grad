@@ -66,11 +66,14 @@ export async function GET(request: NextRequest) {
         assignmentId: true,
         submissionData: true,
         submittedAt: true,
+        latestSubmittedAt: true,
+        attemptCount: true,
+        correctAttemptCount: true,
       },
     });
 
     // Build map of assigned assignments with submission data
-    const assignedMap = new Map(
+    const assignedMap = new Map<string, (typeof studentAssignments)[number]>(
       studentAssignments.map((s) => [s.assignmentId, s]),
     );
 
@@ -83,15 +86,22 @@ export async function GET(request: NextRequest) {
     const formattedAssignments = assignedAssignments.map((assignment) => {
       const submission = assignedMap.get(assignment.id);
       const submissionData = submission?.submissionData as any;
+      const assignmentContent = (assignment.content as Record<string, any>) || {};
 
       return {
         id: assignment.id,
-        title: assignment.content?.title || "Assignment",
-        description: assignment.content?.description || "",
+        title: assignmentContent.title || "Assignment",
+        description: assignmentContent.description || "",
         hasSubmitted: submission ? submission.submissionData !== null : false,
         submittedAt: submission?.submittedAt
           ? submission.submittedAt.toISOString()
           : null,
+        latestSubmittedAt:
+          submission && submission.latestSubmittedAt
+            ? new Date(submission.latestSubmittedAt as any).toISOString()
+            : null,
+        attemptCount: submission?.attemptCount || 0,
+        correctAttemptCount: submission?.correctAttemptCount || 0,
         evaluation: submissionData?.evaluation || null,
         content: stripGeneratorMeta(assignment.content as Record<string, any>),
       };

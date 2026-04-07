@@ -79,6 +79,21 @@ export async function GET(
         studentId: true,
         submissionData: true, // CÓ THỂ NULL (chưa làm) hoặc có data (đã làm)
         submittedAt: true,
+        latestSubmittedAt: true,
+        attemptCount: true,
+        correctAttemptCount: true,
+        attempts: {
+          orderBy: {
+            attemptNumber: "asc",
+          },
+          select: {
+            id: true,
+            attemptNumber: true,
+            submissionData: true,
+            isCorrect: true,
+            submittedAt: true,
+          },
+        },
       },
     });
 
@@ -100,6 +115,43 @@ export async function GET(
       const isAssigned = !!studentAssignment; // Đã được giao bài chưa
       const hasSubmitted = !!studentAssignment?.submissionData; // Đã làm bài chưa
 
+      const attempts =
+        studentAssignment?.attempts.map((attempt) => {
+          const parsedSubmission = attempt.submissionData as
+            | Record<string, any>
+            | null;
+
+          return {
+            id: attempt.id,
+            attemptNumber: attempt.attemptNumber,
+            submissionData: attempt.submissionData,
+            answer: parsedSubmission?.answer ?? null,
+            evaluation: parsedSubmission?.evaluation ?? null,
+            isCorrect: attempt.isCorrect,
+            submittedAt: attempt.submittedAt,
+          };
+        }) ?? [];
+
+      if (
+        attempts.length === 0 &&
+        studentAssignment?.submissionData &&
+        hasSubmitted
+      ) {
+        const parsedSubmission = studentAssignment.submissionData as
+          | Record<string, any>
+          | null;
+
+        attempts.push({
+          id: `${studentAssignment.id}-legacy-attempt`,
+          attemptNumber: 1,
+          submissionData: studentAssignment.submissionData,
+          answer: parsedSubmission?.answer ?? null,
+          evaluation: parsedSubmission?.evaluation ?? null,
+          isCorrect: Boolean(parsedSubmission?.evaluation?.isCorrect),
+          submittedAt: studentAssignment.submittedAt,
+        });
+      }
+
       return {
         id: student.userId,
         name: student.user.name,
@@ -112,9 +164,13 @@ export async function GET(
             ? {
                 id: studentAssignment.id,
                 submittedAt: studentAssignment.submittedAt,
+                latestSubmittedAt: studentAssignment.latestSubmittedAt,
+                attemptCount: studentAssignment.attemptCount,
+                correctAttemptCount: studentAssignment.correctAttemptCount,
                 evaluation: (studentAssignment.submissionData as any)
                   .evaluation,
                 answer: (studentAssignment.submissionData as any).answer,
+                attempts,
               }
             : null,
       };

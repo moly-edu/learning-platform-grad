@@ -35,6 +35,28 @@ export interface ClassStudentInfo {
   image: string | null;
 }
 
+interface AssignmentEvaluation {
+  isCorrect: boolean;
+  score: number;
+  maxScore: number;
+}
+
+interface StudentSubmissionStatus {
+  hasSubmitted: boolean;
+  submittedAt: string | null;
+  attemptCount: number;
+  correctAttemptCount: number;
+  evaluation?: AssignmentEvaluation;
+}
+
+interface UpdateAssignmentStatusPayload {
+  submittedAt?: string | null;
+  evaluation?: AssignmentEvaluation;
+  attemptCount?: number;
+  correctAttemptCount?: number;
+  isFirstAttempt?: boolean;
+}
+
 interface CourseStructureContextValue {
   // Config
   classId?: string;
@@ -100,19 +122,11 @@ interface CourseStructureContextValue {
     nodeId: string,
     type: "lesson_note" | "homework_imp",
   ) => any[];
-  studentSubmissionStatus: Map<
-    string,
-    {
-      hasSubmitted: boolean;
-      submittedAt: string | null;
-      evaluation?: {
-        isCorrect: boolean;
-        score: number;
-        maxScore: number;
-      };
-    }
-  >;
-  updateAssignmentStatus: (assignmentId: string) => Promise<void>;
+  studentSubmissionStatus: Map<string, StudentSubmissionStatus>;
+  updateAssignmentStatus: (
+    assignmentId: string,
+    payload?: UpdateAssignmentStatusPayload,
+  ) => Promise<void>;
 
   // Assignment stats (teacher)
   assignmentStats: Map<
@@ -204,18 +218,7 @@ export const CourseStructureProvider: React.FC<
   >(new Map());
 
   const [studentSubmissionStatus, setStudentSubmissionStatus] = useState<
-    Map<
-      string,
-      {
-        hasSubmitted: boolean;
-        submittedAt: string | null;
-        evaluation?: {
-          isCorrect: boolean;
-          score: number;
-          maxScore: number;
-        };
-      }
-    >
+    Map<string, StudentSubmissionStatus>
   >(new Map());
 
   // ===== TEACHER STUDENT VIEW =====
@@ -293,15 +296,7 @@ export const CourseStructureProvider: React.FC<
           if (submissionsByAssignmentId) {
             const submissionStatusMap = new Map<
               string,
-              {
-                hasSubmitted: boolean;
-                submittedAt: string | null;
-                evaluation?: {
-                  isCorrect: boolean;
-                  score: number;
-                  maxScore: number;
-                };
-              }
+              StudentSubmissionStatus
             >();
 
             Object.entries(submissionsByAssignmentId).forEach(
@@ -512,15 +507,7 @@ export const CourseStructureProvider: React.FC<
         if (submissionsByAssignmentId) {
           const submissionStatusMap = new Map<
             string,
-            {
-              hasSubmitted: boolean;
-              submittedAt: string | null;
-              evaluation?: {
-                isCorrect: boolean;
-                score: number;
-                maxScore: number;
-              };
-            }
+            StudentSubmissionStatus
           >();
 
           Object.entries(submissionsByAssignmentId).forEach(([id, status]) => {
@@ -955,23 +942,68 @@ export const CourseStructureProvider: React.FC<
 
   // ===== ACTION: Update assignment status when completed =====
   const updateAssignmentStatus = useCallback(
-    async (assignmentId: string): Promise<void> => {
+    async (
+      assignmentId: string,
+      payload?: UpdateAssignmentStatusPayload,
+    ): Promise<void> => {
+      const currentStatus = studentSubmissionStatus.get(assignmentId);
+      const isFirstAttempt =
+        payload?.isFirstAttempt ?? !currentStatus?.hasSubmitted;
+
       // Update studentSubmissionStatus
       setStudentSubmissionStatus((prev) => {
         const newMap = new Map(prev);
-        const currentStatus = newMap.get(assignmentId);
-        if (currentStatus) {
+        const previousStatus = newMap.get(assignmentId);
+        const hasSubmittedBefore = previousStatus?.hasSubmitted === true;
+
+        const previousAttemptCount =
+          previousStatus?.attemptCount ?? (hasSubmittedBefore ? 1 : 0);
+        const previousCorrectAttemptCount =
+          previousStatus?.correctAttemptCount ??
+          (previousStatus?.evaluation?.isCorrect ? 1 : 0);
+
+        const nextAttemptCount =
+          payload?.attemptCount ??
+          (hasSubmittedBefore ? previousAttemptCount + 1 : 1);
+        const nextCorrectAttemptCount =
+          payload?.correctAttemptCount ??
+          (hasSubmittedBefore
+            ? previousCorrectAttemptCount +
+              (payload?.evaluation?.isCorrect ? 1 : 0)
+            : payload?.evaluation?.isCorrect
+              ? 1
+              : 0);
+
+        if (hasSubmittedBefore) {
           newMap.set(assignmentId, {
-            ...currentStatus,
+            ...previousStatus,
             hasSubmitted: true,
-            submittedAt: new Date().toISOString(),
+            submittedAt:
+              previousStatus.submittedAt ?? payload?.submittedAt ?? null,
+            evaluation: previousStatus.evaluation ?? payload?.evaluation,
+            attemptCount: nextAttemptCount,
+            correctAttemptCount: nextCorrectAttemptCount,
+          });
+        } else {
+          newMap.set(assignmentId, {
+            hasSubmitted: true,
+            submittedAt: payload?.submittedAt ?? new Date().toISOString(),
+            evaluation: payload?.evaluation,
+            attemptCount: nextAttemptCount,
+            correctAttemptCount: nextCorrectAttemptCount,
           });
         }
+
         return newMap;
       });
 
       // Reload homework counts để đảm bảo chính xác
-      if (config.isStudent && classId && initialCourse.rootLessonNode) {
+      if (
+        config.isStudent &&
+        classId &&
+        initialCourse.rootLessonNode &&
+        isFirstAttempt
+      ) {
         try {
           const statusRes = await api.courses.getHomeworkStatus({
             query: { courseId: initialCourse.id, classId },
@@ -1000,26 +1032,39 @@ export const CourseStructureProvider: React.FC<
 
             // Cập nhật submission status từ dữ liệu mới
             if (submissionsByAssignmentId) {
-              const submissionStatusMap = new Map<
-                string,
-                {
-                  hasSubmitted: boolean;
-                  submittedAt: string | null;
-                  evaluation?: {
-                    isCorrect: boolean;
-                    score: number;
-                    maxScore: number;
-                  };
-                }
-              >();
+              setStudentSubmissionStatus((prev) => {
+                const mergedMap = new Map(prev);
 
-              Object.entries(submissionsByAssignmentId).forEach(
-                ([id, status]) => {
-                  submissionStatusMap.set(id, status);
-                },
-              );
+                Object.entries(submissionsByAssignmentId).forEach(
+                  ([id, status]) => {
+                    const previousStatus = mergedMap.get(id);
 
-              setStudentSubmissionStatus(submissionStatusMap);
+                    if (previousStatus?.hasSubmitted) {
+                      mergedMap.set(id, {
+                        ...status,
+                        hasSubmitted: true,
+                        submittedAt:
+                          previousStatus.submittedAt ?? status.submittedAt,
+                        evaluation:
+                          previousStatus.evaluation ?? status.evaluation,
+                        attemptCount: Math.max(
+                          previousStatus.attemptCount ?? 0,
+                          status.attemptCount ?? 0,
+                        ),
+                        correctAttemptCount: Math.max(
+                          previousStatus.correctAttemptCount ?? 0,
+                          status.correctAttemptCount ?? 0,
+                        ),
+                      });
+                      return;
+                    }
+
+                    mergedMap.set(id, status);
+                  },
+                );
+
+                return mergedMap;
+              });
             }
           }
         } catch (error) {
@@ -1027,7 +1072,13 @@ export const CourseStructureProvider: React.FC<
         }
       }
     },
-    [config.isStudent, classId, initialCourse.id, initialCourse.rootLessonNode],
+    [
+      config.isStudent,
+      classId,
+      initialCourse.id,
+      initialCourse.rootLessonNode,
+      studentSubmissionStatus,
+    ],
   );
 
   // ===== CONTEXT VALUE =====

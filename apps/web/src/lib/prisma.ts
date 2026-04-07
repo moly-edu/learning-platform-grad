@@ -14,9 +14,36 @@ const cachedPrisma = globalForPrisma.prisma;
 const hasAutoAssignmentDelegate = Boolean(
   (cachedPrisma as any)?.autoAssignmentSchedule,
 );
+const hasStudentAssignmentAttemptDelegate = Boolean(
+  (cachedPrisma as any)?.studentAssignmentAttempt,
+);
+const hasAttemptSchemaFields = (() => {
+  const fields = (cachedPrisma as any)?._runtimeDataModel?.models?.StudentAssignment
+    ?.fields;
+
+  if (!Array.isArray(fields)) {
+    return false;
+  }
+
+  const fieldNames = new Set(
+    fields
+      .map((field: { name?: unknown }) => field?.name)
+      .filter((name): name is string => typeof name === "string"),
+  );
+
+  return (
+    fieldNames.has("latestSubmittedAt") &&
+    fieldNames.has("attemptCount") &&
+    fieldNames.has("correctAttemptCount")
+  );
+})();
+const hasCompatibleSchema =
+  hasAutoAssignmentDelegate &&
+  hasStudentAssignmentAttemptDelegate &&
+  hasAttemptSchemaFields;
 
 const prisma =
-  !cachedPrisma || !hasAutoAssignmentDelegate
+  !cachedPrisma || !hasCompatibleSchema
     ? new PrismaClient({
         adapter,
       })
