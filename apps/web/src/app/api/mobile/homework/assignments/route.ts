@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth-server";
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { stripGeneratorMeta } from "@/lib/widget-assignment-generator";
 
 export async function GET(request: NextRequest) {
   try {
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
           ? submission.submittedAt.toISOString()
           : null,
         evaluation: submissionData?.evaluation || null,
-        content: assignment.content,
+        content: stripGeneratorMeta(assignment.content as Record<string, any>),
       };
     });
 

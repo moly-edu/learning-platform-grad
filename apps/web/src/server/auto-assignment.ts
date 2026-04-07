@@ -1,4 +1,11 @@
 import prisma from "@/lib/prisma";
+import {
+  attachGeneratorMeta,
+  buildDifficultySequence,
+  extractGeneratorMeta,
+  generateConfigFromTemplateContent,
+  getDifficultyFromContent,
+} from "@/lib/widget-assignment-generator";
 
 type AssignmentSourceValue = "teacher" | "system";
 type IntervalUnitValue = "minute" | "hour" | "day";
@@ -35,6 +42,87 @@ type AutoRunSummary = {
   retryCreated: number;
   skipped: number;
 };
+
+type AutoNewComputation = {
+  manualAssignmentsInWindow: number;
+  decayFactor: number;
+  minAutoNew: number;
+  multiplied: number;
+  rounded: number;
+  result: number;
+};
+
+const inFlightScheduleRuns = new Set<string>();
+
+function isAutoAssignLogEnabled() {
+  if (process.env.AUTO_ASSIGN_LOG === "true") return true;
+  if (process.env.AUTO_ASSIGN_LOG === "false") return false;
+  return process.env.NODE_ENV !== "production";
+}
+
+function normalizeLogValue(value: unknown): unknown {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeLogValue(item));
+  }
+
+  if (value && typeof value === "object") {
+    const output: Record<string, unknown> = {};
+    for (const [key, nested] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
+      output[key] = normalizeLogValue(nested);
+    }
+    return output;
+  }
+
+  return value;
+}
+
+function autoAssignLog(event: string, payload: Record<string, unknown>) {
+  if (!isAutoAssignLogEnabled()) return;
+
+  try {
+    const normalized = normalizeLogValue(payload);
+    console.log(`[AUTO_ASSIGN][${event}] ${JSON.stringify(normalized)}`);
+  } catch {
+    console.log(`[AUTO_ASSIGN][${event}]`, payload);
+  }
+}
+
+async function tryAcquireScheduleRunLock(scheduleId: string) {
+  if (inFlightScheduleRuns.has(scheduleId)) {
+    return false;
+  }
+
+  inFlightScheduleRuns.add(scheduleId);
+
+  try {
+    const rows = await prisma.$queryRaw<Array<{ locked: boolean }>>`
+      SELECT pg_try_advisory_lock(hashtext(${scheduleId})::bigint) AS locked
+    `;
+
+    return rows[0]?.locked === true;
+  } catch {
+    // Fallback to in-memory lock if advisory lock is unavailable.
+    return true;
+  }
+}
+
+async function releaseScheduleRunLock(scheduleId: string) {
+  try {
+    await prisma.$executeRaw`
+      SELECT pg_advisory_unlock(hashtext(${scheduleId})::bigint)
+    `;
+  } catch {
+    // Ignore unlock errors and always release local lock.
+  }
+
+  inFlightScheduleRuns.delete(scheduleId);
+}
 
 function getAutoScheduleDelegate() {
   return (prisma as any).autoAssignmentSchedule as
@@ -118,17 +206,36 @@ function getNextRetryDueAt(
   return new Date(Date.now() + delayMinutes * 60 * 1000);
 }
 
-function getAutoNewCount(
+function getAutoNewComputation(
   manualAssignmentsInWindow: number,
   decayFactor: number,
   minAutoNew: number,
-) {
-  if (manualAssignmentsInWindow <= 0) return 0;
+): AutoNewComputation {
+  if (manualAssignmentsInWindow <= 0) {
+    return {
+      manualAssignmentsInWindow: 0,
+      decayFactor: Math.max(0, decayFactor),
+      minAutoNew: Math.max(0, minAutoNew),
+      multiplied: 0,
+      rounded: 0,
+      result: 0,
+    };
+  }
 
-  return Math.max(
-    Math.max(0, minAutoNew),
-    Math.ceil(manualAssignmentsInWindow * Math.max(0, decayFactor)),
-  );
+  const safeManual = Math.max(0, manualAssignmentsInWindow);
+  const safeDecayFactor = Math.max(0, decayFactor);
+  const safeMinAutoNew = Math.max(0, minAutoNew);
+  const multiplied = safeManual * safeDecayFactor;
+  const rounded = Math.ceil(multiplied);
+
+  return {
+    manualAssignmentsInWindow: safeManual,
+    decayFactor: safeDecayFactor,
+    minAutoNew: safeMinAutoNew,
+    multiplied,
+    rounded,
+    result: Math.max(safeMinAutoNew, rounded),
+  };
 }
 
 export async function assignStudentsToAssignment({
@@ -208,6 +315,8 @@ export async function getOrCreateActiveScheduleForHomework(
   homeworkNodeId: string,
   createdBy: string,
 ) {
+  if (process.env.ENABLE_AUTO_ASSIGN === "false") return null;
+
   const delegate = getAutoScheduleDelegate();
   if (!delegate) return null;
 
@@ -330,6 +439,13 @@ async function createAutoNewAssignments(
   const manualRows = await prisma.studentAssignment.findMany({
     where: {
       source: "teacher",
+      studentId: {
+        in: studentIds,
+      },
+      submittedAt: null,
+      reviewDueAt: {
+        not: null,
+      },
       createdAt: {
         gt: windowStart,
         lte: windowEnd,
@@ -340,30 +456,48 @@ async function createAutoNewAssignments(
         type: "homework_imp",
       },
     },
-    distinct: ["assignmentId"],
     select: {
+      id: true,
+      studentId: true,
       assignmentId: true,
     },
   });
 
-  const templateAssignmentIds = manualRows.map((row) => row.assignmentId);
-  const manualAssignmentsInWindow = templateAssignmentIds.length;
-  const autoNewCount = getAutoNewCount(
-    manualAssignmentsInWindow,
-    schedule.decayFactor,
-    schedule.minAutoNew,
+  const manualRowIds = manualRows.map((row) => row.id);
+  if (manualRowIds.length > 0) {
+    await prisma.studentAssignment.updateMany({
+      where: {
+        id: { in: manualRowIds },
+        reviewDueAt: { not: null },
+      },
+      data: {
+        reviewDueAt: null,
+      },
+    });
+  }
+
+  const manualTemplateIdsByStudent = new Map<string, Set<string>>();
+  for (const row of manualRows) {
+    const current =
+      manualTemplateIdsByStudent.get(row.studentId) ?? new Set<string>();
+    current.add(row.assignmentId);
+    manualTemplateIdsByStudent.set(row.studentId, current);
+  }
+
+  const allTemplateAssignmentIds = Array.from(
+    new Set(manualRows.map((row) => row.assignmentId)),
   );
 
-  if (autoNewCount === 0 || templateAssignmentIds.length === 0) {
+  if (allTemplateAssignmentIds.length === 0) {
     return {
-      manualAssignmentsInWindow,
+      manualAssignmentsInWindow: 0,
       autoNewCreated: 0,
     };
   }
 
   const templates = await prisma.classLessonNode.findMany({
     where: {
-      id: { in: templateAssignmentIds },
+      id: { in: allTemplateAssignmentIds },
     },
     select: {
       id: true,
@@ -376,37 +510,178 @@ async function createAutoNewAssignments(
 
   if (templates.length === 0) {
     return {
-      manualAssignmentsInWindow,
+      manualAssignmentsInWindow: 0,
       autoNewCreated: 0,
     };
   }
 
-  let autoNewCreated = 0;
-  for (let index = 0; index < autoNewCount; index++) {
-    const template = templates[index % templates.length];
+  const templateById = new Map(
+    templates.map((template) => [template.id, template]),
+  );
 
-    const createdAssignment = await prisma.classLessonNode.create({
-      data: {
-        classId: template.classId,
-        lessonNodeId: template.lessonNodeId,
+  const reusablePoolAssignments = await prisma.classLessonNode.findMany({
+    where: {
+      classId: schedule.classId,
+      lessonNodeId: schedule.homeworkNodeId,
+      type: "homework_imp",
+    },
+    select: {
+      id: true,
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
+  const reusablePoolAssignmentIds = reusablePoolAssignments.map(
+    (assignment) => assignment.id,
+  );
+
+  const existingStudentAssignments = await prisma.studentAssignment.findMany({
+    where: {
+      studentId: {
+        in: studentIds,
+      },
+      assignment: {
+        classId: schedule.classId,
+        lessonNodeId: schedule.homeworkNodeId,
         type: "homework_imp",
-        content: template.content as any,
       },
-      select: {
-        id: true,
-      },
-    });
+    },
+    select: {
+      studentId: true,
+      assignmentId: true,
+    },
+  });
 
-    await assignStudentsToAssignment({
-      assignmentId: createdAssignment.id,
-      studentIds,
-      source: "system",
-      scheduleId: schedule.id,
-      rootAssignmentId: createdAssignment.id,
-      reviewDueAt: getInitialReviewDueAt(schedule.initialReviewDelayMinutes),
-    });
+  const assignedByStudent = new Map<string, Set<string>>();
+  for (const row of existingStudentAssignments) {
+    const current = assignedByStudent.get(row.studentId) ?? new Set<string>();
+    current.add(row.assignmentId);
+    assignedByStudent.set(row.studentId, current);
+  }
 
-    autoNewCreated += 1;
+  let manualAssignmentsInWindow = 0;
+  let autoNewCreated = 0;
+  for (const studentId of studentIds) {
+    const assignedSet =
+      assignedByStudent.get(studentId) ??
+      (() => {
+        const next = new Set<string>();
+        assignedByStudent.set(studentId, next);
+        return next;
+      })();
+
+    const templateIds = Array.from(
+      manualTemplateIdsByStudent.get(studentId) ?? new Set<string>(),
+    );
+    manualAssignmentsInWindow += templateIds.length;
+
+    const computation = getAutoNewComputation(
+      templateIds.length,
+      schedule.decayFactor,
+      schedule.minAutoNew,
+    );
+    const autoNewCount = computation.result;
+
+    if (autoNewCount === 0 || templateIds.length === 0) {
+      continue;
+    }
+
+    const studentTemplates = templateIds
+      .map((templateId) => templateById.get(templateId))
+      .filter((template): template is (typeof templates)[number] =>
+        Boolean(template),
+      );
+
+    if (studentTemplates.length === 0) {
+      continue;
+    }
+
+    const reusableIds = reusablePoolAssignmentIds.filter(
+      (assignmentId) => !assignedSet.has(assignmentId),
+    );
+    const reusableCount = Math.min(autoNewCount, reusableIds.length);
+
+    for (let index = 0; index < reusableCount; index++) {
+      const reusableAssignmentId = reusableIds[index];
+      await assignStudentsToAssignment({
+        assignmentId: reusableAssignmentId,
+        studentIds: [studentId],
+        source: "system",
+        scheduleId: schedule.id,
+        rootAssignmentId: reusableAssignmentId,
+        reviewDueAt: getInitialReviewDueAt(schedule.initialReviewDelayMinutes),
+      });
+
+      assignedSet.add(reusableAssignmentId);
+    }
+
+    const createCount = autoNewCount - reusableCount;
+    if (createCount <= 0) {
+      continue;
+    }
+
+    const difficultySequence = buildDifficultySequence(createCount);
+
+    for (let index = 0; index < createCount; index++) {
+      const template = studentTemplates[index % studentTemplates.length];
+      const templateContent =
+        (template.content as Record<string, any> | null | undefined) ?? {};
+      const templateMeta = extractGeneratorMeta(templateContent);
+      const desiredDifficulty = difficultySequence[index] ?? "easy";
+
+      const generatedConfig = generateConfigFromTemplateContent(
+        templateContent,
+        desiredDifficulty,
+      );
+
+      const assignmentContent = generatedConfig
+        ? attachGeneratorMeta(generatedConfig, templateMeta)
+        : (template.content as any);
+
+      const createdAssignment = await prisma.classLessonNode.create({
+        data: {
+          classId: template.classId,
+          lessonNodeId: template.lessonNodeId,
+          type: "homework_imp",
+          content: assignmentContent as any,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      await assignStudentsToAssignment({
+        assignmentId: createdAssignment.id,
+        studentIds: [studentId],
+        source: "system",
+        scheduleId: schedule.id,
+        rootAssignmentId: createdAssignment.id,
+        reviewDueAt: getInitialReviewDueAt(schedule.initialReviewDelayMinutes),
+      });
+
+      reusablePoolAssignmentIds.push(createdAssignment.id);
+      assignedSet.add(createdAssignment.id);
+
+      autoAssignLog("auto_new_created", {
+        scheduleId: schedule.id,
+        studentId,
+        templateAssignmentId: template.id,
+        createdAssignmentId: createdAssignment.id,
+        desiredDifficulty,
+        formula: computation,
+        templateCount: templateIds.length,
+        createIndex: index,
+        totalForStudentThisRun: createCount,
+        reusableFromPool: reusableCount,
+        reason:
+          reusableCount > 0
+            ? "reusable_pool_insufficient"
+            : "no_reusable_assignment_available",
+      });
+
+      autoNewCreated += 1;
+    }
   }
 
   return {
@@ -495,6 +770,18 @@ async function createRetryAssignments(
       continue;
     }
 
+    // Do not create retry chain for pending (not yet submitted) attempts.
+    if (latest.submissionData === null) {
+      if (latest.reviewDueAt !== null) {
+        await prisma.studentAssignment.update({
+          where: { id: latest.id },
+          data: { reviewDueAt: null },
+        });
+      }
+      skipped += 1;
+      continue;
+    }
+
     if (isCorrectSubmission(latest.submissionData)) {
       await prisma.studentAssignment.update({
         where: { id: latest.id },
@@ -504,12 +791,26 @@ async function createRetryAssignments(
       continue;
     }
 
+    const latestContent =
+      (latest.assignment.content as Record<string, any> | null | undefined) ??
+      {};
+    const latestMeta = extractGeneratorMeta(latestContent);
+    const retryDifficulty = getDifficultyFromContent(latestContent);
+    const generatedRetryConfig = generateConfigFromTemplateContent(
+      latestContent,
+      retryDifficulty ?? undefined,
+    );
+
+    const retryContent = generatedRetryConfig
+      ? attachGeneratorMeta(generatedRetryConfig, latestMeta)
+      : (latest.assignment.content as any);
+
     const cloned = await prisma.classLessonNode.create({
       data: {
         classId: latest.assignment.classId,
         lessonNodeId: latest.assignment.lessonNodeId,
         type: latest.assignment.type,
-        content: latest.assignment.content as any,
+        content: retryContent as any,
       },
       select: {
         id: true,
@@ -533,6 +834,20 @@ async function createRetryAssignments(
       data: { reviewDueAt: null },
     });
 
+    autoAssignLog("retry_created", {
+      scheduleId: schedule.id,
+      studentId: latest.studentId,
+      rootAssignmentId: rootId,
+      fromAssignmentId: latest.assignmentId,
+      createdAssignmentId: cloned.id,
+      retriesAlready,
+      nextReviewDueAt: getNextRetryDueAt(
+        schedule.initialReviewDelayMinutes,
+        retriesAlready,
+      ),
+      reason: "latest_submission_incorrect_and_due",
+    });
+
     retryCreated += 1;
   }
 
@@ -547,41 +862,66 @@ async function runSingleScheduleInternal(
   forceRun: boolean,
   now: Date,
 ) {
-  const checkpoint = schedule.lastAutoRunAt ?? schedule.startAt;
-  const nextRunAt = new Date(
-    checkpoint.getTime() +
-      intervalUnitToMs(schedule.intervalValue, schedule.intervalUnit),
-  );
-
-  if (!forceRun && nextRunAt > now) {
+  const acquiredLock = await tryAcquireScheduleRunLock(schedule.id);
+  if (!acquiredLock) {
     return null;
   }
 
-  const students = await prisma.classMember.findMany({
-    where: {
-      classId: schedule.classId,
-      role: "student",
-    },
-    select: {
-      userId: true,
-    },
-  });
+  try {
+    const checkpoint = schedule.lastAutoRunAt ?? schedule.startAt;
+    const nextRunAt = new Date(
+      checkpoint.getTime() +
+        intervalUnitToMs(schedule.intervalValue, schedule.intervalUnit),
+    );
 
-  const studentIds = students.map((item) => item.userId);
+    if (!forceRun && nextRunAt > now) {
+      return null;
+    }
 
-  const windowStart = schedule.lastAutoRunAt ?? schedule.startAt;
-  const windowEnd = now;
+    const students = await prisma.classMember.findMany({
+      where: {
+        classId: schedule.classId,
+        role: "student",
+      },
+      select: {
+        userId: true,
+      },
+    });
 
-  const createdSummary = await createAutoNewAssignments(
-    schedule,
-    windowStart,
-    windowEnd,
-    studentIds,
-  );
-  const retrySummary = await createRetryAssignments(schedule, now);
+    const studentIds = students.map((item) => item.userId);
 
-  const delegate = getAutoScheduleDelegate();
-  if (!delegate) {
+    const windowStart = schedule.lastAutoRunAt ?? schedule.startAt;
+    const windowEnd = now;
+
+    const createdSummary = await createAutoNewAssignments(
+      schedule,
+      windowStart,
+      windowEnd,
+      studentIds,
+    );
+    const retrySummary = await createRetryAssignments(schedule, now);
+
+    const delegate = getAutoScheduleDelegate();
+    if (!delegate) {
+      return {
+        scheduleId: schedule.id,
+        manualAssignmentsInWindow: createdSummary.manualAssignmentsInWindow,
+        autoNewCreated: createdSummary.autoNewCreated,
+        retryCreated: retrySummary.retryCreated,
+        skipped: retrySummary.skipped,
+      } satisfies AutoRunSummary;
+    }
+
+    await delegate.update({
+      where: { id: schedule.id },
+      data: {
+        lastAutoRunAt: now,
+        runCount: {
+          increment: 1,
+        },
+      },
+    });
+
     return {
       scheduleId: schedule.id,
       manualAssignmentsInWindow: createdSummary.manualAssignmentsInWindow,
@@ -589,28 +929,19 @@ async function runSingleScheduleInternal(
       retryCreated: retrySummary.retryCreated,
       skipped: retrySummary.skipped,
     } satisfies AutoRunSummary;
+  } finally {
+    await releaseScheduleRunLock(schedule.id);
   }
-
-  await delegate.update({
-    where: { id: schedule.id },
-    data: {
-      lastAutoRunAt: now,
-      runCount: {
-        increment: 1,
-      },
-    },
-  });
-
-  return {
-    scheduleId: schedule.id,
-    manualAssignmentsInWindow: createdSummary.manualAssignmentsInWindow,
-    autoNewCreated: createdSummary.autoNewCreated,
-    retryCreated: retrySummary.retryCreated,
-    skipped: retrySummary.skipped,
-  } satisfies AutoRunSummary;
 }
 
 export async function runDueAutoAssignments(now: Date = new Date()) {
+  if (process.env.ENABLE_AUTO_ASSIGN === "false") {
+    return {
+      executed: 0,
+      details: [],
+    };
+  }
+
   const dueSchedules = await getDueSchedules(now);
 
   const summaries: AutoRunSummary[] = [];
@@ -632,6 +963,8 @@ export async function runScheduleNow(
   scheduleId: string,
   now: Date = new Date(),
 ) {
+  if (process.env.ENABLE_AUTO_ASSIGN === "false") return null;
+
   const delegate = getAutoScheduleDelegate();
   if (!delegate) return null;
 

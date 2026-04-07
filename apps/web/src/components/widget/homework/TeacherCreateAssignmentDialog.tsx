@@ -16,6 +16,7 @@ import TeacherCreateAssignment, {
   TeacherCreateAssignmentRef,
 } from "./TeacherCreateAssignment";
 import { useLocale } from "next-intl";
+import { attachGeneratorMeta } from "@/lib/widget-assignment-generator";
 
 export default function TeacherAssignmentDialog({ hwId }: { hwId: string }) {
   const locale = useLocale();
@@ -116,9 +117,10 @@ export default function TeacherAssignmentDialog({ hwId }: { hwId: string }) {
       return;
     }
 
-    // const currentConfig = widgetPreviewRef.current.getCurrentConfig();
     const currentConfig =
       await widgetPreviewRef.current!.getCurrentConfigWithUploadedImages();
+    const generatorMeta = widgetPreviewRef.current.getGeneratorMeta();
+    const contentForSave = attachGeneratorMeta(currentConfig, generatorMeta);
 
     if (!currentConfig || Object.keys(currentConfig).length === 0) {
       alert(isVi ? "Không có cấu hình để lưu" : "No config to save");
@@ -131,7 +133,7 @@ export default function TeacherAssignmentDialog({ hwId }: { hwId: string }) {
       const createdId = await handleAddClassAddon(
         hwId,
         "homework_imp",
-        currentConfig,
+        contentForSave,
       );
 
       if (createdId) {

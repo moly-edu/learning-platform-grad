@@ -2,6 +2,7 @@
 import { auth } from "@/lib/auth-server";
 import prisma from "@/lib/prisma";
 import { getBuildRunIdFromLessonNode } from "@/server/class-lesson-node";
+import { stripGeneratorMeta } from "@/lib/widget-assignment-generator";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -100,7 +101,9 @@ export async function GET(
       assignmentId: assignment.id,
       classId: assignment.classId,
       lessonNodeId: assignment.lessonNodeId,
-      assignmentConfig: assignment.content,
+      assignmentConfig: stripGeneratorMeta(
+        assignment.content as Record<string, any>,
+      ),
       widgetId,
       buildRunId,
       hasSubmitted: !!studentSubmission?.submittedAt,

@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getBuildRunIdFromLessonNode } from "@/server/class-lesson-node";
+import { stripGeneratorMeta } from "@/lib/widget-assignment-generator";
 import { NextResponse } from "next/server";
 
 export async function GET(
@@ -56,7 +57,9 @@ export async function GET(
       assignmentId: classLessonNode.id,
       classId: classLessonNode.classId,
       lessonNodeId: classLessonNode.lessonNodeId,
-      savedConfig: classLessonNode.content, // Config đã lưu
+      savedConfig: stripGeneratorMeta(
+        classLessonNode.content as Record<string, any>,
+      ),
 
       // Widget info (để lấy HTML)
       widgetId,

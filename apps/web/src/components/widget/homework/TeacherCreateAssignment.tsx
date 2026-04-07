@@ -26,10 +26,15 @@ import {
   stopHostTtsPlayback,
   synthesizeWithHostTts,
 } from "../core/HostTtsClient";
+import {
+  buildGeneratorMeta,
+  WidgetGeneratorMeta,
+} from "@/lib/widget-assignment-generator";
 
 export interface TeacherCreateAssignmentRef {
   getCurrentConfig: () => Record<string, any>;
   getCurrentConfigWithUploadedImages: () => Promise<Record<string, any>>;
+  getGeneratorMeta: () => WidgetGeneratorMeta | null;
 }
 
 interface TeacherCreateAssignmentProps {
@@ -169,6 +174,9 @@ const TeacherCreateAssignment = forwardRef<
         setUploadProgress(null);
         throw error;
       }
+    },
+    getGeneratorMeta: () => {
+      return buildGeneratorMeta(widgetDef);
     },
   }));
 

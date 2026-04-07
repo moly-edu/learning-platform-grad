@@ -17,6 +17,11 @@ import TeacherCreateAssignment, {
   TeacherCreateAssignmentRef,
 } from "./TeacherCreateAssignment";
 import { useLocale } from "next-intl";
+import {
+  applyDifficultyToConfig,
+  attachGeneratorMeta,
+  buildDifficultySequence,
+} from "@/lib/widget-assignment-generator";
 
 const MAX_QUICK_ASSIGN = 50;
 const GENERATOR_TIMEOUT_MS = 20000;
@@ -147,6 +152,7 @@ export default function TeacherQuickAssignDialog({ hwId }: { hwId: string }) {
       1,
       Math.min(MAX_QUICK_ASSIGN, quantity),
     );
+    const difficultySequence = buildDifficultySequence(normalizedQuantity);
 
     try {
       setProcessing(true);
@@ -156,8 +162,24 @@ export default function TeacherQuickAssignDialog({ hwId }: { hwId: string }) {
       let localSuccessCount = 0;
 
       for (let index = 0; index < normalizedQuantity; index++) {
+        const desiredDifficulty = difficultySequence[index] ?? "easy";
         const randomizedConfig =
           await createRandomizedConfigFromHiddenGenerator();
+        const generatorMeta =
+          hiddenGeneratorRef.current?.getGeneratorMeta() ??
+          widgetPreviewRef.current?.getGeneratorMeta() ??
+          null;
+
+        const difficultyAdjustedConfig = applyDifficultyToConfig(
+          randomizedConfig,
+          generatorMeta,
+          desiredDifficulty,
+        );
+
+        const contentForSave = attachGeneratorMeta(
+          difficultyAdjustedConfig,
+          generatorMeta,
+        );
 
         if (!randomizedConfig || Object.keys(randomizedConfig).length === 0) {
           setProcessedCount(index + 1);
@@ -167,7 +189,7 @@ export default function TeacherQuickAssignDialog({ hwId }: { hwId: string }) {
         const createdId = await handleAddClassAddon(
           hwId,
           "homework_imp",
-          randomizedConfig,
+          contentForSave,
         );
 
         if (!createdId) {
