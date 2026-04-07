@@ -1,5 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+} from "react-native";
 import WebView, { WebViewMessageEvent } from "react-native-webview";
 import { API_BASE_URL } from "@/lib/config/api";
 import { authClient } from "@/lib/auth-client";
@@ -26,6 +34,38 @@ interface AssignmentData {
     };
   } | null;
   submittedAt: string | null;
+  latestSubmissionData?: {
+    answer: any;
+    evaluation: {
+      isCorrect: boolean;
+      score: number;
+      maxScore: number;
+    };
+  } | null;
+  latestSubmittedAt?: string | null;
+  attemptCount?: number;
+  correctAttemptCount?: number;
+  attempts?: AssignmentAttempt[];
+}
+
+interface AssignmentAttempt {
+  id: string;
+  attemptNumber: number;
+  answer: any;
+  evaluation: {
+    isCorrect: boolean;
+    score: number;
+    maxScore: number;
+  } | null;
+  isCorrect: boolean;
+  submittedAt: string | null;
+}
+
+interface AssignmentWidgetState {
+  hasSubmitted: boolean;
+  attemptCount: number;
+  correctAttemptCount: number;
+  attempts: AssignmentAttempt[];
 }
 
 interface Submission {
@@ -39,6 +79,11 @@ interface Submission {
 
 interface AssignmentWidgetProps {
   assignmentId: string;
+  retryMode?: boolean;
+  selectedAttemptNumber?: number | null;
+  onRetryModeChange?: (retryMode: boolean) => void;
+  onSelectedAttemptChange?: (attemptNumber: number | null) => void;
+  onAssignmentStateLoaded?: (state: AssignmentWidgetState) => void;
   onCompleted?: (submission: Submission) => void;
   onEvaluationUpdate?: (assignmentId: string, isCorrect: boolean) => void; // NEW: Callback to notify parent about evaluation
   onError?: (error: string) => void;
@@ -92,11 +137,16 @@ true;
 
 export default function AssignmentWidget({
   assignmentId,
+  retryMode = false,
+  selectedAttemptNumber,
+  onRetryModeChange,
+  onSelectedAttemptChange,
+  onAssignmentStateLoaded,
   onCompleted,
   onEvaluationUpdate,
   onError,
 }: AssignmentWidgetProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [assignmentData, setAssignmentData] = useState<AssignmentData | null>(
     null,
   );
@@ -105,15 +155,52 @@ export default function AssignmentWidget({
   const [webViewLoading, setWebViewLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [widgetReady, setWidgetReady] = useState(false);
+  const [attemptPickerVisible, setAttemptPickerVisible] = useState(false);
 
   const webViewRef = useRef<WebView>(null);
-  const configSentRef = useRef(false);
+
+  const normalizeAttempts = (data: AssignmentData): AssignmentAttempt[] => {
+    if (Array.isArray(data.attempts) && data.attempts.length > 0) {
+      return [...data.attempts].sort(
+        (a, b) => a.attemptNumber - b.attemptNumber,
+      );
+    }
+
+    if (data.submissionData) {
+      return [
+        {
+          id: `${data.assignmentId}-fallback-attempt`,
+          attemptNumber: 1,
+          answer: data.submissionData.answer,
+          evaluation: data.submissionData.evaluation,
+          isCorrect: Boolean(data.submissionData.evaluation?.isCorrect),
+          submittedAt: data.submittedAt,
+        },
+      ];
+    }
+
+    return [];
+  };
+
+  const notifyAssignmentState = (data: AssignmentData) => {
+    const attempts = normalizeAttempts(data);
+
+    onAssignmentStateLoaded?.({
+      hasSubmitted: data.hasSubmitted,
+      attemptCount: data.attemptCount ?? attempts.length,
+      correctAttemptCount:
+        data.correctAttemptCount ??
+        attempts.filter((attempt) => attempt.isCorrect).length,
+      attempts,
+    });
+  };
 
   // Reset when assignmentId changes
   useEffect(() => {
-    configSentRef.current = false;
     setWebViewLoading(true);
     setError(null);
+    setWidgetReady(false);
   }, [assignmentId]);
 
   // Send message to WebView using injectJavaScript
@@ -170,6 +257,7 @@ export default function AssignmentWidget({
         const data: AssignmentData = await assignmentRes.json();
         console.log("📦 Assignment data loaded:", data.assignmentId);
         setAssignmentData(data);
+        notifyAssignmentState(data);
 
         // Load widget HTML
         const widgetRes = await fetch(
@@ -199,7 +287,7 @@ export default function AssignmentWidget({
     };
 
     loadAssignment();
-  }, [assignmentId, onError, t]);
+  }, [assignmentId, onAssignmentStateLoaded, onError, t]);
 
   // Handle messages from WebView
   const handleWebViewMessage = (event: WebViewMessageEvent) => {
@@ -218,33 +306,8 @@ export default function AssignmentWidget({
 
         console.log("📦 Widget definition received with schema");
         setWebViewLoading(false);
+        setWidgetReady(true);
         setError(null);
-
-        // Send config immediately after widget ready
-        if (!configSentRef.current && assignmentData) {
-          configSentRef.current = true;
-
-          setTimeout(() => {
-            if (assignmentData.hasSubmitted && assignmentData.submissionData) {
-              // Already submitted → Send config + answer for review
-              console.log("📤 Sending config with answer (review mode)");
-              sendMessage({
-                type: "PARAMS_UPDATE",
-                payload: {
-                  ...assignmentData.assignmentConfig,
-                  __answer: assignmentData.submissionData.answer,
-                },
-              });
-            } else {
-              // Not submitted → Send config normally
-              console.log("📤 Sending config (assignment mode)");
-              sendMessage({
-                type: "PARAMS_UPDATE",
-                payload: assignmentData.assignmentConfig,
-              });
-            }
-          }, 100);
-        }
       }
 
       if (message.type === "SUBMIT") {
@@ -286,6 +349,45 @@ export default function AssignmentWidget({
     }
   };
 
+  useEffect(() => {
+    if (!widgetReady || !assignmentData) {
+      return;
+    }
+
+    const attempts = normalizeAttempts(assignmentData);
+    const selectedAttempt =
+      typeof selectedAttemptNumber === "number"
+        ? attempts.find(
+            (attempt) => attempt.attemptNumber === selectedAttemptNumber,
+          )
+        : attempts[attempts.length - 1];
+
+    if (assignmentData.hasSubmitted && !retryMode) {
+      const reviewAnswer =
+        selectedAttempt?.answer ??
+        assignmentData.latestSubmissionData?.answer ??
+        assignmentData.submissionData?.answer;
+
+      if (typeof reviewAnswer !== "undefined") {
+        console.log("📤 Sending config with answer (review mode)");
+        sendMessage({
+          type: "PARAMS_UPDATE",
+          payload: {
+            ...assignmentData.assignmentConfig,
+            __answer: reviewAnswer,
+          },
+        });
+        return;
+      }
+    }
+
+    console.log("📤 Sending config (assignment mode)");
+    sendMessage({
+      type: "PARAMS_UPDATE",
+      payload: assignmentData.assignmentConfig,
+    });
+  }, [assignmentData, retryMode, selectedAttemptNumber, widgetReady]);
+
   // Submit to database
   const handleSubmitToDatabase = async (submission: Submission) => {
     if (!assignmentData) return;
@@ -320,32 +422,57 @@ export default function AssignmentWidget({
         throw new Error(errorData.error || t("assignmentWidget.saveFailed"));
       }
 
+      const result = await response.json();
       console.log("✅ Submission saved");
 
       // Update local state
       setAssignmentData((prev) => {
         if (!prev) return prev;
-        return {
+
+        const nowIso = new Date().toISOString();
+        const nextAttemptNumber =
+          result?.submission?.attemptCount ??
+          Math.max(prev.attemptCount ?? 0, normalizeAttempts(prev).length) + 1;
+
+        const newAttempt: AssignmentAttempt = {
+          id: `local-${assignmentId}-${nextAttemptNumber}-${Date.now()}`,
+          attemptNumber: nextAttemptNumber,
+          answer: submission.answer,
+          evaluation: submission.evaluation,
+          isCorrect: submission.evaluation.isCorrect,
+          submittedAt: nowIso,
+        };
+
+        const previousAttempts = normalizeAttempts(prev).filter(
+          (attempt) => attempt.attemptNumber !== nextAttemptNumber,
+        );
+        const nextAttempts = [...previousAttempts, newAttempt].sort(
+          (a, b) => a.attemptNumber - b.attemptNumber,
+        );
+
+        const nextState: AssignmentData = {
           ...prev,
           hasSubmitted: true,
-          submissionData: {
+          submissionData: prev.submissionData ?? {
             answer: submission.answer,
             evaluation: submission.evaluation,
           },
-          submittedAt: new Date().toISOString(),
-        };
-      });
-
-      // Send answer back to widget for display
-      setTimeout(() => {
-        sendMessage({
-          type: "PARAMS_UPDATE",
-          payload: {
-            ...assignmentData.assignmentConfig,
-            __answer: submission.answer,
+          submittedAt: prev.submittedAt ?? nowIso,
+          latestSubmissionData: {
+            answer: submission.answer,
+            evaluation: submission.evaluation,
           },
-        });
-      }, 100);
+          latestSubmittedAt: nowIso,
+          attemptCount: nextAttemptNumber,
+          correctAttemptCount:
+            result?.submission?.correctAttemptCount ??
+            nextAttempts.filter((attempt) => attempt.isCorrect).length,
+          attempts: nextAttempts,
+        };
+
+        notifyAssignmentState(nextState);
+        return nextState;
+      });
 
       // Notify evaluation update (for color indication in parent screen)
       onEvaluationUpdate?.(assignmentId, submission.evaluation.isCorrect);
@@ -396,53 +523,134 @@ export default function AssignmentWidget({
     );
   }
 
+  const attempts = normalizeAttempts(assignmentData);
+  const selectedAttempt =
+    typeof selectedAttemptNumber === "number"
+      ? attempts.find(
+          (attempt) => attempt.attemptNumber === selectedAttemptNumber,
+        )
+      : attempts[attempts.length - 1];
+
+  const selectedEvaluation =
+    selectedAttempt?.evaluation ??
+    assignmentData.latestSubmissionData?.evaluation ??
+    assignmentData.submissionData?.evaluation ??
+    null;
+
+  const isSelectedAttemptCorrect = Boolean(selectedEvaluation?.isCorrect);
+  const selectedAttemptNumberLabel =
+    selectedAttempt?.attemptNumber ??
+    attempts[attempts.length - 1]?.attemptNumber;
+  const attemptCount = assignmentData.attemptCount ?? attempts.length;
+  const correctAttemptCount =
+    assignmentData.correctAttemptCount ??
+    attempts.filter((attempt) => attempt.isCorrect).length;
+  const isVietnamese = i18n.resolvedLanguage?.toLowerCase().startsWith("vi");
+  const attemptsButtonLabel = isVietnamese
+    ? `Bài làm (${attemptCount})`
+    : `Attempts (${attemptCount})`;
+  const attemptsModalTitle = isVietnamese ? "Danh sách bài làm" : "Attempts";
+
+  const handleToggleRetryMode = () => {
+    const nextRetryMode = !retryMode;
+    onRetryModeChange?.(nextRetryMode);
+
+    if (nextRetryMode) {
+      onSelectedAttemptChange?.(null);
+      setAttemptPickerVisible(false);
+    }
+  };
+
+  const handleSelectAttempt = (attemptNumber: number) => {
+    onSelectedAttemptChange?.(attemptNumber);
+    onRetryModeChange?.(false);
+    setAttemptPickerVisible(false);
+  };
+
   return (
     <View style={styles.container}>
       {/* Header with submission status */}
-      {assignmentData.hasSubmitted && assignmentData.submissionData && (
+      {assignmentData.hasSubmitted && (
         <View
           style={[
             styles.statusHeader,
             {
-              backgroundColor: assignmentData.submissionData.evaluation
-                .isCorrect
-                ? "#dcfce7"
-                : "#fee2e2",
+              backgroundColor: retryMode
+                ? "#e2e8f0"
+                : isSelectedAttemptCorrect
+                  ? "#dcfce7"
+                  : "#fee2e2",
             },
           ]}
         >
-          <View style={styles.statusContent}>
+          <View style={styles.statusContentRow}>
             <Text style={styles.statusIcon}>
-              {assignmentData.submissionData.evaluation.isCorrect ? "✓" : "✗"}
+              {retryMode ? "↺" : isSelectedAttemptCorrect ? "✓" : "✗"}
             </Text>
-            <View style={styles.statusInfo}>
-              <Text style={styles.statusTitle}>
-                {t("assignmentWidget.completed")}
-              </Text>
-              <Text style={styles.statusScore}>
-                {t("assignmentWidget.score", {
-                  score: assignmentData.submissionData.evaluation.score,
-                  maxScore: assignmentData.submissionData.evaluation.maxScore,
-                })}
-              </Text>
-            </View>
+            <Text numberOfLines={1} style={styles.statusInlineText}>
+              {retryMode
+                ? t("assignmentDetail.retryNow")
+                : `${t("assignmentDetail.attemptLabel", {
+                    number: selectedAttemptNumberLabel ?? 1,
+                  })}${selectedEvaluation ? ` • ${selectedEvaluation.score}/${selectedEvaluation.maxScore}` : ""}`}
+            </Text>
+
+            {!retryMode && selectedEvaluation && (
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor: isSelectedAttemptCorrect
+                      ? "#22c55e"
+                      : "#ef4444",
+                  },
+                ]}
+              >
+                <Text style={styles.statusBadgeText}>
+                  {isSelectedAttemptCorrect
+                    ? t("assignmentWidget.correct")
+                    : t("assignmentWidget.incorrect")}
+                </Text>
+              </View>
+            )}
           </View>
-          <View
-            style={[
-              styles.statusBadge,
-              {
-                backgroundColor: assignmentData.submissionData.evaluation
-                  .isCorrect
-                  ? "#22c55e"
-                  : "#ef4444",
-              },
-            ]}
-          >
-            <Text style={styles.statusBadgeText}>
-              {assignmentData.submissionData.evaluation.isCorrect
-                ? t("assignmentWidget.correct")
-                : t("assignmentWidget.incorrect")}
-            </Text>
+
+          <View style={styles.statusActionRow}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.statusActionButton,
+                styles.attemptsActionButton,
+                pressed && styles.cardPressed,
+              ]}
+              onPress={() => setAttemptPickerVisible(true)}
+            >
+              <Text
+                numberOfLines={1}
+                style={styles.attemptsActionText}
+              >{attemptsButtonLabel}</Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.statusActionButton,
+                styles.retryActionButton,
+                retryMode && styles.retryActionButtonActive,
+                pressed && styles.cardPressed,
+              ]}
+              onPress={handleToggleRetryMode}
+            >
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.retryActionText,
+                  retryMode && styles.retryActionTextActive,
+                ]}
+              >
+                {retryMode
+                  ? t("assignmentDetail.exitRetryMode")
+                  : t("assignmentDetail.retryNow")}
+              </Text>
+            </Pressable>
           </View>
         </View>
       )}
@@ -493,6 +701,82 @@ export default function AssignmentWidget({
           </View>
         </View>
       )}
+
+      {assignmentData.hasSubmitted && (
+        <Modal
+          visible={attemptPickerVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setAttemptPickerVisible(false)}
+        >
+          <View style={styles.attemptModalOverlay}>
+            <View style={styles.attemptModalCard}>
+              <View style={styles.attemptModalHeader}>
+                <Text style={styles.attemptModalTitle}>{attemptsModalTitle}</Text>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.attemptModalClose,
+                    pressed && styles.cardPressed,
+                  ]}
+                  onPress={() => setAttemptPickerVisible(false)}
+                >
+                  <Text style={styles.attemptModalCloseText}>✕</Text>
+                </Pressable>
+              </View>
+
+              <Text style={styles.attemptModalSummary}>
+                {t("assignmentDetail.attemptsSummary", {
+                  count: attemptCount,
+                  correct: correctAttemptCount,
+                })}
+              </Text>
+
+              <ScrollView contentContainerStyle={styles.attemptList}>
+                {attempts.map((attempt) => {
+                  const isSelected =
+                    !retryMode &&
+                    selectedAttempt?.attemptNumber === attempt.attemptNumber;
+                  const evaluation = attempt.evaluation;
+
+                  return (
+                    <Pressable
+                      key={attempt.id}
+                      style={({ pressed }) => [
+                        styles.attemptRow,
+                        isSelected && styles.attemptRowSelected,
+                        pressed && styles.cardPressed,
+                      ]}
+                      onPress={() => handleSelectAttempt(attempt.attemptNumber)}
+                    >
+                      <Text
+                        style={[
+                          styles.attemptRowTitle,
+                          isSelected && styles.attemptRowTitleSelected,
+                        ]}
+                      >
+                        {t("assignmentDetail.attemptLabel", {
+                          number: attempt.attemptNumber,
+                        })}
+                      </Text>
+
+                      <Text
+                        style={[
+                          styles.attemptRowMeta,
+                          isSelected && styles.attemptRowMetaSelected,
+                        ]}
+                      >
+                        {evaluation
+                          ? `${evaluation.isCorrect ? t("assignmentWidget.correct") : t("assignmentWidget.incorrect")} • ${evaluation.score}/${evaluation.maxScore}`
+                          : t("assignmentModal.statusPending")}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -533,46 +817,85 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderBottomWidth: 2,
     borderBottomColor: "#334155",
     borderTopLeftRadius: 14,
     borderTopRightRadius: 14,
     borderWidth: 2,
     borderColor: "#334155",
+    gap: 8,
   },
-  statusContent: {
+  statusContentRow: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    minWidth: 0,
   },
   statusIcon: {
-    fontSize: 22,
-    marginRight: 8,
+    fontSize: 18,
+    marginRight: 6,
     fontWeight: "bold",
   },
-  statusInfo: {
+  statusInlineText: {
     flex: 1,
-  },
-  statusTitle: {
-    fontSize: 14,
+    minWidth: 0,
+    fontSize: 16,
     fontWeight: "800",
-    color: "#374151",
-  },
-  statusScore: {
-    fontSize: 13,
     color: "#475569",
   },
   statusBadge: {
-    paddingHorizontal: 11,
-    paddingVertical: 5,
+    marginLeft: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: 999,
   },
   statusBadgeText: {
     color: "white",
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: "800",
+  },
+  statusActionRow: {
+    flexDirection: "row",
+    gap: 6,
+    flexShrink: 0,
+  },
+  statusActionButton: {
+    minHeight: 38,
+    paddingHorizontal: 8,
+    borderRadius: 9,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  attemptsActionButton: {
+    borderColor: "#92400e",
+    backgroundColor: "#fff7ed",
+  },
+  attemptsActionText: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#92400e",
+  },
+  retryActionButton: {
+    borderColor: "#0f766e",
+    backgroundColor: "#ecfeff",
+  },
+  retryActionButtonActive: {
+    borderColor: "#042f2e",
+    backgroundColor: "#0f766e",
+  },
+  retryActionText: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0f766e",
+  },
+  retryActionTextActive: {
+    color: "#ffffff",
+  },
+  cardPressed: {
+    transform: [{ translateY: 1 }],
   },
   webViewContainer: {
     flex: 1,
@@ -626,5 +949,90 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#374151",
+  },
+  attemptModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 12,
+  },
+  attemptModalCard: {
+    width: "92%",
+    maxWidth: 560,
+    maxHeight: "76%",
+    borderRadius: 16,
+    backgroundColor: "#ffffff",
+    borderWidth: 2,
+    borderColor: "#854d0e",
+    padding: 12,
+    shadowColor: "#7c2d12",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 0,
+    elevation: 10,
+  },
+  attemptModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  attemptModalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#7c2d12",
+  },
+  attemptModalClose: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#92400e",
+    backgroundColor: "#fde68a",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  attemptModalCloseText: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#78350f",
+  },
+  attemptModalSummary: {
+    fontSize: 13,
+    color: "#57534e",
+    marginBottom: 10,
+  },
+  attemptList: {
+    gap: 8,
+    paddingBottom: 4,
+  },
+  attemptRow: {
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#d97706",
+    backgroundColor: "#fff7ed",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  attemptRowSelected: {
+    borderColor: "#0f766e",
+    backgroundColor: "#ccfbf1",
+  },
+  attemptRowTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#9a3412",
+    marginBottom: 2,
+  },
+  attemptRowTitleSelected: {
+    color: "#0f766e",
+  },
+  attemptRowMeta: {
+    fontSize: 16,
+    color: "#57534e",
+  },
+  attemptRowMetaSelected: {
+    color: "#0f766e",
   },
 });

@@ -62,6 +62,10 @@ const vi = {
   assignmentDetail: {
     missingTitle: "Thiếu bài tập",
     missingDescription: "Không có assignment ID.",
+    retryNow: "🔁 Làm lại ngay",
+    exitRetryMode: "↩ Thoát làm lại",
+    attemptLabel: "Lần {{number}}",
+    attemptsSummary: "Đã làm {{count}} lần • Đúng {{correct}}",
   },
   doAll: {
     noClassId: "Thiếu class ID",
@@ -96,6 +100,9 @@ const vi = {
     title: "Bài tập",
     loading: "Đang tải bài tập...",
     empty: "Chưa có bài tập",
+    reviewAttempt: "Xem bài làm",
+    retryNow: "Làm lại ngay",
+    startNow: "Làm bài",
   },
   assignmentWidget: {
     noAssignmentId: "Thiếu assignment ID",

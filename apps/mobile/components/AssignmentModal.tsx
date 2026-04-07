@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   FlatList,
+  useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { API_BASE_URL } from "@/lib/config/api";
@@ -19,6 +20,9 @@ export interface Assignment {
   description: string;
   hasSubmitted: boolean;
   submittedAt: string | null;
+  latestSubmittedAt?: string | null;
+  attemptCount?: number;
+  correctAttemptCount?: number;
   evaluation?: {
     isCorrect: boolean;
     score: number;
@@ -42,9 +46,17 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isVietnamese = i18n.resolvedLanguage?.toLowerCase().startsWith("vi");
+
+  const assignmentCardWidth = Math.min(
+    280,
+    Math.max(190, Math.round(width * 0.3)),
+  );
 
   const fetchAssignments = useCallback(async () => {
     try {
@@ -96,15 +108,24 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
     }
   }, [visible, fetchAssignments]);
 
-  const handleAssignmentPress = (assignmentId: string) => {
+  const handleAssignmentPress = (
+    assignmentId: string,
+    mode: "review" | "retry" = "review",
+  ) => {
     onClose();
     router.push({
       pathname: "/(tabs)/assignment-detail",
-      params: { assignmentId },
+      params: { assignmentId, mode },
     });
   };
 
-  const renderAssignmentItem = ({ item }: { item: Assignment }) => {
+  const renderAssignmentItem = ({
+    item,
+    index,
+  }: {
+    item: Assignment;
+    index: number;
+  }) => {
     const isPending = !item.hasSubmitted;
     const statusColor = isPending ? "#fef3c7" : "#dcfce7";
     const borderColor = isPending ? "#fcd34d" : "#86efac";
@@ -112,22 +133,30 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
       ? t("assignmentModal.statusPending")
       : t("assignmentModal.statusCompleted");
     const statusBgColor = isPending ? "#fbbf24" : "#22c55e";
+    const displayTitle = isVietnamese
+      ? `Bài ${index + 1}`
+      : `Assignment ${index + 1}`;
 
     return (
       <Pressable
         style={({ pressed }) => [
           styles.assignmentItem,
           {
+            width: assignmentCardWidth,
+          },
+          {
             borderLeftColor: borderColor,
             backgroundColor: statusColor,
           },
           pressed && styles.card3dPressed,
         ]}
-        onPress={() => handleAssignmentPress(item.id)}
+        onPress={() => handleAssignmentPress(item.id, "review")}
       >
         <View style={styles.assignmentHeader}>
           <View style={styles.assignmentTitleContainer}>
-            <Text style={styles.assignmentTitle}>{item.title}</Text>
+            <Text numberOfLines={2} style={styles.assignmentTitle}>
+              {displayTitle}
+            </Text>
             <View
               style={[
                 styles.statusBadge,
@@ -141,51 +170,66 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
           </View>
         </View>
 
-        {item.description && (
-          <Text style={styles.assignmentDescription}>{item.description}</Text>
-        )}
-
-        {/* Evaluation display */}
         {item.hasSubmitted && item.evaluation && (
-          <View style={styles.evaluationContainer}>
-            <View style={styles.evaluationRow}>
-              <Text style={styles.evaluationLabel}>
-                {t("assignmentModal.result")}
-              </Text>
-              <Text
-                style={[
-                  styles.evaluationValue,
-                  {
-                    color: item.evaluation.isCorrect ? "#22c55e" : "#ef4444",
-                  },
-                ]}
-              >
-                {item.evaluation.isCorrect
-                  ? t("assignmentModal.correct")
-                  : t("assignmentModal.incorrect")}
-              </Text>
-            </View>
-            <View style={styles.evaluationRow}>
-              <Text style={styles.evaluationLabel}>
-                {t("assignmentModal.score")}
-              </Text>
-              <Text style={styles.evaluationValue}>
-                {item.evaluation.score}/{item.evaluation.maxScore}
-              </Text>
-            </View>
+          <View style={styles.metaRow}>
+            <Text
+              style={[
+                styles.metaResult,
+                {
+                  color: item.evaluation.isCorrect ? "#16a34a" : "#dc2626",
+                },
+              ]}
+            >
+              {item.evaluation.isCorrect
+                ? t("assignmentModal.correct")
+                : t("assignmentModal.incorrect")}
+            </Text>
+            <Text style={styles.metaScore}>
+              {item.evaluation.score}/{item.evaluation.maxScore}
+            </Text>
           </View>
         )}
 
-        {/* Submitted date */}
-        {item.hasSubmitted && item.submittedAt && (
-          <Text style={styles.submittedDate}>
-            {t("assignmentModal.submittedAt", {
-              date: new Date(item.submittedAt).toLocaleDateString(
-                i18n.language.startsWith("vi") ? "vi-VN" : "en-US",
-              ),
-            })}
-          </Text>
-        )}
+        <View style={styles.actionRow}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionButton,
+              styles.detailButton,
+              pressed && styles.card3dPressed,
+            ]}
+            onPress={(event) => {
+              event.stopPropagation();
+              handleAssignmentPress(item.id, "review");
+            }}
+          >
+            <Text style={styles.detailButtonText}>
+              {item.hasSubmitted
+                ? t("assignmentModal.reviewAttempt")
+                : t("assignmentModal.startNow")}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionButton,
+              styles.retryNowButton,
+              pressed && styles.card3dPressed,
+            ]}
+            onPress={(event) => {
+              event.stopPropagation();
+              handleAssignmentPress(
+                item.id,
+                item.hasSubmitted ? "retry" : "review",
+              );
+            }}
+          >
+            <Text style={styles.retryNowButtonText}>
+              {item.hasSubmitted
+                ? t("assignmentModal.retryNow")
+                : t("assignmentModal.startNow")}
+            </Text>
+          </Pressable>
+        </View>
       </Pressable>
     );
   };
@@ -201,7 +245,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
         <View style={styles.modalContent}>
           {/* Header */}
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{t("assignmentModal.title")}</Text>
+            <Text style={styles.modalTitle}>{`${t("assignmentModal.title")} (${assignments.length})`}</Text>
             <Pressable style={styles.closeButton} onPress={onClose}>
               <Text style={styles.closeButtonText}>✕</Text>
             </Pressable>
@@ -237,8 +281,10 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
               data={assignments}
               renderItem={renderAssignmentItem}
               keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.listContent}
-              scrollEnabled={true}
+              scrollEnabled
             />
           )}
         </View>
@@ -251,13 +297,16 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(20, 35, 20, 0.45)",
-    justifyContent: "flex-end",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 10,
   },
   modalContent: {
     backgroundColor: "white",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    height: "80%",
+    borderRadius: 24,
+    width: "100%",
+    maxWidth: 980,
+    height: "76%",
     paddingTop: 16,
     borderWidth: 2,
     borderColor: "#0f172a",
@@ -338,16 +387,17 @@ const styles = StyleSheet.create({
     color: "#64748b",
   },
   listContent: {
-    padding: 12,
-    paddingBottom: 22,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    gap: 10,
   },
   assignmentItem: {
     padding: 14,
-    marginBottom: 10,
     borderRadius: 14,
     borderLeftWidth: 4,
     borderWidth: 2,
     borderColor: "#0f172a",
+    justifyContent: "space-between",
     shadowColor: "#0f172a",
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.12,
@@ -364,7 +414,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   assignmentTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "800",
     color: "#0f172a",
     flex: 1,
@@ -379,36 +429,50 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "white",
   },
-  assignmentDescription: {
-    fontSize: 14,
-    color: "#334155",
-    marginBottom: 8,
-    lineHeight: 21,
-  },
-  evaluationContainer: {
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 8,
-  },
-  evaluationRow: {
+  metaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 4,
+    alignItems: "center",
+    marginBottom: 8,
   },
-  evaluationLabel: {
+  metaResult: {
     fontSize: 13,
-    color: "#64748b",
-    fontWeight: "600",
+    fontWeight: "800",
   },
-  evaluationValue: {
-    fontSize: 14,
+  metaScore: {
+    fontSize: 13,
+    color: "#334155",
     fontWeight: "700",
   },
-  submittedDate: {
+  actionRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  actionButton: {
+    flex: 1,
+    minHeight: 36,
+    borderRadius: 10,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  detailButton: {
+    backgroundColor: "#fff7ed",
+    borderColor: "#c2410c",
+  },
+  detailButtonText: {
+    color: "#9a3412",
+    fontWeight: "800",
     fontSize: 12,
-    color: "#64748b",
-    fontStyle: "italic",
+  },
+  retryNowButton: {
+    backgroundColor: "#0f766e",
+    borderColor: "#042f2e",
+  },
+  retryNowButtonText: {
+    color: "#ffffff",
+    fontWeight: "800",
+    fontSize: 12,
   },
   card3dPressed: {
     transform: [{ translateY: 2 }],

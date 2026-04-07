@@ -62,6 +62,10 @@ const en = {
   assignmentDetail: {
     missingTitle: "Missing assignment",
     missingDescription: "No assignment ID provided.",
+    retryNow: "🔁 Retry now",
+    exitRetryMode: "↩ Exit retry",
+    attemptLabel: "Attempt {{number}}",
+    attemptsSummary: "{{count}} attempts • {{correct}} correct",
   },
   doAll: {
     noClassId: "No class ID",
@@ -97,6 +101,9 @@ const en = {
     title: "Assignments",
     loading: "Loading assignments...",
     empty: "No assignments yet",
+    reviewAttempt: "Review answer",
+    retryNow: "Retry now",
+    startNow: "Start",
   },
   assignmentWidget: {
     noAssignmentId: "No assignment ID provided",

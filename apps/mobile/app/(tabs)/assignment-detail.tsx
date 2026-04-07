@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Pressable, SafeAreaView } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import AssignmentWidget from "@/components/AssignmentWidget";
@@ -6,8 +6,22 @@ import { useTranslation } from "react-i18next";
 
 export default function AssignmentDetailScreen() {
   const { t } = useTranslation();
-  const { assignmentId } = useLocalSearchParams<{ assignmentId: string }>();
+  const { assignmentId, mode } = useLocalSearchParams<{
+    assignmentId: string;
+    mode?: "review" | "retry";
+  }>();
   const router = useRouter();
+  const [retryMode, setRetryMode] = useState(mode === "retry");
+  const [selectedAttemptNumber, setSelectedAttemptNumber] = useState<
+    number | null
+  >(null);
+
+  useEffect(() => {
+    setRetryMode(mode === "retry");
+    if (mode === "retry") {
+      setSelectedAttemptNumber(null);
+    }
+  }, [mode, assignmentId]);
 
   if (!assignmentId) {
     return (
@@ -35,8 +49,24 @@ export default function AssignmentDetailScreen() {
           <AssignmentWidget
             key={assignmentId}
             assignmentId={assignmentId}
+            retryMode={retryMode}
+            selectedAttemptNumber={selectedAttemptNumber}
+            onRetryModeChange={(nextRetryMode) => {
+              setRetryMode(nextRetryMode);
+              if (nextRetryMode) {
+                setSelectedAttemptNumber(null);
+              }
+            }}
+            onSelectedAttemptChange={(attemptNumber) => {
+              setSelectedAttemptNumber(attemptNumber);
+              if (typeof attemptNumber === "number") {
+                setRetryMode(false);
+              }
+            }}
             onCompleted={(submission) => {
               console.log("Assignment completed:", submission);
+              setRetryMode(false);
+              setSelectedAttemptNumber(null);
             }}
             onError={(error) => {
               console.error("Assignment error:", error);
@@ -56,12 +86,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fefce8",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
   },
   widgetFrame: {
     flex: 1,
-    borderRadius: 18,
+    borderRadius: 14,
     borderWidth: 2,
     borderColor: "#854d0e",
     overflow: "hidden",
