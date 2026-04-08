@@ -118,6 +118,33 @@ export const coursesContract = c.router(
       summary: "Delete a lesson node",
     },
 
+    // ── PATCH /courses/:courseId/nodes/:nodeId/reorder ──
+    reorderLessonNode: {
+      method: "PATCH",
+      path: "/:courseId/nodes/:nodeId/reorder",
+      pathParams: z.object({
+        courseId: z.string(),
+        nodeId: z.string(),
+      }),
+      body: z.object({
+        targetParentId: z.string(),
+        targetIndex: z.number().int().min(0),
+      }),
+      responses: {
+        200: c.type<{
+          success: boolean;
+          data?: {
+            movedId: string;
+            targetParentId: string;
+            targetIndex: number;
+          };
+          error?: string;
+        }>(),
+        401: z.object({ error: z.string() }),
+      },
+      summary: "Move/reorder a lesson node",
+    },
+
     // ── GET /courses/homework-status?courseId=x&classId=y ──
     getHomeworkStatus: {
       method: "GET",

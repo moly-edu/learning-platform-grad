@@ -87,6 +87,16 @@ export class CoursesController {
         return { status: 200, body: result };
       },
 
+      reorderLessonNode: async ({ params, body }) => {
+        const result = await this.coursesService.reorderLessonNode({
+          nodeId: params.nodeId,
+          courseId: params.courseId,
+          targetParentId: body.targetParentId,
+          targetIndex: body.targetIndex,
+        });
+        return { status: 200, body: result };
+      },
+
       getHomeworkStatus: async ({ query }) => {
         const data = await this.coursesService.getHomeworkStatus(
           query.courseId,

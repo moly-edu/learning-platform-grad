@@ -19,6 +19,7 @@ import {
   CheckCircle,
   XCircle,
   BarChart3,
+  GripVertical,
   User,
   ArrowRightLeft,
   Users,
@@ -53,6 +54,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import StudentCourseStructureContent from "@/components/course-structure/course-structure-student-content";
 import { useLocale } from "next-intl";
+import { findNodeById } from "./utils/course-structure-utiles";
 
 // ===== PROPS =====
 interface CourseStructureManagerProps {
@@ -78,6 +80,22 @@ type OwnerClassItem = {
   name: string;
   courseId: string;
 };
+
+type TreeDropPosition = "before" | "inside" | "after";
+type HomeworkDropPosition = "before" | "after";
+
+interface TreeDropIntent {
+  targetNodeId: string;
+  targetParentId: string;
+  targetIndex: number;
+  position: TreeDropPosition;
+}
+
+interface HomeworkDropIntent {
+  targetHomeworkId: string;
+  targetIndex: number;
+  position: HomeworkDropPosition;
+}
 
 const EditableTitle: React.FC<EditableTitleProps> = ({
   initialTitle,
@@ -202,6 +220,7 @@ const CourseStructureContent: React.FC = () => {
     toggleNodeExpanded,
     handleAddNode,
     handleDeleteNode,
+    handleMoveNode,
     handleToggleClassLessonNodes: handleToggleClassLessonNodes,
     handleAddClassLessonNode: handleAddClassLessonNode,
     handleDeleteClassLessonNode: handleDeleteClassLessonNode,
@@ -230,6 +249,18 @@ const CourseStructureContent: React.FC = () => {
   const [classManagerOpen, setClassManagerOpen] = useState(false);
   // Members manager dialog (for owner)
   const [memberManagerOpen, setMemberManagerOpen] = useState(false);
+  const [draggingTreeNodeId, setDraggingTreeNodeId] = useState<string | null>(
+    null,
+  );
+  const [treeDropIntent, setTreeDropIntent] = useState<TreeDropIntent | null>(
+    null,
+  );
+  const autoExpandedDuringDragRef = useRef<Set<string>>(new Set());
+  const [draggingHomeworkNodeId, setDraggingHomeworkNodeId] = useState<
+    string | null
+  >(null);
+  const [homeworkDropIntent, setHomeworkDropIntent] =
+    useState<HomeworkDropIntent | null>(null);
 
   const {
     data: ownedClasses = [],
@@ -266,6 +297,92 @@ const CourseStructureContent: React.FC = () => {
     if (!selectedStudentId) return "";
     return classStudents.find((s) => s.id === selectedStudentId)?.name || "";
   }, [selectedStudentId, classStudents]);
+
+  const getSiblingNodeIds = useCallback(
+    (parentId: string, excludeNodeId?: string) => {
+      if (!course.rootLessonNode) return [] as string[];
+
+      const parentNode = findNodeById(course.rootLessonNode, parentId);
+      if (!parentNode || !parentNode.children) return [] as string[];
+
+      return parentNode.children
+        .filter((child) => child.type !== LessonNodeType.homework)
+        .filter((child) => child.id !== excludeNodeId)
+        .map((child) => child.id);
+    },
+    [course.rootLessonNode],
+  );
+
+  const getTreeDropIntent = useCallback(
+    (
+      movingNode: LessonNodeUI,
+      targetNode: LessonNodeUI,
+      clientY: number,
+      rowRect: DOMRect,
+    ): TreeDropIntent | null => {
+      if (movingNode.id === targetNode.id) return null;
+
+      // Prevent moving a node into its own subtree.
+      if (findNodeById(movingNode, targetNode.id)) return null;
+
+      const canDropInside =
+        movingNode.type === LessonNodeType.homework
+          ? targetNode.type === LessonNodeType.lesson
+          : targetNode.type !== LessonNodeType.lesson &&
+            targetNode.type !== LessonNodeType.homework;
+
+      const edgeThreshold = Math.min(10, rowRect.height * 0.25);
+      const insideTop = rowRect.top + edgeThreshold;
+      const insideBottom = rowRect.bottom - edgeThreshold;
+      const preferInside =
+        canDropInside && clientY >= insideTop && clientY <= insideBottom;
+
+      if (preferInside) {
+        const childIds = (targetNode.children || [])
+          .filter((child) => child.type !== LessonNodeType.homework)
+          .filter((child) => child.id !== movingNode.id)
+          .map((child) => child.id);
+
+        return {
+          targetNodeId: targetNode.id,
+          targetParentId: targetNode.id,
+          targetIndex: childIds.length,
+          position: "inside",
+        };
+      }
+
+      if (!targetNode.parentId) {
+        return null;
+      }
+
+      const siblingIds = getSiblingNodeIds(targetNode.parentId, movingNode.id);
+      const siblingIndex = siblingIds.indexOf(targetNode.id);
+      if (siblingIndex === -1) return null;
+
+      const isBefore = clientY < rowRect.top + rowRect.height / 2;
+
+      return {
+        targetNodeId: targetNode.id,
+        targetParentId: targetNode.parentId,
+        targetIndex: isBefore ? siblingIndex : siblingIndex + 1,
+        position: isBefore ? "before" : "after",
+      };
+    },
+    [getSiblingNodeIds],
+  );
+
+  const applyTreeDropIntent = useCallback(
+    async (intent: TreeDropIntent) => {
+      if (!draggingTreeNodeId) return;
+
+      await handleMoveNode(
+        draggingTreeNodeId,
+        intent.targetParentId,
+        intent.targetIndex,
+      );
+    },
+    [draggingTreeNodeId, handleMoveNode],
+  );
 
   // Helper: get stats badge color based on correct ratio
   const getStatsBadge = (correct: number, total: number) => {
@@ -311,6 +428,13 @@ const CourseStructureContent: React.FC = () => {
     const isSelected = selectedNodeId === node.id;
     const hasChildren = node._count.children > 0;
     const isDeleting = loadingAction === `delete-${node.id}`;
+    const isDragging = draggingTreeNodeId === node.id;
+    const currentDropPosition =
+      treeDropIntent?.targetNodeId === node.id ? treeDropIntent.position : null;
+    const isInsideDropTarget = currentDropPosition === "inside";
+    const treeChildren = (node.children || []).filter(
+      (child) => child.type !== LessonNodeType.homework,
+    );
 
     // Get homework counts (student or teacher-student-view)
     const homeworkCounts =
@@ -320,12 +444,103 @@ const CourseStructureContent: React.FC = () => {
     return (
       <div key={node.id} className="group">
         <div
-          className={`flex items-center gap-1 py-1 px-2 hover:bg-muted cursor-pointer ${
+          data-node-id={node.id}
+          className={`relative flex items-center gap-1 py-1 px-2 hover:bg-muted cursor-pointer ${
             isSelected ? "bg-blue-100 border-l-2 border-blue-500" : ""
-          } ${isDeleting ? "opacity-50" : ""}`}
+          } ${isDeleting || isDragging ? "opacity-50" : ""} ${
+            isInsideDropTarget ? "ring-1 ring-blue-400 bg-blue-50" : ""
+          }`}
           style={{ paddingLeft: `${level * 20 + 8}px` }}
           onClick={() => setSelectedNodeId(node.id)}
+          onDragOver={(e) => {
+            if (
+              !isAdmin ||
+              !draggingTreeNodeId ||
+              draggingTreeNodeId === node.id ||
+              !course.rootLessonNode
+            ) {
+              return;
+            }
+
+            const movingNode = findNodeById(course.rootLessonNode, draggingTreeNodeId);
+            if (!movingNode) return;
+
+            const intent = getTreeDropIntent(
+              movingNode,
+              node,
+              e.clientY,
+              e.currentTarget.getBoundingClientRect(),
+            );
+            if (!intent) return;
+
+            e.preventDefault();
+
+            setTreeDropIntent((prev) => {
+              if (
+                prev?.targetNodeId === intent.targetNodeId &&
+                prev.targetParentId === intent.targetParentId &&
+                prev.targetIndex === intent.targetIndex &&
+                prev.position === intent.position
+              ) {
+                return prev;
+              }
+              return intent;
+            });
+
+            if (
+              intent.position === "inside" &&
+              !expandedNodeIds.has(node.id) &&
+              !autoExpandedDuringDragRef.current.has(node.id)
+            ) {
+              autoExpandedDuringDragRef.current.add(node.id);
+              toggleNodeExpanded(node);
+            }
+          }}
+          onDrop={(e) => {
+            if (
+              !isAdmin ||
+              !draggingTreeNodeId ||
+              draggingTreeNodeId === node.id ||
+              !course.rootLessonNode
+            ) {
+              return;
+            }
+
+            const movingNode = findNodeById(course.rootLessonNode, draggingTreeNodeId);
+            if (!movingNode) return;
+
+            const liveIntent = getTreeDropIntent(
+              movingNode,
+              node,
+              e.clientY,
+              e.currentTarget.getBoundingClientRect(),
+            );
+
+            const finalIntent =
+              treeDropIntent?.targetNodeId === node.id ? treeDropIntent : liveIntent;
+
+            if (!finalIntent) {
+              return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            void applyTreeDropIntent(finalIntent).finally(() => {
+              setDraggingTreeNodeId(null);
+              setTreeDropIntent(null);
+              autoExpandedDuringDragRef.current.clear();
+            });
+          }}
         >
+          {currentDropPosition === "before" && (
+            <div className="pointer-events-none absolute left-2 right-2 top-0 h-0.5 rounded-full bg-blue-500" />
+          )}
+
+          {currentDropPosition === "after" && (
+            <div className="pointer-events-none absolute left-2 right-2 bottom-0 h-0.5 rounded-full bg-blue-500" />
+          )}
+
           <div className="flex items-center gap-1 flex-1">
             {/* Expand/collapse button (ĐƠN GIẢN - không loading) */}
             {hasChildren && node.type !== LessonNodeType.lesson ? (
@@ -386,27 +601,53 @@ const CourseStructureContent: React.FC = () => {
 
           {/* Delete button */}
           {node.type !== LessonNodeType.course && isAdmin && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteNode(node.id);
-              }}
-              disabled={isDeleting || isPending}
-              className="p-1 hover:bg-red-100 rounded opacity-0 group-hover:opacity-100 disabled:opacity-50"
-            >
-              {isDeleting ? (
-                <Loader2 className="w-3 h-3 text-red-500 animate-spin" />
-              ) : (
-                <Trash2 className="w-3 h-3 text-red-500" />
-              )}
-            </button>
+            <>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                onDragStart={(e) => {
+                  e.stopPropagation();
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", node.id);
+                  setDraggingTreeNodeId(node.id);
+                  setTreeDropIntent(null);
+                  autoExpandedDuringDragRef.current.clear();
+                }}
+                onDragEnd={(e) => {
+                  e.stopPropagation();
+                  setDraggingTreeNodeId(null);
+                  setTreeDropIntent(null);
+                  autoExpandedDuringDragRef.current.clear();
+                }}
+                draggable={!isDeleting && !isPending}
+                disabled={isDeleting || isPending}
+                title={isVi ? "Kéo để sắp xếp" : "Drag to reorder"}
+                className="p-1 hover:bg-muted rounded opacity-0 group-hover:opacity-100 disabled:opacity-50 cursor-grab active:cursor-grabbing"
+              >
+                <GripVertical className="w-3 h-3 text-muted-foreground" />
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteNode(node.id);
+                }}
+                disabled={isDeleting || isPending}
+                className="p-1 hover:bg-red-100 rounded opacity-0 group-hover:opacity-100 disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <Loader2 className="w-3 h-3 text-red-500 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3 h-3 text-red-500" />
+                )}
+              </button>
+            </>
           )}
         </div>
 
         {/* Render children - ĐƠN GIẢN */}
-        {isExpanded && node.children && node.children.length > 0 && (
+        {isExpanded && treeChildren.length > 0 && (
           <div>
-            {node.children.map((child) => renderNode(child, level + 1))}
+            {treeChildren.map((child) => renderNode(child, level + 1))}
           </div>
         )}
       </div>
@@ -422,6 +663,46 @@ const CourseStructureContent: React.FC = () => {
     }
     return [];
   }, [selectedNode]);
+
+  const getHomeworkDropIntent = useCallback(
+    (
+      targetHomeworkId: string,
+      clientY: number,
+      rowRect: DOMRect,
+    ): HomeworkDropIntent | null => {
+      if (!draggingHomeworkNodeId) return null;
+      if (draggingHomeworkNodeId === targetHomeworkId) return null;
+
+      const siblingIds = homeworkNodes
+        .filter((hw) => hw.id !== draggingHomeworkNodeId)
+        .map((hw) => hw.id);
+      const siblingIndex = siblingIds.indexOf(targetHomeworkId);
+      if (siblingIndex === -1) return null;
+
+      const isBefore = clientY < rowRect.top + rowRect.height / 2;
+
+      return {
+        targetHomeworkId,
+        targetIndex: isBefore ? siblingIndex : siblingIndex + 1,
+        position: isBefore ? "before" : "after",
+      };
+    },
+    [draggingHomeworkNodeId, homeworkNodes],
+  );
+
+  const applyHomeworkDropIntent = useCallback(
+    async (intent: HomeworkDropIntent) => {
+      if (!draggingHomeworkNodeId) return;
+      if (!selectedNode || selectedNode.type !== LessonNodeType.lesson) return;
+
+      await handleMoveNode(
+        draggingHomeworkNodeId,
+        selectedNode.id,
+        intent.targetIndex,
+      );
+    },
+    [draggingHomeworkNodeId, selectedNode, handleMoveNode],
+  );
 
   const canAddToSelected =
     selectedNode && selectedNode.type !== LessonNodeType.lesson;
@@ -898,11 +1179,85 @@ const CourseStructureContent: React.FC = () => {
                             : null;
                         const hasPendingHomework =
                           homeworkCounts && homeworkCounts.pending > 0;
+                        const currentHomeworkDropPosition =
+                          homeworkDropIntent?.targetHomeworkId === hw.id
+                            ? homeworkDropIntent.position
+                            : null;
 
                         return (
                           <div key={hw.id}>
                             {/* Homework header */}
-                            <div className="flex items-center gap-2 p-2 bg-orange-50 rounded group">
+                            <div
+                              className="relative flex items-center gap-2 p-2 bg-orange-50 rounded group"
+                              onDragOver={(e) => {
+                                if (
+                                  !isAdmin ||
+                                  !draggingHomeworkNodeId ||
+                                  draggingHomeworkNodeId === hw.id
+                                ) {
+                                  return;
+                                }
+
+                                const intent = getHomeworkDropIntent(
+                                  hw.id,
+                                  e.clientY,
+                                  e.currentTarget.getBoundingClientRect(),
+                                );
+                                if (!intent) return;
+
+                                e.preventDefault();
+
+                                setHomeworkDropIntent((prev) => {
+                                  if (
+                                    prev?.targetHomeworkId ===
+                                      intent.targetHomeworkId &&
+                                    prev.targetIndex === intent.targetIndex &&
+                                    prev.position === intent.position
+                                  ) {
+                                    return prev;
+                                  }
+                                  return intent;
+                                });
+                              }}
+                              onDrop={(e) => {
+                                if (
+                                  !isAdmin ||
+                                  !draggingHomeworkNodeId ||
+                                  draggingHomeworkNodeId === hw.id
+                                ) {
+                                  return;
+                                }
+
+                                const liveIntent = getHomeworkDropIntent(
+                                  hw.id,
+                                  e.clientY,
+                                  e.currentTarget.getBoundingClientRect(),
+                                );
+
+                                const finalIntent =
+                                  homeworkDropIntent?.targetHomeworkId === hw.id
+                                    ? homeworkDropIntent
+                                    : liveIntent;
+
+                                if (!finalIntent) return;
+
+                                e.preventDefault();
+                                e.stopPropagation();
+
+                                void applyHomeworkDropIntent(finalIntent).finally(() => {
+                                  setDraggingHomeworkNodeId(null);
+                                  setHomeworkDropIntent(null);
+                                });
+                              }}
+                            >
+                              {currentHomeworkDropPosition === "before" && (
+                                <div className="pointer-events-none absolute left-2 right-2 top-0 h-0.5 rounded-full bg-blue-500" />
+                              )}
+
+                              {currentHomeworkDropPosition === "after" && (
+                                <div className="pointer-events-none absolute left-2 right-2 bottom-0 h-0.5 rounded-full bg-blue-500" />
+                              )}
+
                               <File className="w-4 h-4 text-orange-500" />
 
                               {/* Title */}
@@ -993,12 +1348,35 @@ const CourseStructureContent: React.FC = () => {
 
                               {/* Delete button */}
                               {isAdmin && (
-                                <button
-                                  onClick={() => handleDeleteNode(hw.id)}
-                                  className="p-1 hover:bg-red-100 rounded opacity-0 group-hover:opacity-100"
-                                >
-                                  <Trash2 className="w-3 h-3 text-red-500" />
-                                </button>
+                                <>
+                                  <button
+                                    onClick={(e) => e.stopPropagation()}
+                                    onDragStart={(e) => {
+                                      e.stopPropagation();
+                                      e.dataTransfer.effectAllowed = "move";
+                                      e.dataTransfer.setData("text/plain", hw.id);
+                                      setDraggingHomeworkNodeId(hw.id);
+                                      setHomeworkDropIntent(null);
+                                    }}
+                                    onDragEnd={(e) => {
+                                      e.stopPropagation();
+                                      setDraggingHomeworkNodeId(null);
+                                      setHomeworkDropIntent(null);
+                                    }}
+                                    draggable
+                                    title={isVi ? "Kéo để sắp xếp" : "Drag to reorder"}
+                                    className="p-1 hover:bg-orange-200 rounded opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing"
+                                  >
+                                    <GripVertical className="w-3 h-3 text-orange-700" />
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleDeleteNode(hw.id)}
+                                    className="p-1 hover:bg-red-100 rounded opacity-0 group-hover:opacity-100"
+                                  >
+                                    <Trash2 className="w-3 h-3 text-red-500" />
+                                  </button>
+                                </>
                               )}
                             </div>
 

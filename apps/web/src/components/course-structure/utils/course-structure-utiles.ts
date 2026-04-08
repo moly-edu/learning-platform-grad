@@ -132,6 +132,112 @@ export const isDescendant = (
   );
 };
 
+const normalizeChildrenOrder = (children: LessonNodeUI[]): LessonNodeUI[] =>
+  children.map((child, index) => ({
+    ...child,
+    order: index,
+  }));
+
+const removeNodeWithExtraction = (
+  root: LessonNodeUI,
+  targetId: string,
+): { nextRoot: LessonNodeUI; extracted: LessonNodeUI | null } => {
+  if (!root.children || root.children.length === 0) {
+    return { nextRoot: root, extracted: null };
+  }
+
+  let extracted: LessonNodeUI | null = null;
+  const nextChildren: LessonNodeUI[] = [];
+
+  for (const child of root.children) {
+    if (child.id === targetId) {
+      extracted = child;
+      continue;
+    }
+
+    const result = removeNodeWithExtraction(child, targetId);
+    if (result.extracted && !extracted) {
+      extracted = result.extracted;
+    }
+    nextChildren.push(result.nextRoot);
+  }
+
+  return {
+    nextRoot: {
+      ...root,
+      children: normalizeChildrenOrder(nextChildren),
+      _count: {
+        children: nextChildren.length,
+      },
+    },
+    extracted,
+  };
+};
+
+const insertNodeIntoParent = (
+  root: LessonNodeUI,
+  parentId: string,
+  nodeToInsert: LessonNodeUI,
+  targetIndex: number,
+): LessonNodeUI => {
+  if (root.id === parentId) {
+    const children = [...(root.children || [])];
+    const clampedIndex = Math.max(0, Math.min(targetIndex, children.length));
+
+    const mergedChildren = [
+      ...children.slice(0, clampedIndex),
+      {
+        ...nodeToInsert,
+        parentId,
+      },
+      ...children.slice(clampedIndex),
+    ];
+
+    const normalizedChildren = normalizeChildrenOrder(mergedChildren);
+
+    return {
+      ...root,
+      children: normalizedChildren,
+      childrenLoaded: true,
+      _count: {
+        children: normalizedChildren.length,
+      },
+    };
+  }
+
+  if (!root.children || root.children.length === 0) {
+    return root;
+  }
+
+  return {
+    ...root,
+    children: root.children.map((child) =>
+      insertNodeIntoParent(child, parentId, nodeToInsert, targetIndex),
+    ),
+  };
+};
+
+/**
+ * Move a node to a new parent and/or position in the tree.
+ */
+export const moveNodeInTree = (
+  root: LessonNodeUI,
+  nodeId: string,
+  targetParentId: string,
+  targetIndex: number,
+): LessonNodeUI => {
+  if (root.id === nodeId) {
+    return root;
+  }
+
+  const { nextRoot, extracted } = removeNodeWithExtraction(root, nodeId);
+  if (!extracted) {
+    return root;
+  }
+
+  return insertNodeIntoParent(nextRoot, targetParentId, extracted, targetIndex);
+};
+
 /**
  * Build tree từ flat list of nodes (dùng khi load full structure)
  */

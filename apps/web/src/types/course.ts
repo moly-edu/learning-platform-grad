@@ -103,6 +103,13 @@ export interface DeleteNodeInput {
   courseId: string;
 }
 
+export interface MoveNodeInput {
+  nodeId: string;
+  courseId: string;
+  targetParentId: string;
+  targetIndex: number;
+}
+
 export type LessonNodeUI = LessonNodeWithCount & {
   children: LessonNodeUI[];
   childrenLoaded?: boolean;

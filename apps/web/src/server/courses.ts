@@ -11,6 +11,7 @@ import {
   HomeworkContent,
   LessonContent,
   LessonNodeContent,
+  MoveNodeInput,
 } from "@/types/course";
 import { LessonNodeType } from "@repo/db";
 
@@ -328,6 +329,202 @@ export async function deleteLessonNode(input: DeleteNodeInput) {
     return {
       success: false,
       error: "Có lỗi xảy ra khi xóa node",
+    };
+  }
+}
+
+export async function reorderLessonNode(input: MoveNodeInput) {
+  try {
+    const { nodeId, courseId, targetParentId, targetIndex } = input;
+
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: { rootLessonNodeId: true },
+    });
+
+    if (!course) {
+      return {
+        success: false,
+        error: "Course không tồn tại",
+      };
+    }
+
+    if (course.rootLessonNodeId === nodeId) {
+      return {
+        success: false,
+        error: "Không thể di chuyển root node của course",
+      };
+    }
+
+    const movedResult = await prisma.$transaction(async (tx) => {
+      const movingNode = await tx.lessonNode.findUnique({
+        where: { id: nodeId },
+        select: {
+          id: true,
+          type: true,
+          parentId: true,
+          courseId: true,
+        },
+      });
+
+      if (!movingNode || movingNode.courseId !== courseId) {
+        throw new Error("NODE_NOT_FOUND_OR_INVALID_COURSE");
+      }
+
+      const targetParent = await tx.lessonNode.findUnique({
+        where: { id: targetParentId },
+        select: {
+          id: true,
+          type: true,
+          courseId: true,
+          parentId: true,
+        },
+      });
+
+      if (!targetParent || targetParent.courseId !== courseId) {
+        throw new Error("TARGET_PARENT_NOT_FOUND_OR_INVALID_COURSE");
+      }
+
+      if (targetParent.id === movingNode.id) {
+        throw new Error("CANNOT_MOVE_NODE_INTO_ITSELF");
+      }
+
+      let cursorParentId: string | null = targetParent.parentId;
+      while (cursorParentId) {
+        if (cursorParentId === movingNode.id) {
+          throw new Error("CANNOT_MOVE_NODE_INTO_DESCENDANT");
+        }
+
+        const cursor = await tx.lessonNode.findUnique({
+          where: { id: cursorParentId },
+          select: { parentId: true },
+        });
+        cursorParentId = cursor?.parentId ?? null;
+      }
+
+      if (movingNode.type === LessonNodeType.homework) {
+        if (targetParent.type !== LessonNodeType.lesson) {
+          throw new Error("HOMEWORK_MUST_BE_UNDER_LESSON");
+        }
+      } else if (targetParent.type === LessonNodeType.lesson) {
+        throw new Error("ONLY_HOMEWORK_CAN_BE_UNDER_LESSON");
+      }
+
+      const destinationSiblings = await tx.lessonNode.findMany({
+        where: {
+          parentId: targetParentId,
+          courseId,
+          id: { not: movingNode.id },
+        },
+        orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+        select: { id: true },
+      });
+
+      const normalizedTargetIndex = Math.max(
+        0,
+        Math.min(targetIndex, destinationSiblings.length),
+      );
+
+      const orderedDestinationNodeIds = [
+        ...destinationSiblings
+          .slice(0, normalizedTargetIndex)
+          .map((node) => node.id),
+        movingNode.id,
+        ...destinationSiblings
+          .slice(normalizedTargetIndex)
+          .map((node) => node.id),
+      ];
+
+      for (const [index, id] of orderedDestinationNodeIds.entries()) {
+        if (id === movingNode.id) {
+          await tx.lessonNode.update({
+            where: { id },
+            data: {
+              parentId: targetParentId,
+              order: index,
+            },
+          });
+        } else {
+          await tx.lessonNode.update({
+            where: { id },
+            data: { order: index },
+          });
+        }
+      }
+
+      if (movingNode.parentId && movingNode.parentId !== targetParentId) {
+        const oldSiblings = await tx.lessonNode.findMany({
+          where: {
+            parentId: movingNode.parentId,
+            courseId,
+          },
+          orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+          select: { id: true },
+        });
+
+        for (const [index, sibling] of oldSiblings.entries()) {
+          await tx.lessonNode.update({
+            where: { id: sibling.id },
+            data: { order: index },
+          });
+        }
+      }
+
+      return {
+        movedId: movingNode.id,
+        targetParentId,
+        targetIndex: normalizedTargetIndex,
+      };
+    });
+
+    revalidatePath(`/courses/${courseId}`);
+
+    return {
+      success: true,
+      data: movedResult,
+    };
+  } catch (error: any) {
+    if (error instanceof Error) {
+      switch (error.message) {
+        case "NODE_NOT_FOUND_OR_INVALID_COURSE":
+          return {
+            success: false,
+            error: "Node không tồn tại hoặc không thuộc course này",
+          };
+        case "TARGET_PARENT_NOT_FOUND_OR_INVALID_COURSE":
+          return {
+            success: false,
+            error: "Target parent không tồn tại hoặc không thuộc course này",
+          };
+        case "CANNOT_MOVE_NODE_INTO_ITSELF":
+          return {
+            success: false,
+            error: "Không thể di chuyển node vào chính nó",
+          };
+        case "CANNOT_MOVE_NODE_INTO_DESCENDANT":
+          return {
+            success: false,
+            error: "Không thể di chuyển node vào node con của nó",
+          };
+        case "HOMEWORK_MUST_BE_UNDER_LESSON":
+          return {
+            success: false,
+            error: "Homework chỉ có thể nằm trong Lesson",
+          };
+        case "ONLY_HOMEWORK_CAN_BE_UNDER_LESSON":
+          return {
+            success: false,
+            error: "Chỉ Homework mới có thể nằm trong Lesson",
+          };
+        default:
+          break;
+      }
+    }
+
+    console.error("Error reordering lesson node:", error);
+    return {
+      success: false,
+      error: "Có lỗi xảy ra khi sắp xếp node",
     };
   }
 }

@@ -20,6 +20,7 @@ import {
   addLessonNode,
   updateLessonNode,
   deleteLessonNode,
+  reorderLessonNode,
   getStudentHomeworkStatusByClass,
   getStudentHomeworkStatusByClassForTeacher,
   getAllStudentsHomeworkSummary,
@@ -190,6 +191,16 @@ const handler = createNextHandler(
         const result = await deleteLessonNode({
           nodeId: params.nodeId,
           courseId: params.courseId,
+        });
+        return { status: 200, body: result };
+      },
+
+      reorderLessonNode: async ({ params, body }) => {
+        const result = await reorderLessonNode({
+          nodeId: params.nodeId,
+          courseId: params.courseId,
+          targetParentId: body.targetParentId,
+          targetIndex: body.targetIndex,
         });
         return { status: 200, body: result };
       },

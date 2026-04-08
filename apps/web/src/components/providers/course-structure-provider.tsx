@@ -21,6 +21,7 @@ import {
   updateNodeInTree,
   removeNodeFromTree,
   addChildToNode,
+  moveNodeInTree,
 } from "@/components/course-structure/utils/course-structure-utiles";
 import {
   buildHomeworkCountsMap,
@@ -100,6 +101,11 @@ interface CourseStructureContextValue {
     options?: AddNodeOptions,
   ) => Promise<void>;
   handleDeleteNode: (nodeId: string) => Promise<void>;
+  handleMoveNode: (
+    nodeId: string,
+    targetParentId: string,
+    targetIndex: number,
+  ) => Promise<void>;
   handleUpdateNode: (
     nodeId: string,
     updates: { title?: string; content?: any },
@@ -704,6 +710,62 @@ export const CourseStructureProvider: React.FC<
     [course.id, course.rootLessonNodeId, selectedNodeId],
   );
 
+  const handleMoveNode = useCallback(
+    async (nodeId: string, targetParentId: string, targetIndex: number) => {
+      if (nodeId === course.rootLessonNodeId) {
+        alert("Không thể di chuyển root course!");
+        return;
+      }
+
+      setLoadingAction(`move-${nodeId}`);
+
+      try {
+        const moveRes = await api.courses.reorderLessonNode({
+          params: { courseId: course.id, nodeId },
+          body: {
+            targetParentId,
+            targetIndex,
+          },
+        });
+
+        const result = (
+          moveRes.status === 200
+            ? moveRes.body
+            : { success: false, error: (moveRes.body as any).error }
+        ) as { success: boolean; data?: any; error?: string };
+
+        if (!result.success) {
+          alert(result.error || "Có lỗi xảy ra khi sắp xếp node");
+          return;
+        }
+
+        setCourse((prev) => {
+          if (!prev.rootLessonNode) return prev;
+
+          const updatedRoot = moveNodeInTree(
+            prev.rootLessonNode,
+            nodeId,
+            targetParentId,
+            targetIndex,
+          );
+
+          return {
+            ...prev,
+            rootLessonNode: updatedRoot,
+          };
+        });
+
+        setExpandedNodeIds((prev) => new Set([...prev, targetParentId]));
+      } catch (error) {
+        console.error("Error moving lesson node:", error);
+        alert("Có lỗi xảy ra khi sắp xếp node");
+      } finally {
+        setLoadingAction(null);
+      }
+    },
+    [course.id, course.rootLessonNodeId],
+  );
+
   // ===== ACTION: Update node =====
   const handleUpdateNode = useCallback(
     async (nodeId: string, updates: { title?: string; content?: any }) => {
@@ -1116,6 +1178,7 @@ export const CourseStructureProvider: React.FC<
     toggleNodeExpanded,
     handleAddNode,
     handleDeleteNode,
+    handleMoveNode,
     handleToggleClassLessonNodes,
     handleAddClassLessonNode,
     handleDeleteClassLessonNode,
