@@ -187,9 +187,69 @@ export const CourseStructureProvider: React.FC<
 
   // ===== COURSE DATA =====
   const [course, setCourse] = useState<CourseUI>(initialCourse);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
+  const [selectedNodeId, setSelectedNodeIdState] = useState<string | null>(
     initialCourse.rootLessonNodeId,
   );
+  const selectedNodeStorageKey = useMemo(
+    () =>
+      [
+        "course-structure",
+        "selected-node",
+        initialCourse.id,
+        classId ?? "global",
+        userRole,
+      ].join(":"),
+    [initialCourse.id, classId, userRole],
+  );
+  const expandedNodesStorageKey = useMemo(
+    () =>
+      [
+        "course-structure",
+        "expanded-nodes",
+        initialCourse.id,
+        classId ?? "global",
+        userRole,
+      ].join(":"),
+    [initialCourse.id, classId, userRole],
+  );
+
+  const setSelectedNodeId = useCallback((id: string | null) => {
+    setSelectedNodeIdState(id);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const savedNodeId = window.localStorage.getItem(selectedNodeStorageKey);
+    if (savedNodeId) {
+      setSelectedNodeIdState(savedNodeId);
+    }
+  }, [selectedNodeStorageKey]);
+
+  useEffect(() => {
+    if (!course.rootLessonNode) return;
+
+    if (selectedNodeId && findNodeById(course.rootLessonNode, selectedNodeId)) {
+      return;
+    }
+
+    const fallbackNodeId = course.rootLessonNodeId ?? course.rootLessonNode.id;
+    if (fallbackNodeId !== selectedNodeId) {
+      setSelectedNodeIdState(fallbackNodeId);
+    }
+  }, [selectedNodeId, course.rootLessonNode, course.rootLessonNodeId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (selectedNodeId) {
+      window.localStorage.setItem(selectedNodeStorageKey, selectedNodeId);
+      return;
+    }
+
+    window.localStorage.removeItem(selectedNodeStorageKey);
+  }, [selectedNodeId, selectedNodeStorageKey]);
+
   const [isInitialLoading, setIsInitialLoading] = useState(
     // Chỉ loading nếu là student (cần load homework counts)
     config.isStudent && !!classId,
@@ -201,6 +261,60 @@ export const CourseStructureProvider: React.FC<
       initialCourse.rootLessonNodeId ? [initialCourse.rootLessonNodeId] : [],
     ),
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const savedExpandedNodeIds = window.localStorage.getItem(
+      expandedNodesStorageKey,
+    );
+    if (!savedExpandedNodeIds) return;
+
+    try {
+      const parsed = JSON.parse(savedExpandedNodeIds);
+      if (!Array.isArray(parsed)) return;
+
+      const ids = parsed.filter((id): id is string => typeof id === "string");
+      setExpandedNodeIds(new Set(ids));
+    } catch (error) {
+      console.error("Failed to parse expanded node ids from storage", error);
+    }
+  }, [expandedNodesStorageKey]);
+
+  useEffect(() => {
+    if (!course.rootLessonNode) return;
+
+    const validNodeIds = new Set<string>();
+    const collectVisibleTreeNodeIds = (node: LessonNodeUI) => {
+      if (node.type !== LessonNodeType.homework) {
+        validNodeIds.add(node.id);
+      }
+
+      if (!node.children || node.children.length === 0) return;
+      node.children.forEach(collectVisibleTreeNodeIds);
+    };
+
+    collectVisibleTreeNodeIds(course.rootLessonNode);
+
+    setExpandedNodeIds((prev) => {
+      const next = new Set([...prev].filter((id) => validNodeIds.has(id)));
+
+      if (prev.size === next.size && [...prev].every((id) => next.has(id))) {
+        return prev;
+      }
+
+      return next;
+    });
+  }, [course.rootLessonNode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    window.localStorage.setItem(
+      expandedNodesStorageKey,
+      JSON.stringify(Array.from(expandedNodeIds)),
+    );
+  }, [expandedNodeIds, expandedNodesStorageKey]);
 
   const [isUpdatingNode, setIsUpdatingNode] = useState<string | null>(null);
 

@@ -97,6 +97,10 @@ interface HomeworkDropIntent {
   position: HomeworkDropPosition;
 }
 
+const SIDEBAR_DEFAULT_WIDTH = 360;
+const SIDEBAR_MIN_WIDTH = 300;
+const SIDEBAR_MAX_WIDTH = 760;
+
 const EditableTitle: React.FC<EditableTitleProps> = ({
   initialTitle,
   onSave,
@@ -261,6 +265,85 @@ const CourseStructureContent: React.FC = () => {
   >(null);
   const [homeworkDropIntent, setHomeworkDropIntent] =
     useState<HomeworkDropIntent | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(
+    SIDEBAR_DEFAULT_WIDTH,
+  );
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+  const resizeStartXRef = useRef(0);
+  const resizeStartWidthRef = useRef(SIDEBAR_DEFAULT_WIDTH);
+  const sidebarWidthStorageKey = useMemo(
+    () =>
+      [
+        "course-structure",
+        "sidebar-width",
+        course.id,
+        classId ?? "global",
+      ].join(":"),
+    [course.id, classId],
+  );
+
+  const startSidebarResize = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      resizeStartXRef.current = e.clientX;
+      resizeStartWidthRef.current = sidebarWidth;
+      setIsResizingSidebar(true);
+    },
+    [sidebarWidth],
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const storedWidth = window.localStorage.getItem(sidebarWidthStorageKey);
+    if (!storedWidth) return;
+
+    const parsedWidth = Number(storedWidth);
+    if (Number.isNaN(parsedWidth)) return;
+
+    setSidebarWidth(
+      Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, parsedWidth)),
+    );
+  }, [sidebarWidthStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    window.localStorage.setItem(sidebarWidthStorageKey, String(sidebarWidth));
+  }, [sidebarWidth, sidebarWidthStorageKey]);
+
+  useEffect(() => {
+    if (!isResizingSidebar) return;
+
+    const handlePointerMove = (event: MouseEvent) => {
+      const delta = event.clientX - resizeStartXRef.current;
+      setSidebarWidth(
+        Math.min(
+          SIDEBAR_MAX_WIDTH,
+          Math.max(SIDEBAR_MIN_WIDTH, resizeStartWidthRef.current + delta),
+        ),
+      );
+    };
+
+    const handlePointerUp = () => {
+      setIsResizingSidebar(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    window.addEventListener("mousemove", handlePointerMove);
+    window.addEventListener("mouseup", handlePointerUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handlePointerMove);
+      window.removeEventListener("mouseup", handlePointerUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isResizingSidebar]);
 
   const {
     data: ownedClasses = [],
@@ -403,16 +486,16 @@ const CourseStructureContent: React.FC = () => {
   const getNodeIcon = (node: LessonNodeUI, isExpanded: boolean) => {
     switch (node.type) {
       case LessonNodeType.lesson:
-        return <File className="w-4 h-4 text-blue-500" />;
+        return <File className="h-4.5 w-4.5 text-blue-500" />;
       case LessonNodeType.course:
-        return <BookOpen className="w-4 h-4 text-purple-500" />;
+        return <BookOpen className="h-4.5 w-4.5 text-purple-500" />;
       case LessonNodeType.homework:
-        return <File className="w-4 h-4 text-orange-500" />;
+        return <File className="h-4.5 w-4.5 text-orange-500" />;
       default:
         return isExpanded ? (
-          <FolderOpen className="w-4 h-4 text-yellow-500" />
+          <FolderOpen className="h-4.5 w-4.5 text-yellow-500" />
         ) : (
-          <Folder className="w-4 h-4 text-yellow-500" />
+          <Folder className="h-4.5 w-4.5 text-yellow-500" />
         );
     }
   };
@@ -445,12 +528,14 @@ const CourseStructureContent: React.FC = () => {
       <div key={node.id} className="group">
         <div
           data-node-id={node.id}
-          className={`relative flex items-center gap-1 py-1 px-2 hover:bg-muted cursor-pointer ${
-            isSelected ? "bg-blue-100 border-l-2 border-blue-500" : ""
+          className={`relative flex min-h-11 cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 transition-colors hover:bg-muted/80 ${
+            isSelected
+              ? "bg-blue-100/90 border-l-2 border-blue-500 shadow-sm"
+              : ""
           } ${isDeleting || isDragging ? "opacity-50" : ""} ${
             isInsideDropTarget ? "ring-1 ring-blue-400 bg-blue-50" : ""
           }`}
-          style={{ paddingLeft: `${level * 20 + 8}px` }}
+          style={{ paddingLeft: `${level * 22 + 10}px` }}
           onClick={() => setSelectedNodeId(node.id)}
           onDragOver={(e) => {
             if (
@@ -462,7 +547,10 @@ const CourseStructureContent: React.FC = () => {
               return;
             }
 
-            const movingNode = findNodeById(course.rootLessonNode, draggingTreeNodeId);
+            const movingNode = findNodeById(
+              course.rootLessonNode,
+              draggingTreeNodeId,
+            );
             if (!movingNode) return;
 
             const intent = getTreeDropIntent(
@@ -506,7 +594,10 @@ const CourseStructureContent: React.FC = () => {
               return;
             }
 
-            const movingNode = findNodeById(course.rootLessonNode, draggingTreeNodeId);
+            const movingNode = findNodeById(
+              course.rootLessonNode,
+              draggingTreeNodeId,
+            );
             if (!movingNode) return;
 
             const liveIntent = getTreeDropIntent(
@@ -517,7 +608,9 @@ const CourseStructureContent: React.FC = () => {
             );
 
             const finalIntent =
-              treeDropIntent?.targetNodeId === node.id ? treeDropIntent : liveIntent;
+              treeDropIntent?.targetNodeId === node.id
+                ? treeDropIntent
+                : liveIntent;
 
             if (!finalIntent) {
               return;
@@ -541,7 +634,7 @@ const CourseStructureContent: React.FC = () => {
             <div className="pointer-events-none absolute left-2 right-2 bottom-0 h-0.5 rounded-full bg-blue-500" />
           )}
 
-          <div className="flex items-center gap-1 flex-1">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             {/* Expand/collapse button (ĐƠN GIẢN - không loading) */}
             {hasChildren && node.type !== LessonNodeType.lesson ? (
               <button
@@ -549,21 +642,23 @@ const CourseStructureContent: React.FC = () => {
                   e.stopPropagation();
                   toggleNodeExpanded(node); // Không async
                 }}
-                className="p-0.5 hover:bg-muted/80 rounded"
+                className="rounded p-1 hover:bg-muted"
                 disabled={isDeleting}
               >
                 {isExpanded ? (
-                  <ChevronDown className="w-3 h-3" />
+                  <ChevronDown className="h-4 w-4" />
                 ) : (
-                  <ChevronRight className="w-3 h-3" />
+                  <ChevronRight className="h-4 w-4" />
                 )}
               </button>
             ) : (
-              <span className="w-4" />
+              <span className="w-5" />
             )}
 
             {getNodeIcon(node, isExpanded)}
-            <span className="text-sm">{node.title}</span>
+            <span className="min-w-0 flex-1 truncate text-[15px] font-medium leading-5">
+              {node.title}
+            </span>
 
             {/* Badge homework counts (student or teacher-student-view) */}
             {(isStudent || isTeacherStudentView) &&
@@ -578,7 +673,7 @@ const CourseStructureContent: React.FC = () => {
                   );
                   return stats ? (
                     <span
-                      className={`ml-2 text-xs px-2 py-0.5 rounded-full font-semibold ${stats.colorClass}`}
+                      className={`ml-2 shrink-0 text-xs px-2 py-0.5 rounded-full font-semibold ${stats.colorClass}`}
                       title={`${homeworkCounts.correct} đúng / ${homeworkCounts.totalAssigned} tổng (${Math.round(stats.ratio * 100)}%)`}
                     >
                       {stats.label}
@@ -587,7 +682,7 @@ const CourseStructureContent: React.FC = () => {
                 })()
               ) : (
                 <span
-                  className={`ml-2 text-xs px-2 py-0.5 rounded-full font-semibold ${
+                  className={`ml-2 shrink-0 text-xs px-2 py-0.5 rounded-full font-semibold ${
                     hasPendingHomework
                       ? "bg-red-500 text-white"
                       : "bg-green-100 text-green-700"
@@ -601,7 +696,7 @@ const CourseStructureContent: React.FC = () => {
 
           {/* Delete button */}
           {node.type !== LessonNodeType.course && isAdmin && (
-            <>
+            <div className="ml-2 flex shrink-0 items-center gap-1">
               <button
                 onClick={(e) => e.stopPropagation()}
                 onDragStart={(e) => {
@@ -621,9 +716,9 @@ const CourseStructureContent: React.FC = () => {
                 draggable={!isDeleting && !isPending}
                 disabled={isDeleting || isPending}
                 title={isVi ? "Kéo để sắp xếp" : "Drag to reorder"}
-                className="p-1 hover:bg-muted rounded opacity-0 group-hover:opacity-100 disabled:opacity-50 cursor-grab active:cursor-grabbing"
+                className="cursor-grab rounded p-1.5 opacity-0 hover:bg-muted group-hover:opacity-100 active:cursor-grabbing disabled:opacity-50"
               >
-                <GripVertical className="w-3 h-3 text-muted-foreground" />
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
               </button>
 
               <button
@@ -632,21 +727,21 @@ const CourseStructureContent: React.FC = () => {
                   handleDeleteNode(node.id);
                 }}
                 disabled={isDeleting || isPending}
-                className="p-1 hover:bg-red-100 rounded opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                className="rounded p-1.5 opacity-0 hover:bg-red-100 group-hover:opacity-100 disabled:opacity-50"
               >
                 {isDeleting ? (
-                  <Loader2 className="w-3 h-3 text-red-500 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin text-red-500" />
                 ) : (
-                  <Trash2 className="w-3 h-3 text-red-500" />
+                  <Trash2 className="h-4 w-4 text-red-500" />
                 )}
               </button>
-            </>
+            </div>
           )}
         </div>
 
         {/* Render children - ĐƠN GIẢN */}
         {isExpanded && treeChildren.length > 0 && (
-          <div>
+          <div className="space-y-0.5">
             {treeChildren.map((child) => renderNode(child, level + 1))}
           </div>
         )}
@@ -730,7 +825,13 @@ const CourseStructureContent: React.FC = () => {
   return (
     <div className="flex h-screen bg-muted/50">
       {/* ===== TREE SIDEBAR ===== */}
-      <div className="w-80 bg-card border-r border-border flex flex-col">
+      <div
+        className="shrink-0 bg-card border-r border-border flex flex-col"
+        style={{
+          width: `${sidebarWidth}px`,
+          minWidth: `${SIDEBAR_MIN_WIDTH}px`,
+        }}
+      >
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold text-foreground">
@@ -1088,6 +1189,24 @@ const CourseStructureContent: React.FC = () => {
         </div>
       </div>
 
+      <div
+        onMouseDown={startSidebarResize}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={isVi ? "Kéo để đổi chiều rộng" : "Resize sidebar"}
+        className={`group relative w-2 shrink-0 cursor-col-resize transition-colors ${
+          isResizingSidebar ? "bg-blue-100" : "hover:bg-blue-50"
+        }`}
+      >
+        <div
+          className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition-colors ${
+            isResizingSidebar
+              ? "bg-blue-400"
+              : "bg-transparent group-hover:bg-blue-300"
+          }`}
+        />
+      </div>
+
       {/* ===== DETAIL PANEL ===== */}
       <div className="flex-1 p-6 overflow-y-auto">
         {selectedNode ? (
@@ -1244,7 +1363,9 @@ const CourseStructureContent: React.FC = () => {
                                 e.preventDefault();
                                 e.stopPropagation();
 
-                                void applyHomeworkDropIntent(finalIntent).finally(() => {
+                                void applyHomeworkDropIntent(
+                                  finalIntent,
+                                ).finally(() => {
                                   setDraggingHomeworkNodeId(null);
                                   setHomeworkDropIntent(null);
                                 });
@@ -1354,7 +1475,10 @@ const CourseStructureContent: React.FC = () => {
                                     onDragStart={(e) => {
                                       e.stopPropagation();
                                       e.dataTransfer.effectAllowed = "move";
-                                      e.dataTransfer.setData("text/plain", hw.id);
+                                      e.dataTransfer.setData(
+                                        "text/plain",
+                                        hw.id,
+                                      );
                                       setDraggingHomeworkNodeId(hw.id);
                                       setHomeworkDropIntent(null);
                                     }}
@@ -1364,7 +1488,11 @@ const CourseStructureContent: React.FC = () => {
                                       setHomeworkDropIntent(null);
                                     }}
                                     draggable
-                                    title={isVi ? "Kéo để sắp xếp" : "Drag to reorder"}
+                                    title={
+                                      isVi
+                                        ? "Kéo để sắp xếp"
+                                        : "Drag to reorder"
+                                    }
                                     className="p-1 hover:bg-orange-200 rounded opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing"
                                   >
                                     <GripVertical className="w-3 h-3 text-orange-700" />
@@ -1516,17 +1644,27 @@ const CourseStructureContent: React.FC = () => {
                                                       {!isPendingForStudent &&
                                                         submissionStatus && (
                                                           <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">
-                                                            {isVi ? "Lần" : "Attempts"}: {" "}
-                                                            {submissionStatus.attemptCount ?? 0} • {isVi ? "Đúng" : "Correct"}: {" "}
-                                                            {(submissionStatus.correctAttemptCount ??
+                                                            {isVi
+                                                              ? "Lần"
+                                                              : "Attempts"}
+                                                            :{" "}
+                                                            {submissionStatus.attemptCount ??
+                                                              0}{" "}
+                                                            •{" "}
+                                                            {isVi
+                                                              ? "Đúng"
+                                                              : "Correct"}
+                                                            :{" "}
+                                                            {submissionStatus.correctAttemptCount ??
                                                               (submissionStatus
                                                                 .evaluation
                                                                 ?.isCorrect
                                                                 ? 1
-                                                                : 0))}
+                                                                : 0)}
                                                             /
                                                             {Math.max(
-                                                              submissionStatus.attemptCount ?? 0,
+                                                              submissionStatus.attemptCount ??
+                                                                0,
                                                               1,
                                                             )}
                                                           </span>
@@ -1765,22 +1903,27 @@ const CourseStructureContent: React.FC = () => {
                                                   </div>
                                                 )}
 
-                                              {!isPending && submissionStatus && (
-                                                <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">
-                                                  {isVi ? "Lần" : "Attempts"}: {" "}
-                                                  {submissionStatus.attemptCount ?? 0} • {isVi ? "Đúng" : "Correct"}: {" "}
-                                                  {(submissionStatus.correctAttemptCount ??
-                                                    (submissionStatus.evaluation
-                                                      ?.isCorrect
-                                                      ? 1
-                                                      : 0))}
-                                                  /
-                                                  {Math.max(
-                                                    submissionStatus.attemptCount ?? 0,
-                                                    1,
-                                                  )}
-                                                </span>
-                                              )}
+                                              {!isPending &&
+                                                submissionStatus && (
+                                                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">
+                                                    {isVi ? "Lần" : "Attempts"}:{" "}
+                                                    {submissionStatus.attemptCount ??
+                                                      0}{" "}
+                                                    •{" "}
+                                                    {isVi ? "Đúng" : "Correct"}:{" "}
+                                                    {submissionStatus.correctAttemptCount ??
+                                                      (submissionStatus
+                                                        .evaluation?.isCorrect
+                                                        ? 1
+                                                        : 0)}
+                                                    /
+                                                    {Math.max(
+                                                      submissionStatus.attemptCount ??
+                                                        0,
+                                                      1,
+                                                    )}
+                                                  </span>
+                                                )}
                                             </div>
                                           )}
 
