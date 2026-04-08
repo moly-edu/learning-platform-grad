@@ -301,17 +301,61 @@ export class CoursesService {
 
       const nodeToDelete = await this.prisma.lessonNode.findUnique({
         where: { id: nodeId },
+        select: { id: true, courseId: true },
       });
 
       if (!nodeToDelete) {
         return { success: false, error: 'Node không tồn tại' };
       }
 
-      const deleted = await this.prisma.lessonNode.delete({
-        where: { id: nodeId },
+      if (nodeToDelete.courseId !== courseId) {
+        return {
+          success: false,
+          error: 'Node không tồn tại hoặc không thuộc course này',
+        };
+      }
+
+      const deletedResult = await this.prisma.$transaction(async (tx) => {
+        const subtreeNodeIds: string[] = [nodeId];
+        let frontierNodeIds: string[] = [nodeId];
+
+        while (frontierNodeIds.length > 0) {
+          const children = await tx.lessonNode.findMany({
+            where: { parentId: { in: frontierNodeIds } },
+            select: { id: true },
+          });
+
+          const childIds = children.map((child) => child.id);
+          if (childIds.length === 0) break;
+
+          subtreeNodeIds.push(...childIds);
+          frontierNodeIds = childIds;
+        }
+
+        await tx.classLessonNode.deleteMany({
+          where: { lessonNodeId: { in: subtreeNodeIds } },
+        });
+
+        await tx.autoAssignmentSchedule.deleteMany({
+          where: { homeworkNodeId: { in: subtreeNodeIds } },
+        });
+
+        const deleted = await tx.lessonNode.deleteMany({
+          where: { id: { in: subtreeNodeIds } },
+        });
+
+        return {
+          deletedCount: deleted.count,
+        };
       });
 
-      return { success: true, data: { deletedId: deleted.id } };
+      return {
+        success: true,
+        data: {
+          deletedId: nodeId,
+          deletedCount: deletedResult.deletedCount,
+        },
+      };
     } catch (error) {
       console.error('Error deleting lesson node:', error);
       return { success: false, error: 'Có lỗi xảy ra khi xóa node' };

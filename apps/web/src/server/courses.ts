@@ -263,6 +263,7 @@ export async function deleteLessonNode(input: DeleteNodeInput) {
     // Check node tồn tại
     const nodeToDelete = await prisma.lessonNode.findUnique({
       where: { id: nodeId },
+      select: { id: true, courseId: true },
     });
 
     if (!nodeToDelete) {
@@ -272,9 +273,45 @@ export async function deleteLessonNode(input: DeleteNodeInput) {
       };
     }
 
-    // Xóa node (Prisma sẽ cascade delete children nếu có onDelete: Cascade)
-    const deleted = await prisma.lessonNode.delete({
-      where: { id: nodeId },
+    if (nodeToDelete.courseId !== courseId) {
+      return {
+        success: false,
+        error: "Node không tồn tại hoặc không thuộc course này",
+      };
+    }
+
+    const deletedResult = await prisma.$transaction(async (tx) => {
+      const subtreeNodeIds: string[] = [nodeId];
+      let frontierNodeIds: string[] = [nodeId];
+
+      while (frontierNodeIds.length > 0) {
+        const children = await tx.lessonNode.findMany({
+          where: { parentId: { in: frontierNodeIds } },
+          select: { id: true },
+        });
+
+        const childIds = children.map((child) => child.id);
+        if (childIds.length === 0) break;
+
+        subtreeNodeIds.push(...childIds);
+        frontierNodeIds = childIds;
+      }
+
+      await tx.classLessonNode.deleteMany({
+        where: { lessonNodeId: { in: subtreeNodeIds } },
+      });
+
+      await tx.autoAssignmentSchedule.deleteMany({
+        where: { homeworkNodeId: { in: subtreeNodeIds } },
+      });
+
+      const deleted = await tx.lessonNode.deleteMany({
+        where: { id: { in: subtreeNodeIds } },
+      });
+
+      return {
+        deletedCount: deleted.count,
+      };
     });
 
     revalidatePath(`/courses/${courseId}`);
@@ -282,7 +319,8 @@ export async function deleteLessonNode(input: DeleteNodeInput) {
     return {
       success: true,
       data: {
-        deletedId: deleted.id,
+        deletedId: nodeId,
+        deletedCount: deletedResult.deletedCount,
       },
     };
   } catch (error) {
