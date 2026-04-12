@@ -336,7 +336,8 @@ const TeacherCreateAssignment = forwardRef<
       if (event.data.type === "ERROR") {
         console.error("❌ Widget error:", event.data.payload);
         setError(
-          event.data.payload?.message || (isVi ? "Lỗi widget" : "Widget error"),
+          event.data.payload?.message ||
+            (isVi ? "Lỗi bài tập" : "Widget error"),
         );
       }
     };
@@ -400,7 +401,7 @@ const TeacherCreateAssignment = forwardRef<
     try {
       const pane = new Pane({
         container: paneRef.current,
-        title: isVi ? "Tham số widget" : "Widget Parameters",
+        title: isVi ? "Tham số bài tập" : "Widget Parameters",
       });
 
       pane.registerPlugin(TweakpaneImagePlugin);
@@ -534,7 +535,7 @@ const TeacherCreateAssignment = forwardRef<
         {loading && !error && (
           <div className="text-center mt-8 text-muted-foreground flex items-center justify-center gap-2">
             <div className="animate-spin h-5 w-5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full" />
-            {isVi ? "Đang tải widget..." : "Loading widget..."}
+            {isVi ? "Đang tải bài tập..." : "Loading widget..."}
           </div>
         )}
 
@@ -580,7 +581,7 @@ const TeacherCreateAssignment = forwardRef<
         <div className="w-90 bg-card border-l border-border flex flex-col">
           <div className="px-4 py-3 border-b border-border">
             <h3 className="text-sm font-semibold text-foreground">
-              {isVi ? "Cấu hình và kết quả" : "Config & Result"}
+              {isVi ? "Tham số bải tập" : "Config & Result"}
             </h3>
           </div>
 

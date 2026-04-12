@@ -113,7 +113,7 @@ export default function TeacherAssignmentDialog({ hwId }: { hwId: string }) {
   // 3️⃣ Handle Save
   const handleSaveConfig = async () => {
     if (!widgetPreviewRef.current) {
-      alert(isVi ? "Widget chưa sẵn sàng" : "Widget is not ready");
+      alert(isVi ? "Bài tập chưa sẵn sàng" : "Widget is not ready");
       return;
     }
 
@@ -178,7 +178,7 @@ export default function TeacherAssignmentDialog({ hwId }: { hwId: string }) {
                 ? "Giao bài tập"
                 : "Assign Homework"
               : isVi
-                ? "Thiết lập cấu hình widget"
+                ? "Thiết lập tham số bài tập"
                 : "Set config for Widget"}
           </DialogTitle>
 

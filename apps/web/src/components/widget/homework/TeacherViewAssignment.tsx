@@ -201,7 +201,8 @@ export default function TeacherViewAssignment({
       if (event.data.type === "ERROR") {
         console.error("❌ Widget error:", event.data.payload);
         setError(
-          event.data.payload?.message || (isVi ? "Lỗi widget" : "Widget error"),
+          event.data.payload?.message ||
+            (isVi ? "Lỗi bài tập" : "Widget error"),
         );
       }
     };
@@ -238,7 +239,7 @@ export default function TeacherViewAssignment({
       {loading && !error && (
         <div className="text-center mt-8 text-muted-foreground flex items-center justify-center gap-2">
           <div className="animate-spin h-5 w-5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full" />
-          {isVi ? "Đang tải widget..." : "Loading widget..."}
+          {isVi ? "Đang tải bài tập..." : "Loading widget..."}
         </div>
       )}
 

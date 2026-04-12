@@ -248,7 +248,7 @@ export default function WidgetPreview({ html }: { html: string }) {
     try {
       const pane = new Pane({
         container: paneRef.current,
-        title: isVi ? "Tham số widget" : "Widget Parameters",
+        title: isVi ? "Tham số bài tập" : "Widget Parameters",
       });
 
       pane.registerPlugin(TweakpaneImagePlugin);
@@ -337,7 +337,7 @@ export default function WidgetPreview({ html }: { html: string }) {
       <div className="w-90 bg-card border-l border-border flex flex-col">
         <div className="px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold text-foreground">
-            {isVi ? "Cấu hình và kết quả" : "Config & Result"}
+            {isVi ? "Tham số bài tập và kết quả" : "Config & Result"}
           </h3>
         </div>
 

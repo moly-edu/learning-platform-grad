@@ -1265,7 +1265,7 @@ const CourseStructureContent: React.FC = () => {
                         <DialogContent className="w-[90vw]! h-[95vh]! max-w-none! p-1! flex! flex-col! min-h-0!">
                           <DialogHeader className="px-6 py-4 border-b shrink-0">
                             <DialogTitle>
-                              {isVi ? "Chợ Widget" : "Widget Marketplace"}
+                              {isVi ? "Kho bài tập" : "Widget Marketplace"}
                             </DialogTitle>
                           </DialogHeader>
                           <WidgetMarketplaceDialog />
@@ -1513,10 +1513,10 @@ const CourseStructureContent: React.FC = () => {
                               <div className="ml-6 mt-2 space-y-1">
                                 {/* Add button for teacher */}
                                 {isTeacher && (
-                                  <div className="mb-2 grid grid-cols-2 gap-2">
-                                    <TeacherAssignmentDialog hwId={hw.id} />
-                                    <TeacherQuickAssignDialog hwId={hw.id} />
-                                  </div>
+                                  <TeacherAssignmentDialog hwId={hw.id} />
+                                  // <div className="mb-2 grid grid-cols-2 gap-2">
+                                  //   <TeacherQuickAssignDialog hwId={hw.id} />
+                                  // </div>
                                 )}
 
                                 {/* List assignments */}

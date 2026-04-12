@@ -229,11 +229,11 @@
     }
   },
   "widgetMarketplace": {
-    "title": "Chợ Widget",
-    "subtitle": "Khám phá widget từ cộng đồng",
-    "searchPlaceholder": "Tìm widget theo tên...",
+    "title": "Kho bài tập",
+    "subtitle": "Khám phá kho bài tập từ cộng đồng",
+    "searchPlaceholder": "Tìm bài tập theo tên...",
     "clearSearch": "Xóa tìm kiếm",
-    "empty": "Không tìm thấy widget",
+    "empty": "Không tìm thấy bài tập",
     "loading": "Đang tải..."
   }
 }

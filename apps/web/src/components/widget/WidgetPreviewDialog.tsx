@@ -33,7 +33,7 @@ export default function WidgetPreviewDialog({ html }: { html: string }) {
       >
         <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle>
-            {isVi ? "Xem trước Widget" : "Widget Preview"}
+            {isVi ? "Xem trước bài tập" : "Widget Preview"}
           </DialogTitle>
         </DialogHeader>
 

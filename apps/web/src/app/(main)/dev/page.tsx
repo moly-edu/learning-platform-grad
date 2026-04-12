@@ -36,7 +36,7 @@ export default async function WidgetsPage() {
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">
-          {isVi ? "Widget của bạn" : "Your Widgets"}
+          {isVi ? "Bài tập của bạn" : "Your Widgets"}
         </h1>
 
         <div className="flex items-center gap-3">
@@ -44,14 +44,14 @@ export default async function WidgetsPage() {
             href="/dev/marketplace"
             className="px-4 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors"
           >
-            {isVi ? "Chợ Widget" : "Widget Marketplace"}
+            {isVi ? "Kho bài tập" : "Widget Marketplace"}
           </Link>
 
           <Link
             href="/dev/dashboard"
             className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            {isVi ? "Widget mới" : "New Widget"}
+            {isVi ? "Bài tập mới" : "New Widget"}
           </Link>
         </div>
       </div>
@@ -85,7 +85,7 @@ export default async function WidgetsPage() {
             href="/dev/dashboard"
             className="inline-flex px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
           >
-            {isVi ? "Widget mới" : "New Widget"}
+            {isVi ? "Bài tập mới" : "New Widget"}
           </Link>
         </div>
       ) : (

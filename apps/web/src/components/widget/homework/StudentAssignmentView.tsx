@@ -194,7 +194,7 @@ export default function StudentAssignmentView({
 
         if (!widgetRes.ok) {
           throw new Error(
-            isVi ? "Không thể tải widget" : "Unable to load widget",
+            isVi ? "Không thể tải bài tập" : "Unable to load widget",
           );
         }
 
