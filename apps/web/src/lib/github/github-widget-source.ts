@@ -36,12 +36,28 @@ export async function getBuiltWidgetHtml({
 
   const { content, encoding } = response.data;
 
-  if (encoding !== "base64") {
-    throw new Error(`Unsupported encoding: ${encoding}`);
+  if (encoding === "base64") {
+    // Decode base64 -> UTF-8 string
+    return Buffer.from(content, "base64").toString("utf-8");
   }
 
-  // Decode base64 -> UTF-8 string
-  const html = Buffer.from(content, "base64").toString("utf-8");
+  if (encoding === "none") {
+    // GitHub Contents API can return encoding "none" for larger files.
+    // Fallback to blob API by sha so private repos still work with PAT auth.
+    const blobResponse = await octokit.rest.git.getBlob({
+      owner,
+      repo,
+      file_sha: response.data.sha,
+    });
 
-  return html;
+    if (blobResponse.data.encoding !== "base64") {
+      throw new Error(
+        `Unsupported blob encoding: ${blobResponse.data.encoding}`,
+      );
+    }
+
+    return Buffer.from(blobResponse.data.content, "base64").toString("utf-8");
+  }
+
+  throw new Error(`Unsupported encoding: ${encoding}`);
 }

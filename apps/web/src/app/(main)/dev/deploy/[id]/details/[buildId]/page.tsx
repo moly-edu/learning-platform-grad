@@ -19,9 +19,19 @@ export default async function BuildDetailsPage({
     redirect("/dev/dashboard");
   }
 
-  const widgetHtml = build.buildRunId
-    ? await getBuiltWidgetHtml({ runId: build.buildRunId })
-    : null;
+  let widgetHtml: string | null = null;
+
+  if (build.buildRunId) {
+    try {
+      widgetHtml = await getBuiltWidgetHtml({ runId: build.buildRunId });
+    } catch (error) {
+      console.error("Failed to load built widget HTML", {
+        buildId: build.id,
+        buildRunId: build.buildRunId,
+        error,
+      });
+    }
+  }
 
   return (
     <BuildDetailsView
