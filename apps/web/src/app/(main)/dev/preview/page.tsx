@@ -8,6 +8,10 @@ import {
   AlertCircle,
   Link,
   CheckCircle,
+  Smartphone,
+  User,
+  GraduationCap,
+  X,
   XCircle,
 } from "lucide-react";
 import { SchemaProcessor } from "@/components/widget/core/SchemaProcessor";
@@ -26,6 +30,8 @@ import {
   listenWithHostStt,
   stopHostSttListening,
 } from "@/components/widget/core/HostSttClient";
+
+type SimulationMode = "teacher" | "student" | "mobile";
 
 function getSchemaFieldByPath(schema: Record<string, any>, path: string): any {
   const parts = path.split(".").filter((part) => part.length > 0);
@@ -357,12 +363,16 @@ function WidgetHost({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [iframeReady, setIframeReady] = useState(false);
+  const [activeSimulation, setActiveSimulation] =
+    useState<SimulationMode | null>(null);
+  const [simulationIframeReady, setSimulationIframeReady] = useState(false);
 
   // NEW: Submission state
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [isReviewMode, setIsReviewMode] = useState(false);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const simulationIframeRef = useRef<HTMLIFrameElement>(null);
   const paneRef = useRef<HTMLDivElement>(null);
   const paneInstanceRef = useRef<any>(null);
   const messageQueueRef = useRef<any[]>([]);
@@ -417,12 +427,24 @@ function WidgetHost({
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      const sourceWindow = event.source as Window | null;
+      const mainWidgetWindow = iframeRef.current?.contentWindow;
+      const simulationWidgetWindow = simulationIframeRef.current?.contentWindow;
+      const isFromMainWidget = sourceWindow === mainWidgetWindow;
+      const isFromSimulationWidget = sourceWindow === simulationWidgetWindow;
+
+      if (!isFromMainWidget && !isFromSimulationWidget) {
+        return;
+      }
+
       if (event.data.type === "WIDGET_READY") {
-        const def = event.data.payload;
-        console.log("📦 Widget definition received:", def);
-        setWidgetDef(def);
-        setLoading(false);
-        setError(null);
+        if (isFromMainWidget) {
+          const def = event.data.payload;
+          console.log("📦 Widget definition received:", def);
+          setWidgetDef(def);
+          setLoading(false);
+          setError(null);
+        }
       }
 
       // NEW: Handle submission
@@ -448,14 +470,12 @@ function WidgetHost({
         const requestId = event.data?.payload?.requestId;
         const text = String(event.data?.payload?.text || "");
         if (!requestId) return;
-        if (event.source !== iframeRef.current?.contentWindow) {
+        if (!sourceWindow) {
           return;
         }
-        const targetWindow = event.source as Window | null;
-        if (!targetWindow) return;
         (async () => {
           const result = await synthesizeWithHostTts(text);
-          targetWindow.postMessage(
+          sourceWindow.postMessage(
             {
               type: "TTS_SYNTHESIZE_RESULT",
               payload: {
@@ -468,9 +488,6 @@ function WidgetHost({
         })();
       }
       if (event.data.type === "TTS_STOP") {
-        if (event.source !== iframeRef.current?.contentWindow) {
-          return;
-        }
         stopHostTtsPlayback();
       }
 
@@ -480,18 +497,16 @@ function WidgetHost({
         const timeoutMs = event.data?.payload?.timeoutMs;
         const mode = event.data?.payload?.mode;
         if (!requestId) return;
-        if (event.source !== iframeRef.current?.contentWindow) {
+        if (!sourceWindow) {
           return;
         }
-        const targetWindow = event.source as Window | null;
-        if (!targetWindow) return;
         (async () => {
           const result = await listenWithHostStt({
             lang,
             timeoutMs,
             mode,
           });
-          targetWindow.postMessage(
+          sourceWindow.postMessage(
             {
               type: "STT_LISTEN_RESULT",
               payload: {
@@ -505,9 +520,6 @@ function WidgetHost({
       }
 
       if (event.data.type === "STT_STOP") {
-        if (event.source !== iframeRef.current?.contentWindow) {
-          return;
-        }
         stopHostSttListening();
       }
 
@@ -532,6 +544,53 @@ function WidgetHost({
       messageQueueRef.current.push(message);
     }
   };
+
+  const sendSimulationMessage = (message: any) => {
+    if (
+      activeSimulation &&
+      simulationIframeReady &&
+      simulationIframeRef.current?.contentWindow
+    ) {
+      simulationIframeRef.current.contentWindow.postMessage(message, "*");
+    }
+  };
+
+  useEffect(() => {
+    setSimulationIframeReady(false);
+
+    if (!activeSimulation) {
+      return;
+    }
+
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setActiveSimulation(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [activeSimulation]);
+
+  useEffect(() => {
+    if (!activeSimulation || !simulationIframeReady) {
+      return;
+    }
+
+    const shouldInjectAnswer =
+      (activeSimulation === "student" || activeSimulation === "mobile") &&
+      !!submission;
+
+    sendSimulationMessage({
+      type: "PARAMS_UPDATE",
+      payload: shouldInjectAnswer
+        ? {
+            ...config,
+            __answer: submission?.answer,
+          }
+        : config,
+    });
+  }, [activeSimulation, simulationIframeReady, config, submission]);
 
   // NEW: Enter review mode
   const enterReviewMode = () => {
@@ -637,19 +696,65 @@ function WidgetHost({
     };
   }, [widgetDef, iframeReady, isVi, initialDifficulty]);
 
+  const simulationTitle =
+    activeSimulation === "teacher"
+      ? isVi
+        ? "Thiết lập cấu hình widget"
+        : "Set config for Widget"
+      : activeSimulation === "student"
+        ? isVi
+          ? "Xem lại bài tập"
+          : "Review Assignment"
+        : activeSimulation === "mobile"
+          ? isVi
+            ? "Mô phỏng Mobile"
+            : "Mobile Assignment Preview"
+          : "";
+
+  const closeSimulation = () => {
+    setActiveSimulation(null);
+    setSimulationIframeReady(false);
+  };
+
   return (
     <div className="min-h-screen bg-background flex">
       <div className="flex-1 px-12 py-2">
         <div className="max-w-5xl mx-auto">
-          <button
-            onClick={onExit}
-            className="inline-flex items-center gap-2 mb-3 px-4 py-2 rounded-full 
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <button
+              onClick={onExit}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full 
                  text-sm font-medium text-muted-foreground 
                  bg-card shadow hover:text-foreground hover:shadow-md transition"
-          >
-            <ArrowLeft size={18} />
-            {isVi ? "Quay lại" : "Back"}
-          </button>
+            >
+              <ArrowLeft size={18} />
+              {isVi ? "Quay lại" : "Back"}
+            </button>
+
+            <button
+              onClick={() => setActiveSimulation("teacher")}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-orange-100 text-orange-700 text-xs font-semibold rounded hover:bg-orange-200 transition"
+            >
+              <User size={14} />
+              Teacher
+            </button>
+
+            <button
+              onClick={() => setActiveSimulation("student")}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-orange-100 text-orange-700 text-xs font-semibold rounded hover:bg-orange-200 transition"
+            >
+              <GraduationCap size={14} />
+              Student
+            </button>
+
+            <button
+              onClick={() => setActiveSimulation("mobile")}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-orange-100 text-orange-700 text-xs font-semibold rounded hover:bg-orange-200 transition"
+            >
+              <Smartphone size={14} />
+              Mobile
+            </button>
+          </div>
 
           {/* Widget Card */}
           <div className="bg-card rounded-3xl shadow-xl border border-border overflow-hidden">
@@ -766,6 +871,105 @@ function WidgetHost({
           </div>
         )}
       </div>
+
+      {activeSimulation && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
+          onClick={closeSimulation}
+        >
+          <div
+            className="w-[90vw] h-[95vh] max-w-none bg-card rounded-xl p-1 flex flex-col min-h-0 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-border shrink-0 flex flex-row items-center justify-between">
+              <h2 className="text-base font-semibold text-foreground">
+                {simulationTitle}
+              </h2>
+              <button
+                onClick={closeSimulation}
+                className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted"
+                aria-label="Close simulation"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {activeSimulation === "teacher" && (
+              <div className="bg-card flex h-full min-h-0">
+                <div className="flex-1 p-2 min-h-0">
+                  <div className="h-full max-w-5xl mx-auto bg-card rounded-4xl shadow-2xl overflow-hidden border border-border">
+                    <iframe
+                      key={`simulation-${activeSimulation}-${widgetUrl}`}
+                      ref={simulationIframeRef}
+                      src={widgetUrl}
+                      onLoad={() => setSimulationIframeReady(true)}
+                      className="w-full h-full min-h-100 min-w-[320px] border-0"
+                      title="Teacher widget preview simulation"
+                      sandbox="allow-scripts allow-same-origin"
+                    />
+                  </div>
+                </div>
+
+                <div className="w-90 bg-card border-l border-border flex flex-col">
+                  <div className="px-4 py-3 border-b border-border">
+                    <h3 className="text-sm font-semibold text-foreground">
+                      {isVi ? "Cấu hình và kết quả" : "Config & Result"}
+                    </h3>
+                  </div>
+                  <div className="tp-host-panel flex-1 overflow-y-auto p-4 text-sm text-muted-foreground">
+                    <p className="mb-3">
+                      {isVi
+                        ? "Mô phỏng khung TeacherCreateAssignment với panel bên phải."
+                        : "TeacherCreateAssignment layout simulation with right panel."}
+                    </p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {isVi
+                        ? "Tweakpane chính vẫn hoạt động ở panel bên phải màn hình preview để bạn test logic tham số."
+                        : "Main Tweakpane remains active on the preview right panel for parameter logic testing."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSimulation === "student" && (
+              <div className="bg-card flex-1 min-h-0 p-4">
+                <div className="h-full max-w-5xl mx-auto bg-card rounded-4xl shadow-2xl overflow-hidden border border-border">
+                  <iframe
+                    key={`simulation-${activeSimulation}-${widgetUrl}`}
+                    ref={simulationIframeRef}
+                    src={widgetUrl}
+                    onLoad={() => setSimulationIframeReady(true)}
+                    className="w-full h-full min-h-100 min-w-[320px] border-0"
+                    title="Student widget preview simulation"
+                    sandbox="allow-scripts allow-same-origin"
+                  />
+                </div>
+              </div>
+            )}
+
+            {activeSimulation === "mobile" && (
+              <div className="flex-1 min-h-0 bg-[#fefce8] p-3 flex items-center justify-center">
+                <div className="w-full h-full max-w-215 max-h-107.5 rounded-[20px] border-2 border-[#334155] bg-[#fefce8] p-1.5 shadow-[0_8px_0_0_rgba(51,65,85,0.12)]">
+                  <div className="h-full rounded-[14px] border-2 border-[#854d0e] bg-white shadow-[0_8px_0_0_rgba(133,77,14,0.16)] overflow-hidden p-2">
+                    <div className="h-full rounded-xl border-2 border-[#334155] bg-white shadow-[0_6px_0_0_rgba(51,65,85,0.14)] overflow-hidden">
+                      <iframe
+                        key={`simulation-${activeSimulation}-${widgetUrl}`}
+                        ref={simulationIframeRef}
+                        src={widgetUrl}
+                        onLoad={() => setSimulationIframeReady(true)}
+                        className="w-full h-full border-0"
+                        title="Mobile widget preview simulation"
+                        sandbox="allow-scripts allow-same-origin"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

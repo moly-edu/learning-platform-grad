@@ -728,7 +728,7 @@ export default function StudentAssignmentView({
 
       {/* Widget iframe */}
       <div className="flex-1 p-4 min-h-0 relative">
-        <div className="h-full max-w-6xl mx-auto bg-card rounded-4xl shadow-2xl overflow-hidden border border-border/50">
+        <div className="h-full max-w-5xl mx-auto bg-card rounded-4xl shadow-2xl overflow-hidden border border-border/50">
           <iframe
             ref={iframeRef}
             className="w-full h-full min-h-100 min-w-[320px] border-0"
