@@ -62,3 +62,11 @@ export interface HostTtsResult {
   ok: boolean;
   error?: string;
 }
+
+export interface HostSttResult {
+  ok: boolean;
+  transcript?: string;
+  error?: string;
+}
+
+export type SttMode = "free-text" | "number";

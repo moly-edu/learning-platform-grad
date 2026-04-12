@@ -217,6 +217,71 @@ body {
   letter-spacing: var(--tracking-normal);
 }
 
+/* Safe theming: use official Tweakpane CSS variables only. */
+.tp-host-panel {
+  --tp-base-font-family: "Manrope", "Segoe UI", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --tp-base-border-radius: 12px;
+  --tp-blade-border-radius: 4px;
+  --tp-container-unit-size: 28px;
+  --tp-blade-value-width: 190px;
+  --tp-container-horizontal-padding: 8px;
+  --tp-container-vertical-padding: 6px;
+  --tp-container-unit-spacing: 6px;
+
+  font-size: 20px;
+  line-height: 1.4;
+
+  --tp-base-background-color: #ffffff;
+  --tp-base-shadow-color: rgba(15, 23, 42, 0.08);
+
+  --tp-button-background-color: #e2e8f0;
+  --tp-button-background-color-hover: #cbd5e1;
+  --tp-button-background-color-active: #94a3b8;
+  --tp-button-background-color-focus: #cbd5e1;
+  --tp-button-foreground-color: #1e293b;
+
+  --tp-container-background-color: rgba(148, 163, 184, 0.14);
+  --tp-container-background-color-hover: rgba(148, 163, 184, 0.2);
+  --tp-container-background-color-active: rgba(148, 163, 184, 0.26);
+  --tp-container-background-color-focus: rgba(148, 163, 184, 0.24);
+  --tp-container-border-color: rgba(148, 163, 184, 0.32);
+  --tp-container-foreground-color: #334155;
+
+  --tp-groove-foreground-color: rgba(100, 116, 139, 0.35);
+
+  --tp-input-background-color: #edecec;
+  --tp-input-background-color-hover: #f3f2f2;
+  --tp-input-background-color-active: #f3f2f2;
+  --tp-input-background-color-focus: #f3f2f2;
+  --tp-input-foreground-color: #0f172a;
+
+  --tp-label-foreground-color: #475569;
+
+  --tp-monitor-background-color: #f8fafc;
+  --tp-monitor-foreground-color: #64748b;
+}
+
+.tp-host-panel * {
+  font-size: 14px !important;
+}
+
+/* Compact variant for modal-based teacher flows. */
+.tp-host-panel.tp-host-panel--compact {
+  --tp-base-border-radius: 10px;
+  --tp-blade-border-radius: 3px;
+  --tp-container-unit-size: 26px;
+  --tp-blade-value-width: 178px;
+  --tp-container-horizontal-padding: 7px;
+  --tp-container-vertical-padding: 5px;
+  --tp-container-unit-spacing: 5px;
+
+  font-size: 18px;
+}
+
+.tp-host-panel.tp-host-panel--compact * {
+  font-size: 13px !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

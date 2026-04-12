@@ -8,6 +8,7 @@ import {
   stopHostTtsPlayback,
   synthesizeWithHostTts,
 } from "../core/HostTtsClient";
+import { listenWithHostStt, stopHostSttListening } from "../core/HostSttClient";
 
 interface TeacherViewAssignmentProps {
   html: string;
@@ -158,6 +159,43 @@ export default function TeacherViewAssignment({
           return;
         }
         stopHostTtsPlayback();
+      }
+
+      if (event.data.type === "STT_LISTEN") {
+        const requestId = event.data?.payload?.requestId;
+        const lang = event.data?.payload?.lang;
+        const timeoutMs = event.data?.payload?.timeoutMs;
+        const mode = event.data?.payload?.mode;
+        if (!requestId) return;
+        if (event.source !== iframeRef.current?.contentWindow) {
+          return;
+        }
+        const targetWindow = event.source as Window | null;
+        if (!targetWindow) return;
+        (async () => {
+          const result = await listenWithHostStt({
+            lang,
+            timeoutMs,
+            mode,
+          });
+          targetWindow.postMessage(
+            {
+              type: "STT_LISTEN_RESULT",
+              payload: {
+                requestId,
+                ...result,
+              },
+            },
+            "*",
+          );
+        })();
+      }
+
+      if (event.data.type === "STT_STOP") {
+        if (event.source !== iframeRef.current?.contentWindow) {
+          return;
+        }
+        stopHostSttListening();
       }
 
       if (event.data.type === "ERROR") {

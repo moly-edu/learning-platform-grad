@@ -22,6 +22,10 @@ import {
   stopHostTtsPlayback,
   synthesizeWithHostTts,
 } from "@/components/widget/core/HostTtsClient";
+import {
+  listenWithHostStt,
+  stopHostSttListening,
+} from "@/components/widget/core/HostSttClient";
 
 function getSchemaFieldByPath(schema: Record<string, any>, path: string): any {
   const parts = path.split(".").filter((part) => part.length > 0);
@@ -470,6 +474,43 @@ function WidgetHost({
         stopHostTtsPlayback();
       }
 
+      if (event.data.type === "STT_LISTEN") {
+        const requestId = event.data?.payload?.requestId;
+        const lang = event.data?.payload?.lang;
+        const timeoutMs = event.data?.payload?.timeoutMs;
+        const mode = event.data?.payload?.mode;
+        if (!requestId) return;
+        if (event.source !== iframeRef.current?.contentWindow) {
+          return;
+        }
+        const targetWindow = event.source as Window | null;
+        if (!targetWindow) return;
+        (async () => {
+          const result = await listenWithHostStt({
+            lang,
+            timeoutMs,
+            mode,
+          });
+          targetWindow.postMessage(
+            {
+              type: "STT_LISTEN_RESULT",
+              payload: {
+                requestId,
+                ...result,
+              },
+            },
+            "*",
+          );
+        })();
+      }
+
+      if (event.data.type === "STT_STOP") {
+        if (event.source !== iframeRef.current?.contentWindow) {
+          return;
+        }
+        stopHostSttListening();
+      }
+
       if (event.data.type === "ERROR") {
         console.error("❌ Widget error:", event.data.payload);
         setError(
@@ -599,7 +640,7 @@ function WidgetHost({
   return (
     <div className="min-h-screen bg-background flex">
       <div className="flex-1 px-12 py-2">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <button
             onClick={onExit}
             className="inline-flex items-center gap-2 mb-3 px-4 py-2 rounded-full 
@@ -646,7 +687,7 @@ function WidgetHost({
       </div>
 
       {/* RIGHT SIDEBAR */}
-      <div className="w-80 bg-card border-l border-border flex flex-col">
+      <div className="w-100 bg-card border-l border-border flex flex-col">
         <div className="px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold text-foreground">
             {isVi ? "Cấu hình và kết quả" : "Config & Result"}
@@ -655,7 +696,7 @@ function WidgetHost({
 
         <div
           ref={paneRef}
-          className="flex-1 overflow-y-auto p-4 text-sm text-muted-foreground"
+          className="tp-host-panel flex-1 overflow-y-auto p-4 text-sm text-muted-foreground"
         />
 
         {/* NEW: Submission Info */}

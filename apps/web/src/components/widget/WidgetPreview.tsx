@@ -12,6 +12,7 @@ import {
   stopHostTtsPlayback,
   synthesizeWithHostTts,
 } from "./core/HostTtsClient";
+import { listenWithHostStt, stopHostSttListening } from "./core/HostSttClient";
 
 export default function WidgetPreview({ html }: { html: string }) {
   const locale = useLocale();
@@ -140,6 +141,43 @@ export default function WidgetPreview({ html }: { html: string }) {
           return;
         }
         stopHostTtsPlayback();
+      }
+
+      if (event.data.type === "STT_LISTEN") {
+        const requestId = event.data?.payload?.requestId;
+        const lang = event.data?.payload?.lang;
+        const timeoutMs = event.data?.payload?.timeoutMs;
+        const mode = event.data?.payload?.mode;
+        if (!requestId) return;
+        if (event.source !== iframeRef.current?.contentWindow) {
+          return;
+        }
+        const targetWindow = event.source as Window | null;
+        if (!targetWindow) return;
+        (async () => {
+          const result = await listenWithHostStt({
+            lang,
+            timeoutMs,
+            mode,
+          });
+          targetWindow.postMessage(
+            {
+              type: "STT_LISTEN_RESULT",
+              payload: {
+                requestId,
+                ...result,
+              },
+            },
+            "*",
+          );
+        })();
+      }
+
+      if (event.data.type === "STT_STOP") {
+        if (event.source !== iframeRef.current?.contentWindow) {
+          return;
+        }
+        stopHostSttListening();
       }
 
       if (event.data.type === "ERROR") {
@@ -296,7 +334,7 @@ export default function WidgetPreview({ html }: { html: string }) {
         )}
       </div>
 
-      <div className="w-80 bg-card border-l border-border flex flex-col">
+      <div className="w-90 bg-card border-l border-border flex flex-col">
         <div className="px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold text-foreground">
             {isVi ? "Cấu hình và kết quả" : "Config & Result"}
@@ -305,7 +343,7 @@ export default function WidgetPreview({ html }: { html: string }) {
 
         <div
           ref={paneRef}
-          className="flex-1 overflow-y-auto p-4 text-sm text-muted-foreground"
+          className="tp-host-panel flex-1 overflow-y-auto p-4 text-sm text-muted-foreground"
         />
 
         {/* NEW: Submission Info */}

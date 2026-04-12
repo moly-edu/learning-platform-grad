@@ -15,6 +15,10 @@ import {
   stopHostTtsPlayback,
   synthesizeWithHostTts,
 } from "@/components/widget/core/HostTtsClient";
+import {
+  listenWithHostStt,
+  stopHostSttListening,
+} from "@/components/widget/core/HostSttClient";
 import { useTranslation } from "react-i18next";
 
 interface AssignmentData {
@@ -337,6 +341,33 @@ export default function AssignmentWidget({
         stopHostTtsPlayback();
       }
 
+      if (message.type === "STT_LISTEN") {
+        const requestId = message?.payload?.requestId;
+        const lang = message?.payload?.lang;
+        const timeoutMs = message?.payload?.timeoutMs;
+        const mode = message?.payload?.mode;
+        if (!requestId) return;
+
+        (async () => {
+          const result = await listenWithHostStt({
+            lang,
+            timeoutMs,
+            mode,
+          });
+          sendMessage({
+            type: "STT_LISTEN_RESULT",
+            payload: {
+              requestId,
+              ...result,
+            },
+          });
+        })();
+      }
+
+      if (message.type === "STT_STOP") {
+        stopHostSttListening();
+      }
+
       if (message.type === "ERROR") {
         console.error("❌ Widget error:", message.payload);
         const errorMessage =
@@ -624,10 +655,9 @@ export default function AssignmentWidget({
               ]}
               onPress={() => setAttemptPickerVisible(true)}
             >
-              <Text
-                numberOfLines={1}
-                style={styles.attemptsActionText}
-              >{attemptsButtonLabel}</Text>
+              <Text numberOfLines={1} style={styles.attemptsActionText}>
+                {attemptsButtonLabel}
+              </Text>
             </Pressable>
 
             <Pressable
@@ -712,7 +742,9 @@ export default function AssignmentWidget({
           <View style={styles.attemptModalOverlay}>
             <View style={styles.attemptModalCard}>
               <View style={styles.attemptModalHeader}>
-                <Text style={styles.attemptModalTitle}>{attemptsModalTitle}</Text>
+                <Text style={styles.attemptModalTitle}>
+                  {attemptsModalTitle}
+                </Text>
                 <Pressable
                   style={({ pressed }) => [
                     styles.attemptModalClose,
