@@ -124,17 +124,34 @@ const INJECTED_JS_BEFORE_CONTENT = `
       window.ReactNativeWebView.postMessage(message);
     }
   };
-  
-  // 3. Setup handler for messages FROM React Native
-  window.handleMessageFromNative = function(messageJson) {
+
+  window.__RN_HOST_MESSAGE_QUEUE__ = window.__RN_HOST_MESSAGE_QUEUE__ || [];
+
+  function dispatchHostMessage(messageJson) {
     try {
       var message = JSON.parse(messageJson);
       var event = new MessageEvent('message', { data: message });
       window.dispatchEvent(event);
+      return true;
     } catch (error) {
       console.error('Failed to handle native message:', error);
+      return false;
     }
+  }
+  
+  // 3. Setup handler for messages FROM React Native
+  window.handleMessageFromNative = function(messageJson) {
+    dispatchHostMessage(messageJson);
   };
+
+  // Flush any queued host messages that were injected before handler readiness.
+  if (window.__RN_HOST_MESSAGE_QUEUE__.length > 0) {
+    var pending = window.__RN_HOST_MESSAGE_QUEUE__.slice();
+    window.__RN_HOST_MESSAGE_QUEUE__.length = 0;
+    for (var i = 0; i < pending.length; i++) {
+      dispatchHostMessage(pending[i]);
+    }
+  }
 })();
 true;
 `;
@@ -213,9 +230,17 @@ export default function AssignmentWidget({
     console.log("📤 Sending to widget:", message.type);
 
     const script = `
-      if (typeof window.handleMessageFromNative === 'function') {
-        window.handleMessageFromNative('${messageJson.replace(/'/g, "\\'")}');
-      }
+      (function() {
+        var messageJson = ${JSON.stringify(messageJson)};
+
+        if (typeof window.handleMessageFromNative === 'function') {
+          window.handleMessageFromNative(messageJson);
+          return;
+        }
+
+        window.__RN_HOST_MESSAGE_QUEUE__ = window.__RN_HOST_MESSAGE_QUEUE__ || [];
+        window.__RN_HOST_MESSAGE_QUEUE__.push(messageJson);
+      })();
       true;
     `;
 
