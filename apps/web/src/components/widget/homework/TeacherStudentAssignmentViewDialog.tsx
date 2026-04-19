@@ -69,6 +69,7 @@ export default function TeacherStudentAssignmentViewDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
+  const [iframeSessionKey, setIframeSessionKey] = useState(0);
   const [open, setOpen] = useState(false);
   const [selectedAttemptNumber, setSelectedAttemptNumber] = useState<
     number | null
@@ -76,6 +77,13 @@ export default function TeacherStudentAssignmentViewDialog({
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const messageQueueRef = useRef<any[]>([]);
+  const previousSelectedAttemptRef = useRef<number | null>(null);
+
+  const resetWidgetSession = () => {
+    setIframeReady(false);
+    messageQueueRef.current = [];
+    setIframeSessionKey((value) => value + 1);
+  };
 
   const sendMessage = (message: any) => {
     const iframe = iframeRef.current;
@@ -228,7 +236,7 @@ export default function TeacherStudentAssignmentViewDialog({
     iframe.addEventListener("load", handleLoad);
     iframe.srcdoc = widgetHtml;
     return () => iframe.removeEventListener("load", handleLoad);
-  }, [widgetHtml]);
+  }, [widgetHtml, iframeSessionKey]);
 
   // Listen to widget messages
   useEffect(() => {
@@ -255,6 +263,25 @@ export default function TeacherStudentAssignmentViewDialog({
       setSelectedAttemptNumber(assignmentData.attempts[0].attemptNumber);
     }
   }, [assignmentData?.attempts, selectedAttemptNumber]);
+
+  useEffect(() => {
+    if (!open || !assignmentData?.hasSubmitted) {
+      previousSelectedAttemptRef.current = selectedAttemptNumber;
+      return;
+    }
+
+    const previousSelectedAttempt = previousSelectedAttemptRef.current;
+    const switchedAttempt =
+      typeof selectedAttemptNumber === "number" &&
+      typeof previousSelectedAttempt === "number" &&
+      selectedAttemptNumber !== previousSelectedAttempt;
+
+    if (switchedAttempt) {
+      resetWidgetSession();
+    }
+
+    previousSelectedAttemptRef.current = selectedAttemptNumber;
+  }, [open, assignmentData?.hasSubmitted, selectedAttemptNumber]);
 
   const selectedAttempt = useMemo(() => {
     if (!assignmentData?.attempts?.length) {
@@ -447,6 +474,7 @@ export default function TeacherStudentAssignmentViewDialog({
             <div className="flex-1 p-4 min-h-0">
               <div className="h-full max-w-6xl mx-auto bg-card rounded-2xl shadow-lg overflow-hidden border border-border">
                 <iframe
+                  key={`teacher-student-review-${assignmentId}-${studentId}-${iframeSessionKey}`}
                   ref={iframeRef}
                   className="w-full h-full border-0"
                   title="Widget"

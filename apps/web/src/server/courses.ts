@@ -680,6 +680,11 @@ export async function _getStudentHomeworkStatusByClassInternal(
         submittedAt: true,
         attemptCount: true,
         correctAttemptCount: true,
+        attempts: {
+          select: {
+            submissionData: true,
+          },
+        },
       },
     });
 
@@ -734,6 +739,7 @@ export async function _getStudentHomeworkStatusByClassInternal(
         submittedAt: string | null;
         attemptCount: number;
         correctAttemptCount: number;
+        highestScore: number;
         evaluation?: {
           isCorrect: boolean;
           score: number;
@@ -744,11 +750,29 @@ export async function _getStudentHomeworkStatusByClassInternal(
 
     studentAssignments.forEach((sa) => {
       const submissionData = sa.submissionData as any;
+      const attemptScores = (sa.attempts ?? [])
+        .map((attempt) => {
+          const data = attempt.submissionData as any;
+          const score = data?.evaluation?.score;
+          return typeof score === "number" ? score : null;
+        })
+        .filter((score): score is number => score !== null);
+
+      const firstScore =
+        typeof submissionData?.evaluation?.score === "number"
+          ? submissionData.evaluation.score
+          : null;
+      const highestScore =
+        attemptScores.length > 0
+          ? Math.max(...attemptScores)
+          : (firstScore ?? 0);
+
       submissionsByAssignmentId[sa.assignmentId] = {
         hasSubmitted: sa.submissionData !== null,
         submittedAt: sa.submittedAt ? sa.submittedAt.toISOString() : null,
         attemptCount: sa.attemptCount,
         correctAttemptCount: sa.correctAttemptCount,
+        highestScore,
         evaluation: submissionData?.evaluation,
       };
     });

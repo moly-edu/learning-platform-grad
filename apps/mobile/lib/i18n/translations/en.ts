@@ -104,6 +104,9 @@ const en = {
     reviewAttempt: "Review answer",
     retryNow: "Retry now",
     startNow: "Start",
+    retries: "Retries",
+    correctRatio: "Correct",
+    highest: "Highest",
   },
   assignmentWidget: {
     noAssignmentId: "No assignment ID provided",

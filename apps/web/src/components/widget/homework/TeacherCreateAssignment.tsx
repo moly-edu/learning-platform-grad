@@ -70,6 +70,7 @@ const TeacherCreateAssignment = forwardRef<
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [iframeReady, setIframeReady] = useState(false);
+  const [iframeSessionKey, setIframeSessionKey] = useState(0);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
 
   const [submission, setSubmission] = useState<Submission | null>(null);
@@ -82,6 +83,13 @@ const TeacherCreateAssignment = forwardRef<
   const paneInstanceRef = useRef<any>(null);
   const builderRef = useRef<TweakpaneBuilder | null>(null);
   const messageQueueRef = useRef<any[]>([]);
+
+  const resetWidgetSession = () => {
+    setIframeReady(false);
+    setWidgetDef(null);
+    messageQueueRef.current = [];
+    setIframeSessionKey((value) => value + 1);
+  };
 
   // Helper function to recursively find and upload base64 images
   const processConfigForSave = async (
@@ -215,7 +223,7 @@ const TeacherCreateAssignment = forwardRef<
     };
 
     loadWidget();
-  }, [html]);
+  }, [html, iframeSessionKey]);
 
   // Handle iframe load
   useEffect(() => {
@@ -242,7 +250,7 @@ const TeacherCreateAssignment = forwardRef<
 
     iframe.addEventListener("load", handleLoad);
     return () => iframe.removeEventListener("load", handleLoad);
-  }, []);
+  }, [iframeSessionKey]);
 
   // Listen to widget messages
   useEffect(() => {
@@ -460,7 +468,17 @@ const TeacherCreateAssignment = forwardRef<
 
   // Handle view answer from AssignmentStudentsPanel
   const handleViewAnswer = (payload: ReviewSubmissionPayload) => {
+    const shouldResetSession =
+      viewingSubmission?.studentId !== payload.studentId ||
+      viewingSubmission?.attemptNumber !== payload.attemptNumber;
+
     setViewingSubmission(payload);
+
+    if (shouldResetSession) {
+      resetWidgetSession();
+      return;
+    }
+
     sendMessage({
       type: "PARAMS_UPDATE",
       payload: { ...config, __answer: payload.answer },
@@ -472,6 +490,20 @@ const TeacherCreateAssignment = forwardRef<
     setViewingSubmission(null);
     sendMessage({ type: "PARAMS_UPDATE", payload: config });
   };
+
+  useEffect(() => {
+    if (!iframeReady || !widgetDef) return;
+
+    if (viewingSubmission) {
+      sendMessage({
+        type: "PARAMS_UPDATE",
+        payload: { ...config, __answer: viewingSubmission.answer },
+      });
+      return;
+    }
+
+    sendMessage({ type: "PARAMS_UPDATE", payload: config });
+  }, [iframeReady, widgetDef, config, viewingSubmission]);
 
   const activeReviewSubmission = viewingSubmission
     ? {
@@ -525,6 +557,7 @@ const TeacherCreateAssignment = forwardRef<
 
         <div className="h-full max-w-5xl mx-auto bg-card rounded-4xl shadow-2xl overflow-hidden border border-border/50">
           <iframe
+            key={`teacher-create-widget-${assignmentId ?? "draft"}-${iframeSessionKey}`}
             ref={iframeRef}
             className="w-full h-full min-h-100 min-w-[320px] border-0"
             title="Widget"

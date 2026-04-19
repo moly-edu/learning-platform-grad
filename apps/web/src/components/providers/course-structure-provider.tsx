@@ -47,6 +47,7 @@ interface StudentSubmissionStatus {
   submittedAt: string | null;
   attemptCount: number;
   correctAttemptCount: number;
+  highestScore: number;
   evaluation?: AssignmentEvaluation;
 }
 
@@ -55,6 +56,7 @@ interface UpdateAssignmentStatusPayload {
   evaluation?: AssignmentEvaluation;
   attemptCount?: number;
   correctAttemptCount?: number;
+  highestScore?: number;
   isFirstAttempt?: boolean;
 }
 
@@ -1149,6 +1151,12 @@ export const CourseStructureProvider: React.FC<
             : payload?.evaluation?.isCorrect
               ? 1
               : 0);
+        const nextHighestScore =
+          payload?.highestScore ??
+          Math.max(
+            previousStatus?.highestScore ?? 0,
+            payload?.evaluation?.score ?? 0,
+          );
 
         if (hasSubmittedBefore) {
           newMap.set(assignmentId, {
@@ -1159,6 +1167,7 @@ export const CourseStructureProvider: React.FC<
             evaluation: previousStatus.evaluation ?? payload?.evaluation,
             attemptCount: nextAttemptCount,
             correctAttemptCount: nextCorrectAttemptCount,
+            highestScore: nextHighestScore,
           });
         } else {
           newMap.set(assignmentId, {
@@ -1167,6 +1176,7 @@ export const CourseStructureProvider: React.FC<
             evaluation: payload?.evaluation,
             attemptCount: nextAttemptCount,
             correctAttemptCount: nextCorrectAttemptCount,
+            highestScore: nextHighestScore,
           });
         }
 

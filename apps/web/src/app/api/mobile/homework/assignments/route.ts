@@ -69,6 +69,11 @@ export async function GET(request: NextRequest) {
         latestSubmittedAt: true,
         attemptCount: true,
         correctAttemptCount: true,
+        attempts: {
+          select: {
+            submissionData: true,
+          },
+        },
       },
     });
 
@@ -86,7 +91,23 @@ export async function GET(request: NextRequest) {
     const formattedAssignments = assignedAssignments.map((assignment) => {
       const submission = assignedMap.get(assignment.id);
       const submissionData = submission?.submissionData as any;
-      const assignmentContent = (assignment.content as Record<string, any>) || {};
+      const assignmentContent =
+        (assignment.content as Record<string, any>) || {};
+      const attemptScores = (submission?.attempts ?? [])
+        .map((attempt) => {
+          const data = attempt.submissionData as any;
+          const score = data?.evaluation?.score;
+          return typeof score === "number" ? score : null;
+        })
+        .filter((score): score is number => score !== null);
+      const firstScore =
+        typeof submissionData?.evaluation?.score === "number"
+          ? submissionData.evaluation.score
+          : null;
+      const highestScore =
+        attemptScores.length > 0
+          ? Math.max(...attemptScores)
+          : (firstScore ?? 0);
 
       return {
         id: assignment.id,
@@ -102,6 +123,7 @@ export async function GET(request: NextRequest) {
             : null,
         attemptCount: submission?.attemptCount || 0,
         correctAttemptCount: submission?.correctAttemptCount || 0,
+        highestScore,
         evaluation: submissionData?.evaluation || null,
         content: stripGeneratorMeta(assignment.content as Record<string, any>),
       };

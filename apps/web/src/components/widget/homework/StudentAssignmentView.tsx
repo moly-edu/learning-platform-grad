@@ -74,12 +74,37 @@ export default function StudentAssignmentView({
   const [error, setError] = useState<string | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
   const [isRetryMode, setIsRetryMode] = useState(false);
+  const [iframeSessionKey, setIframeSessionKey] = useState(0);
   const [selectedAttemptNumber, setSelectedAttemptNumber] = useState<
     number | null
   >(null);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const messageQueueRef = useRef<any[]>([]);
+  const previousRetryModeRef = useRef(isRetryMode);
+  const previousSelectedAttemptRef = useRef<number | null>(
+    selectedAttemptNumber,
+  );
+
+  const resetWidgetSession = () => {
+    setIframeReady(false);
+    setWidgetDef(null);
+    messageQueueRef.current = [];
+    setIframeSessionKey((value) => value + 1);
+  };
+
+  const handleToggleRetryMode = () => {
+    setIsRetryMode((prev) => {
+      const next = !prev;
+
+      if (next) {
+        // Force a full iframe remount so widget local state is reset for retry.
+        resetWidgetSession();
+      }
+
+      return next;
+    });
+  };
 
   // Helper to send messages
   const sendMessage = (message: any) => {
@@ -217,6 +242,25 @@ export default function StudentAssignmentView({
     loadAssignment();
   }, [assignmentId, isVi]);
 
+  useEffect(() => {
+    const wasRetryMode = previousRetryModeRef.current;
+    const previousSelectedAttempt = previousSelectedAttemptRef.current;
+
+    const switchedAttemptInReview =
+      !isRetryMode &&
+      assignmentData?.hasSubmitted &&
+      typeof selectedAttemptNumber === "number" &&
+      selectedAttemptNumber !== previousSelectedAttempt &&
+      (typeof previousSelectedAttempt === "number" || wasRetryMode);
+
+    if (switchedAttemptInReview) {
+      resetWidgetSession();
+    }
+
+    previousRetryModeRef.current = isRetryMode;
+    previousSelectedAttemptRef.current = selectedAttemptNumber;
+  }, [assignmentData?.hasSubmitted, isRetryMode, selectedAttemptNumber]);
+
   // 2️⃣ Load widget HTML into iframe
   useEffect(() => {
     if (!widgetHtml) return;
@@ -236,7 +280,7 @@ export default function StudentAssignmentView({
     };
 
     loadWidget();
-  }, [widgetHtml]);
+  }, [widgetHtml, iframeSessionKey]);
 
   // 3️⃣ Handle iframe load
   useEffect(() => {
@@ -263,7 +307,7 @@ export default function StudentAssignmentView({
 
     iframe.addEventListener("load", handleLoad);
     return () => iframe.removeEventListener("load", handleLoad);
-  }, [widgetHtml]);
+  }, [widgetHtml, iframeSessionKey]);
 
   // 4️⃣ Listen to widget messages
   useEffect(() => {
@@ -510,6 +554,18 @@ export default function StudentAssignmentView({
       setIsRetryMode(false);
       setSelectedAttemptNumber(nextAttemptCount);
 
+      const nextHighestScore = Math.max(
+        ...[
+          ...assignmentData.attempts.map(
+            (attempt) =>
+              attempt.evaluation?.score ??
+              attempt.submissionData?.evaluation?.score ??
+              0,
+          ),
+          submission.evaluation.score,
+        ],
+      );
+
       // 🎯 Update provider state (update UI everywhere)
       await updateAssignmentStatus(assignmentId, {
         submittedAt: isFirstAttempt
@@ -518,6 +574,7 @@ export default function StudentAssignmentView({
         evaluation: submission.evaluation,
         attemptCount: nextAttemptCount,
         correctAttemptCount: nextCorrectAttemptCount,
+        highestScore: nextHighestScore,
         isFirstAttempt,
       });
 
@@ -576,7 +633,10 @@ export default function StudentAssignmentView({
       console.log("⏳ Student chưa làm → Chế độ làm bài");
       sendMessage({
         type: "PARAMS_UPDATE",
-        payload: assignmentData.assignmentConfig,
+        payload: {
+          ...assignmentData.assignmentConfig,
+          __answer: null,
+        },
       });
     }
   }, [iframeReady, widgetDef, assignmentData, isRetryMode, selectedAnswer]);
@@ -689,7 +749,7 @@ export default function StudentAssignmentView({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setIsRetryMode((prev) => !prev)}
+                onClick={handleToggleRetryMode}
                 disabled={submitting}
                 className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-all disabled:opacity-50 ${
                   isRetryMode
@@ -730,6 +790,7 @@ export default function StudentAssignmentView({
       <div className="flex-1 p-4 min-h-0 relative">
         <div className="h-full max-w-5xl mx-auto bg-card rounded-4xl shadow-2xl overflow-hidden border border-border/50">
           <iframe
+            key={`student-widget-${assignmentId}-${iframeSessionKey}`}
             ref={iframeRef}
             className="w-full h-full min-h-100 min-w-[320px] border-0"
             title="Widget"

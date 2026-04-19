@@ -117,9 +117,10 @@ export async function GET(
 
       const attempts =
         studentAssignment?.attempts.map((attempt) => {
-          const parsedSubmission = attempt.submissionData as
-            | Record<string, any>
-            | null;
+          const parsedSubmission = attempt.submissionData as Record<
+            string,
+            any
+          > | null;
 
           return {
             id: attempt.id,
@@ -137,9 +138,10 @@ export async function GET(
         studentAssignment?.submissionData &&
         hasSubmitted
       ) {
-        const parsedSubmission = studentAssignment.submissionData as
-          | Record<string, any>
-          | null;
+        const parsedSubmission = studentAssignment.submissionData as Record<
+          string,
+          any
+        > | null;
 
         attempts.push({
           id: `${studentAssignment.id}-legacy-attempt`,
@@ -151,6 +153,12 @@ export async function GET(
           submittedAt: studentAssignment.submittedAt,
         });
       }
+
+      const highestScore = attempts.reduce((maxScore, attempt) => {
+        const score = attempt.evaluation?.score;
+        if (typeof score !== "number") return maxScore;
+        return Math.max(maxScore, score);
+      }, 0);
 
       return {
         id: student.userId,
@@ -167,6 +175,7 @@ export async function GET(
                 latestSubmittedAt: studentAssignment.latestSubmittedAt,
                 attemptCount: studentAssignment.attemptCount,
                 correctAttemptCount: studentAssignment.correctAttemptCount,
+                highestScore,
                 evaluation: (studentAssignment.submissionData as any)
                   .evaluation,
                 answer: (studentAssignment.submissionData as any).answer,

@@ -43,11 +43,19 @@ export default function TeacherViewAssignmentWithStudents({
   const [config] = useState<Record<string, any>>(initialConfig);
   const [error, setError] = useState<string | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
+  const [iframeSessionKey, setIframeSessionKey] = useState(0);
   const [viewingSubmission, setViewingSubmission] =
     useState<ReviewSubmissionPayload | null>(null);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const messageQueueRef = useRef<any[]>([]);
+
+  const resetWidgetSession = () => {
+    setIframeReady(false);
+    setWidgetDef(null);
+    messageQueueRef.current = [];
+    setIframeSessionKey((value) => value + 1);
+  };
 
   // Helper to send messages
   const sendMessage = (message: any) => {
@@ -67,7 +75,17 @@ export default function TeacherViewAssignmentWithStudents({
 
   // View student answer
   const handleViewAnswer = (payload: ReviewSubmissionPayload) => {
+    const shouldResetSession =
+      viewingSubmission?.studentId !== payload.studentId ||
+      viewingSubmission?.attemptNumber !== payload.attemptNumber;
+
     setViewingSubmission(payload);
+
+    if (shouldResetSession) {
+      resetWidgetSession();
+      return;
+    }
+
     sendMessage({
       type: "PARAMS_UPDATE",
       payload: { ...config, __answer: payload.answer },
@@ -104,7 +122,7 @@ export default function TeacherViewAssignmentWithStudents({
     return () => {
       iframe.removeEventListener("load", handleLoad);
     };
-  }, [html]);
+  }, [html, iframeSessionKey]);
 
   // Listen to widget messages
   useEffect(() => {
@@ -127,8 +145,17 @@ export default function TeacherViewAssignmentWithStudents({
   // Send initial config when iframe ready
   useEffect(() => {
     if (!iframeReady || !widgetDef) return;
+
+    if (viewingSubmission) {
+      sendMessage({
+        type: "PARAMS_UPDATE",
+        payload: { ...config, __answer: viewingSubmission.answer },
+      });
+      return;
+    }
+
     sendMessage({ type: "PARAMS_UPDATE", payload: config });
-  }, [iframeReady, widgetDef, config]);
+  }, [iframeReady, widgetDef, config, viewingSubmission]);
 
   const activeReviewSubmission = viewingSubmission
     ? {
@@ -183,6 +210,7 @@ export default function TeacherViewAssignmentWithStudents({
 
         <div className="h-full bg-card rounded-2xl shadow-lg overflow-hidden border border-border">
           <iframe
+            key={`teacher-review-${assignmentId}-${iframeSessionKey}`}
             ref={iframeRef}
             className="w-full h-full border-0"
             title="Widget"

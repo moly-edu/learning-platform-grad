@@ -177,9 +177,20 @@ export default function AssignmentWidget({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [widgetReady, setWidgetReady] = useState(false);
+  const [webViewSessionKey, setWebViewSessionKey] = useState(0);
   const [attemptPickerVisible, setAttemptPickerVisible] = useState(false);
 
   const webViewRef = useRef<WebView>(null);
+  const previousRetryModeRef = useRef(retryMode);
+  const previousSelectedAttemptRef = useRef<number | null>(
+    typeof selectedAttemptNumber === "number" ? selectedAttemptNumber : null,
+  );
+
+  const resetWebViewSession = () => {
+    setWebViewLoading(true);
+    setWidgetReady(false);
+    setWebViewSessionKey((value) => value + 1);
+  };
 
   const normalizeAttempts = (data: AssignmentData): AssignmentAttempt[] => {
     if (Array.isArray(data.attempts) && data.attempts.length > 0) {
@@ -223,6 +234,30 @@ export default function AssignmentWidget({
     setError(null);
     setWidgetReady(false);
   }, [assignmentId]);
+
+  useEffect(() => {
+    const wasRetryMode = previousRetryModeRef.current;
+    const previousSelectedAttempt = previousSelectedAttemptRef.current;
+
+    const switchedAttemptInReview =
+      !retryMode &&
+      assignmentData?.hasSubmitted &&
+      typeof selectedAttemptNumber === "number" &&
+      selectedAttemptNumber !== previousSelectedAttempt &&
+      (typeof previousSelectedAttempt === "number" || wasRetryMode);
+
+    if (!wasRetryMode && retryMode) {
+      // Recreate WebView so widget-local state is clean for a new retry attempt.
+      resetWebViewSession();
+    } else if (switchedAttemptInReview) {
+      // Switching reviewed attempts must also recreate runtime to avoid retained support state.
+      resetWebViewSession();
+    }
+
+    previousRetryModeRef.current = retryMode;
+    previousSelectedAttemptRef.current =
+      typeof selectedAttemptNumber === "number" ? selectedAttemptNumber : null;
+  }, [assignmentData?.hasSubmitted, retryMode, selectedAttemptNumber]);
 
   // Send message to WebView using injectJavaScript
   const sendMessage = (message: any) => {
@@ -440,7 +475,10 @@ export default function AssignmentWidget({
     console.log("📤 Sending config (assignment mode)");
     sendMessage({
       type: "PARAMS_UPDATE",
-      payload: assignmentData.assignmentConfig,
+      payload: {
+        ...assignmentData.assignmentConfig,
+        __answer: null,
+      },
     });
   }, [assignmentData, retryMode, selectedAttemptNumber, widgetReady]);
 
@@ -713,6 +751,7 @@ export default function AssignmentWidget({
       {/* WebView */}
       <View style={styles.webViewContainer}>
         <WebView
+          key={`assignment-widget-${assignmentId}-${webViewSessionKey}`}
           ref={webViewRef}
           source={{ html: widgetHtml }}
           style={styles.webView}

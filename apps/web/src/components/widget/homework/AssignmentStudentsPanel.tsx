@@ -49,6 +49,7 @@ interface StudentWithStatus {
     latestSubmittedAt: string | null;
     attemptCount: number;
     correctAttemptCount: number;
+    highestScore?: number;
     evaluation: {
       isCorrect: boolean;
       score: number;
@@ -506,6 +507,19 @@ export default function AssignmentStudentsPanel({
                               const selectedEvaluation =
                                 selectedAttempt.evaluation ??
                                 student.submission!.evaluation;
+                              const maxScore =
+                                student.submission!.evaluation?.maxScore ?? 100;
+                              const computedHighestScore = Math.max(
+                                ...attempts.map(
+                                  (attempt) =>
+                                    attempt.evaluation?.score ??
+                                    student.submission!.evaluation?.score ??
+                                    0,
+                                ),
+                              );
+                              const highestScore =
+                                student.submission!.highestScore ??
+                                computedHighestScore;
                               const isViewingCurrentAttempt =
                                 activeReviewSubmission?.studentId ===
                                   student.id &&
@@ -541,6 +555,11 @@ export default function AssignmentStudentsPanel({
                                         student.submission.attemptCount,
                                         1,
                                       )}
+                                    </div>
+
+                                    <div className="text-muted-foreground">
+                                      {isVi ? "Cao nhất" : "Highest"}:{" "}
+                                      {highestScore}/{maxScore}
                                     </div>
                                   </div>
 

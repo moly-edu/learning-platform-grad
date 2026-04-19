@@ -88,6 +88,8 @@ const StudentCourseStructureContent: React.FC = () => {
     assignmentWord: isVi ? "Bài" : "Assignment",
     notDone: isVi ? "Chưa làm" : "Not done",
     doneWord: isVi ? "Đã làm" : "Done",
+    highest: isVi ? "Cao nhất" : "Highest",
+    scoreWord: isVi ? "Điểm" : "Score",
     lessonFallback: isVi ? "Bài học" : "Lesson",
     toggleAssignments: isVi
       ? "Mở/rút danh sách assignment"
@@ -294,6 +296,15 @@ const StudentCourseStructureContent: React.FC = () => {
                       );
                       const isPending =
                         !submissionStatus || !submissionStatus.hasSubmitted;
+                      const attemptCount = submissionStatus?.attemptCount ?? 0;
+                      const correctAttemptCount =
+                        submissionStatus?.correctAttemptCount ?? 0;
+                      const maxScore =
+                        submissionStatus?.evaluation?.maxScore ?? 100;
+                      const highestScore =
+                        submissionStatus?.highestScore ??
+                        submissionStatus?.evaluation?.score ??
+                        0;
 
                       return (
                         <div
@@ -330,6 +341,14 @@ const StudentCourseStructureContent: React.FC = () => {
                                 {submissionStatus.evaluation.score}/
                                 {submissionStatus.evaluation.maxScore}
                               </span>
+                            </div>
+                          )}
+
+                          {!isPending && submissionStatus && (
+                            <div className="text-xs text-muted-foreground">
+                              {t.correct}: {correctAttemptCount}/
+                              {Math.max(attemptCount, 1)} • {t.highest}:{" "}
+                              {highestScore}/{maxScore}
                             </div>
                           )}
 

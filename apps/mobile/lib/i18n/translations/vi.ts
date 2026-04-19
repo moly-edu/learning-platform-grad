@@ -103,6 +103,9 @@ const vi = {
     reviewAttempt: "Xem bài làm",
     retryNow: "Làm lại ngay",
     startNow: "Làm bài",
+    retries: "Làm lại",
+    correctRatio: "Đúng",
+    highest: "Cao nhất",
   },
   assignmentWidget: {
     noAssignmentId: "Thiếu assignment ID",

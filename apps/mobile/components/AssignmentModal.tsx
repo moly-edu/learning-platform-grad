@@ -23,6 +23,7 @@ export interface Assignment {
   latestSubmittedAt?: string | null;
   attemptCount?: number;
   correctAttemptCount?: number;
+  highestScore?: number;
   evaluation?: {
     isCorrect: boolean;
     score: number;
@@ -136,6 +137,10 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
     const displayTitle = isVietnamese
       ? `Bài ${index + 1}`
       : `Assignment ${index + 1}`;
+    const attemptCount = item.attemptCount ?? (item.hasSubmitted ? 1 : 0);
+    const correctAttemptCount = item.correctAttemptCount ?? 0;
+    const maxScore = item.evaluation?.maxScore ?? 100;
+    const highestScore = item.highestScore ?? item.evaluation?.score ?? 0;
 
     return (
       <Pressable
@@ -188,6 +193,14 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
               {item.evaluation.score}/{item.evaluation.maxScore}
             </Text>
           </View>
+        )}
+
+        {item.hasSubmitted && (
+          <Text style={styles.statsText}>
+            {t("assignmentModal.correctRatio")}: {correctAttemptCount}/
+            {Math.max(attemptCount, 1)} • {t("assignmentModal.highest")}:{" "}
+            {highestScore}/{maxScore}
+          </Text>
         )}
 
         <View style={styles.actionRow}>
@@ -245,7 +258,9 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
         <View style={styles.modalContent}>
           {/* Header */}
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{`${t("assignmentModal.title")} (${assignments.length})`}</Text>
+            <Text
+              style={styles.modalTitle}
+            >{`${t("assignmentModal.title")} (${assignments.length})`}</Text>
             <Pressable style={styles.closeButton} onPress={onClose}>
               <Text style={styles.closeButtonText}>✕</Text>
             </Pressable>
@@ -443,6 +458,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#334155",
     fontWeight: "700",
+  },
+  statsText: {
+    fontSize: 12,
+    color: "#475569",
+    marginBottom: 8,
+    fontWeight: "600",
   },
   actionRow: {
     flexDirection: "row",
