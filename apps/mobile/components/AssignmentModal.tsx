@@ -47,17 +47,23 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isVietnamese = i18n.resolvedLanguage?.toLowerCase().startsWith("vi");
+  const isTablet = Math.min(width, height) >= 768;
+  const tabletColumns = 3;
+  const tabletGap = 10;
+  const modalContentWidth = Math.min(width - 20, 980);
 
-  const assignmentCardWidth = Math.min(
-    280,
-    Math.max(190, Math.round(width * 0.3)),
-  );
+  const assignmentCardWidth = isTablet
+    ? Math.floor(
+        (modalContentWidth - 24 - tabletGap * (tabletColumns - 1)) /
+          tabletColumns,
+      )
+    : Math.min(280, Math.max(190, Math.round(width * 0.3)));
 
   const fetchAssignments = useCallback(async () => {
     try {
@@ -141,6 +147,10 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
     const correctAttemptCount = item.correctAttemptCount ?? 0;
     const maxScore = item.evaluation?.maxScore ?? 100;
     const highestScore = item.highestScore ?? item.evaluation?.score ?? 0;
+    const isLastColumn = isTablet && (index + 1) % tabletColumns === 0;
+    const startButtonLabel = isVietnamese
+      ? "Làm bài"
+      : t("assignmentModal.startNow");
 
     return (
       <Pressable
@@ -148,6 +158,9 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
           styles.assignmentItem,
           {
             width: assignmentCardWidth,
+            minHeight: isTablet ? 230 : undefined,
+            marginRight: isTablet ? (isLastColumn ? 0 : tabletGap) : 0,
+            marginBottom: isTablet ? tabletGap : 0,
           },
           {
             borderLeftColor: borderColor,
@@ -203,46 +216,60 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
           </Text>
         )}
 
-        <View style={styles.actionRow}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.actionButton,
-              styles.detailButton,
-              pressed && styles.card3dPressed,
-            ]}
-            onPress={(event) => {
-              event.stopPropagation();
-              handleAssignmentPress(item.id, "review");
-            }}
-          >
-            <Text style={styles.detailButtonText}>
-              {item.hasSubmitted
-                ? t("assignmentModal.reviewAttempt")
-                : t("assignmentModal.startNow")}
-            </Text>
-          </Pressable>
+        {item.hasSubmitted ? (
+          <View style={styles.actionRow}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionButton,
+                styles.detailButton,
+                pressed && styles.card3dPressed,
+              ]}
+              onPress={(event) => {
+                event.stopPropagation();
+                handleAssignmentPress(item.id, "review");
+              }}
+            >
+              <Text style={styles.detailButtonText}>
+                {t("assignmentModal.reviewAttempt")}
+              </Text>
+            </Pressable>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.actionButton,
-              styles.retryNowButton,
-              pressed && styles.card3dPressed,
-            ]}
-            onPress={(event) => {
-              event.stopPropagation();
-              handleAssignmentPress(
-                item.id,
-                item.hasSubmitted ? "retry" : "review",
-              );
-            }}
-          >
-            <Text style={styles.retryNowButtonText}>
-              {item.hasSubmitted
-                ? t("assignmentModal.retryNow")
-                : t("assignmentModal.startNow")}
-            </Text>
-          </Pressable>
-        </View>
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionButton,
+                styles.retryNowButton,
+                pressed && styles.card3dPressed,
+              ]}
+              onPress={(event) => {
+                event.stopPropagation();
+                handleAssignmentPress(item.id, "retry");
+              }}
+            >
+              <Text style={styles.retryNowButtonText}>
+                {t("assignmentModal.retryNow")}
+              </Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.actionRow}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionButton,
+                styles.singleStartButton,
+                styles.singleActionButton,
+                pressed && styles.card3dPressed,
+              ]}
+              onPress={(event) => {
+                event.stopPropagation();
+                handleAssignmentPress(item.id, "review");
+              }}
+            >
+              <Text style={styles.singleStartButtonText}>
+                {startButtonLabel}
+              </Text>
+            </Pressable>
+          </View>
+        )}
       </Pressable>
     );
   };
@@ -291,12 +318,24 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
             <View style={styles.centerContainer}>
               <Text style={styles.emptyText}>{t("assignmentModal.empty")}</Text>
             </View>
+          ) : isTablet ? (
+            <FlatList
+              data={assignments}
+              renderItem={renderAssignmentItem}
+              keyExtractor={(item) => item.id}
+              numColumns={tabletColumns}
+              key="assignment-list-tablet"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.listContent}
+              scrollEnabled
+            />
           ) : (
             <FlatList
               data={assignments}
               renderItem={renderAssignmentItem}
               keyExtractor={(item) => item.id}
               horizontal
+              key="assignment-list-phone"
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.listContent}
               scrollEnabled
@@ -412,7 +451,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderWidth: 2,
     borderColor: "#0f172a",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     shadowColor: "#0f172a",
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.12,
@@ -420,7 +459,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   assignmentHeader: {
-    marginBottom: 8,
+    marginBottom: 10,
   },
   assignmentTitleContainer: {
     flexDirection: "row",
@@ -429,7 +468,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   assignmentTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "800",
     color: "#0f172a",
     flex: 1,
@@ -440,34 +479,36 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "800",
     color: "white",
   },
   metaRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
+    justifyContent: "flex-start",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 10,
   },
   metaResult: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: "800",
   },
   metaScore: {
-    fontSize: 13,
+    fontSize: 15,
     color: "#334155",
     fontWeight: "700",
   },
   statsText: {
-    fontSize: 12,
+    fontSize: 14,
     color: "#475569",
-    marginBottom: 8,
+    marginBottom: 10,
     fontWeight: "600",
   },
   actionRow: {
     flexDirection: "row",
     gap: 8,
+    marginTop: "auto",
   },
   actionButton: {
     flex: 1,
@@ -491,6 +532,18 @@ const styles = StyleSheet.create({
     borderColor: "#042f2e",
   },
   retryNowButtonText: {
+    color: "#ffffff",
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  singleActionButton: {
+    flex: 1,
+  },
+  singleStartButton: {
+    backgroundColor: "#0f766e",
+    borderColor: "#042f2e",
+  },
+  singleStartButtonText: {
     color: "#ffffff",
     fontWeight: "800",
     fontSize: 12,

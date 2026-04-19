@@ -7,6 +7,8 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  FlatList,
+  useWindowDimensions,
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { API_BASE_URL } from "@/lib/config/api";
@@ -30,8 +32,16 @@ const LessonHomeworkContent: React.FC<{
 }> = ({ classId, lessonId, lessonTitle }) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const { width, height } = useWindowDimensions();
   const { isLoading, course, getHomeworkCounts, refetchHomeworkCounts } =
     useCourseStructure();
+
+  const isTablet = Math.min(width, height) >= 768;
+  const tabletColumns = 3;
+  const tabletGap = 10;
+  const tabletCardWidth = isTablet
+    ? Math.floor((width - 24 - tabletGap * (tabletColumns - 1)) / tabletColumns)
+    : 260;
 
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [selectedHomeworkId, setSelectedHomeworkId] = useState<string | null>(
@@ -66,6 +76,42 @@ const LessonHomeworkContent: React.FC<{
   const onPressHomework = (homeworkNodeId: string) => {
     setSelectedHomeworkId(homeworkNodeId);
     setShowAssignmentModal(true);
+  };
+
+  const renderHomeworkCard = (
+    hw: (typeof homeworkNodes)[number],
+    index: number,
+  ) => {
+    const counts = getHomeworkCounts(hw.id);
+    const done = Math.max(0, counts.totalAssigned - counts.pending);
+    const hasAssignments = counts.totalAssigned > 0;
+    const isLastColumn = isTablet && (index + 1) % tabletColumns === 0;
+
+    return (
+      <Pressable
+        key={hw.id}
+        style={({ pressed }) => [
+          styles.homeworkCard,
+          {
+            width: tabletCardWidth,
+            minHeight: isTablet ? 250 : 160,
+            marginRight: isTablet ? (isLastColumn ? 0 : tabletGap) : 0,
+            marginBottom: isTablet ? tabletGap : 0,
+          },
+          !hasAssignments && styles.homeworkCardDisabled,
+          hasAssignments && pressed && styles.card3dPressed,
+        ]}
+        onPress={() => hasAssignments && onPressHomework(hw.id)}
+        disabled={!hasAssignments}
+      >
+        <Text style={styles.homeworkCardTitle} numberOfLines={2}>
+          {hw.title}
+        </Text>
+        <Text style={styles.homeworkCardStats}>
+          {done}/{counts.totalAssigned}
+        </Text>
+      </Pressable>
+    );
   };
 
   if (isLoading) {
@@ -124,37 +170,24 @@ const LessonHomeworkContent: React.FC<{
             {t("lessonHomework.noHomework")}
           </Text>
         </View>
+      ) : isTablet ? (
+        <FlatList
+          data={homeworkNodes}
+          renderItem={({ item, index }) => renderHomeworkCard(item, index)}
+          keyExtractor={(item) => item.id}
+          numColumns={tabletColumns}
+          key={`lesson-homework-tablet-${Math.round(width)}`}
+          contentContainerStyle={styles.cardsGrid}
+          showsVerticalScrollIndicator={false}
+          scrollEnabled
+        />
       ) : (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.cardsRow}
         >
-          {homeworkNodes.map((hw) => {
-            const counts = getHomeworkCounts(hw.id);
-            const done = Math.max(0, counts.totalAssigned - counts.pending);
-            const hasAssignments = counts.totalAssigned > 0;
-
-            return (
-              <Pressable
-                key={hw.id}
-                style={({ pressed }) => [
-                  styles.homeworkCard,
-                  !hasAssignments && styles.homeworkCardDisabled,
-                  hasAssignments && pressed && styles.card3dPressed,
-                ]}
-                onPress={() => hasAssignments && onPressHomework(hw.id)}
-                disabled={!hasAssignments}
-              >
-                <Text style={styles.homeworkCardTitle} numberOfLines={2}>
-                  {hw.title}
-                </Text>
-                <Text style={styles.homeworkCardStats}>
-                  {done}/{counts.totalAssigned}
-                </Text>
-              </Pressable>
-            );
-          })}
+          {homeworkNodes.map((hw, index) => renderHomeworkCard(hw, index))}
         </ScrollView>
       )}
 
@@ -346,6 +379,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 18,
     gap: 10,
+  },
+  cardsGrid: {
+    paddingHorizontal: 12,
+    paddingBottom: 18,
   },
   homeworkCard: {
     width: 260,
