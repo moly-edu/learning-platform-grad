@@ -26,7 +26,7 @@ export async function Navbar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <Sparkles className="h-4.5 w-4.5 text-primary-foreground" />
           </div>
-          Moly
+          JoyMath
         </Link>
         <div className="flex items-center gap-2">
           <LanguageSwitcher />

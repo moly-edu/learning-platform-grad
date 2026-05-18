@@ -5,5 +5,11 @@
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "transformIgnorePatterns": [
+    "node_modules/(?!(better-auth|@ts-rest|@thallesp)/)"
+  ],
+  "moduleNameMapper": {
+    "^@repo/(.*)$": "<rootDir>/../../packages/$1"
   }
 }
