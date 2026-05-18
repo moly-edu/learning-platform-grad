@@ -1,0 +1,268 @@
+### ═══════════════════════════════════════════════════════════
+### LEARNING PLATFORM API TEST REQUESTS
+### ═══════════════════════════════════════════════════════════
+
+### VARIABLES
+@baseUrl = http://localhost:3000
+@apiUrl = {{baseUrl}}/api
+
+# Organization & Resource IDs
+@orgId = org-123
+@orgSlug = my-org
+@courseId = course-123
+@courseSlug = math-101
+@classId = class-456
+@userId = user-456
+@studentId = student-789
+@groupId = group-123
+
+# Lesson/Homework Node IDs
+@lessonNodeId = lesson-123
+@moduleId = module-123
+@homeworkId = homework-123
+@classLessonNodeId = classLessonNode-123
+
+# Test user credentials
+@testEmail = testuser@example.com
+@testPassword = Test@123456
+@testName = Test User
+
+### ═══════════════════════════════════════════════════════════
+### AUTHENTICATION (RUN THESE FIRST!)
+### ═══════════════════════════════════════════════════════════
+
+### 1. Sign Up (tạo user mới)
+POST {{apiUrl}}/auth/sign-up/email
+Content-Type: application/json
+
+{
+  "email": "{{testEmail}}",
+  "password": "{{testPassword}}",
+  "name": "{{testName}}"
+}
+
+### 2. Sign In (đăng nhập để lấy session)
+POST {{apiUrl}}/auth/sign-in/email
+Content-Type: application/json
+
+{
+  "email": "{{testEmail}}",
+  "password": "{{testPassword}}"
+}
+
+### 3. Get Current Session (kiểm tra session hiện tại)
+GET {{apiUrl}}/auth/session
+
+### ═══════════════════════════════════════════════════════════
+### 1. HEALTH CHECK
+### ═══════════════════════════════════════════════════════════
+
+### Health Check
+GET {{apiUrl}}/health
+
+### ═══════════════════════════════════════════════════════════
+### 2. COURSES API
+### ═══════════════════════════════════════════════════════════
+
+### Get all courses in organization
+GET {{apiUrl}}/courses?organizationId={{orgId}}
+
+### Get course by slug
+GET {{apiUrl}}/courses/by-slug/{{orgSlug}}/{{courseSlug}}
+
+### Create a new course
+POST {{apiUrl}}/courses
+Content-Type: application/json
+
+{
+  "name": "Mathematics 101",
+  "slug": "math-101",
+  "organizationId": "{{orgId}}",
+  "description": "Introduction to Mathematics"
+}
+
+### Add lesson node (module/lesson/homework)
+POST {{apiUrl}}/courses/{{courseId}}/nodes
+Content-Type: application/json
+
+{
+  "parentId": "{{moduleId}}",
+  "type": "lesson",
+  "title": "Lesson 1: Introduction",
+  "content": {
+    "text": "This is the lesson content",
+    "widgets": []
+  }
+}
+
+### Update lesson node
+PATCH {{apiUrl}}/courses/{{courseId}}/nodes/{{lessonNodeId}}
+Content-Type: application/json
+
+{
+  "title": "Updated Lesson Title",
+  "content": {
+    "text": "Updated lesson content",
+    "widgets": []
+  }
+}
+
+### Delete lesson node
+DELETE {{apiUrl}}/courses/{{courseId}}/nodes/{{lessonNodeId}}
+
+### Reorder lesson node
+PATCH {{apiUrl}}/courses/{{courseId}}/nodes/{{lessonNodeId}}/reorder
+Content-Type: application/json
+
+{
+  "targetParentId": "{{moduleId}}",
+  "targetIndex": 2
+}
+
+### Get homework status
+GET {{apiUrl}}/courses/homework-status?courseId={{courseId}}&classId={{classId}}
+
+### ═══════════════════════════════════════════════════════════
+### 3. CLASSES API
+### ═══════════════════════════════════════════════════════════
+
+### Get user's classes (grouped by role)
+GET {{apiUrl}}/classes
+
+### Get class with course data
+GET {{apiUrl}}/classes/{{classId}}
+
+### Create a new class
+POST {{apiUrl}}/classes
+Content-Type: application/json
+
+{
+  "name": "Class 10A",
+  "courseId": "{{courseId}}",
+  "organizationId": "{{orgId}}"
+}
+
+### Add member to class
+POST {{apiUrl}}/classes/{{classId}}/members
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "role": "student"
+}
+
+### Get class students
+GET {{apiUrl}}/classes/{{classId}}/students
+
+### Get student's pending assignments
+GET {{apiUrl}}/classes/{{classId}}/pending-assignments
+
+### Get pending assignments for multiple classes (batch)
+POST {{apiUrl}}/classes/pending-assignments-batch
+Content-Type: application/json
+
+{
+  "classIds": ["{{classId}}", "class-789", "class-101"]
+}
+
+### ═══════════════════════════════════════════════════════════
+### 4. USERS API
+### ═══════════════════════════════════════════════════════════
+
+### Find user by email
+GET {{apiUrl}}/users/search?email={{testEmail}}
+
+### ═══════════════════════════════════════════════════════════
+### 5. MEMBERS API
+### ═══════════════════════════════════════════════════════════
+
+### Check if user belongs to organization (by orgId)
+GET {{apiUrl}}/members/check?orgId={{orgId}}
+
+### Check if user belongs to organization (by orgSlug)
+GET {{apiUrl}}/members/check?orgSlug={{orgSlug}}
+
+### Add member to organization
+POST {{apiUrl}}/members
+Content-Type: application/json
+
+{
+  "organizationId": "{{orgId}}",
+  "userId": "{{userId}}",
+  "role": "member"
+}
+
+### ═══════════════════════════════════════════════════════════
+### 6. CLASS GROUPS API
+### ═══════════════════════════════════════════════════════════
+
+### Get groups in class
+GET {{apiUrl}}/class-groups/{{classId}}
+
+### Create a group
+POST {{apiUrl}}/class-groups/{{classId}}
+Content-Type: application/json
+
+{
+  "name": "Group A",
+  "description": "First working group"
+}
+
+### Add student to group
+POST {{apiUrl}}/class-groups/{{groupId}}/members
+Content-Type: application/json
+
+{
+  "studentId": "{{studentId}}"
+}
+
+### ═══════════════════════════════════════════════════════════
+### 7. CLASS LESSON NODES API
+### ═══════════════════════════════════════════════════════════
+
+### Load class lesson nodes
+GET {{apiUrl}}/class-lesson-nodes?lessonNodeId={{lessonNodeId}}&classId={{classId}}
+
+### Get counts of class lesson nodes
+POST {{apiUrl}}/class-lesson-nodes/counts
+Content-Type: application/json
+
+{
+  "lessonNodeIds": ["{{lessonNodeId}}", "lesson-456"],
+  "classId": "{{classId}}"
+}
+
+### Add class lesson node (lesson_note or homework_imp)
+POST {{apiUrl}}/class-lesson-nodes
+Content-Type: application/json
+
+{
+  "lessonNodeId": "{{lessonNodeId}}",
+  "classId": "{{classId}}",
+  "type": "lesson_note",
+  "content": {
+    "text": "My lesson notes",
+    "attachments": []
+  }
+}
+
+### Delete class lesson node
+DELETE {{apiUrl}}/class-lesson-nodes/{{classLessonNodeId}}?classId={{classId}}
+
+### Get build run ID for lesson node
+GET {{apiUrl}}/class-lesson-nodes/{{lessonNodeId}}/build-run
+
+### ═══════════════════════════════════════════════════════════
+### 8. WIDGETS API
+### ═══════════════════════════════════════════════════════════
+
+### Get all widgets
+GET {{apiUrl}}/widgets
+
+### ═══════════════════════════════════════════════════════════
+### TIPS:
+### - Replace @variables with actual IDs when testing
+### - Ensure backend is running on http://localhost:3000
+### - Run authentication endpoints first to get session
+### - Use Ctrl+Alt+R (or Cmd+Alt+R on Mac) to send request
+### ═══════════════════════════════════════════════════════════

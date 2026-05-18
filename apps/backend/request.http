@@ -1,0 +1,391 @@
+### ========================================
+### VARIABLES
+### ========================================
+
+@baseUrl = http://localhost:8000
+@orgId = org-123
+@courseId = course-123
+@classId = class-456
+@userId = user-456
+@studentId = student-789
+@groupId = group-123
+@lessonNodeId = lesson-123
+@moduleId = module-123
+@homeworkId = homework-123
+@classLessonNodeId = classLessonNode-123
+
+# Test user credentials
+@testEmail = testuser@example.com
+@testPassword = Test@123456
+@testName = Test User
+
+
+### ========================================
+### AUTHENTICATION (RUN THESE FIRST!)
+### ========================================
+
+### 1. Sign Up (tạo user mới)
+POST {{baseUrl}}/api/auth/sign-up/email
+Content-Type: application/json
+Origin: http://localhost:3000
+
+{
+  "email": "{{testEmail}}",
+  "password": "{{testPassword}}",
+  "name": "{{testName}}"
+}
+
+### 2. Sign In (đăng nhập để lấy session)
+POST {{baseUrl}}/api/auth/sign-in/email
+Content-Type: application/json
+Origin: http://localhost:3000
+
+{
+  "email": "{{testEmail}}",
+  "password": "{{testPassword}}"
+}
+
+### 3. Get Current Session (kiểm tra session hiện tại)
+GET {{baseUrl}}/api/auth/session
+Origin: http://localhost:3000
+
+
+### ========================================
+### HEALTH CHECK
+### ========================================
+
+### Check API health
+GET {{baseUrl}}/api/health
+
+
+### ========================================
+### USERS
+### ========================================
+
+### Search user by email
+GET {{baseUrl}}/api/users/search?email=user@example.com
+
+### Search user by email (with valid user)
+GET {{baseUrl}}/api/users/search?email=tranductamhoctap@gmail.com
+
+
+### ========================================
+### PERMISSIONS
+### ========================================
+
+### Check if current user is admin
+GET {{baseUrl}}/api/permissions/is-admin
+
+
+### ========================================
+### COURSES
+### ========================================
+
+### Get all courses in an organization
+GET {{baseUrl}}/api/courses?organizationId={{orgId}}
+
+### Get course by slug
+GET {{baseUrl}}/api/courses/by-slug/my-org/intro-course
+
+### Create a new course
+POST {{baseUrl}}/api/courses
+Content-Type: application/json
+
+{
+  "name": "Introduction to Web Development",
+  "slug": "intro-web-dev",
+  "organizationId": "{{orgId}}",
+  "description": "Learn the basics of web development"
+}
+
+### Add a lesson node to course
+POST {{baseUrl}}/api/courses/{{courseId}}/nodes
+Content-Type: application/json
+
+{
+  "parentId": "root",
+  "type": "module",
+  "title": "Module 1: Fundamentals",
+  "content": {
+    "description": "Introduction to fundamentals"
+  }
+}
+
+### Add a lesson under module
+POST {{baseUrl}}/api/courses/{{courseId}}/nodes
+Content-Type: application/json
+
+{
+  "parentId": "{{moduleId}}",
+  "type": "lesson",
+  "title": "Lesson 1: HTML Basics",
+  "content": {
+    "description": "Learn HTML basics"
+  }
+}
+
+### Add homework node
+POST {{baseUrl}}/api/courses/{{courseId}}/nodes
+Content-Type: application/json
+
+{
+  "parentId": "{{lessonNodeId}}",
+  "type": "homework",
+  "title": "Homework 1: Build a Simple Page",
+  "content": {
+    "description": "Create your first webpage"
+  }
+}
+
+### Update a lesson node
+PATCH {{baseUrl}}/api/courses/{{courseId}}/nodes/node-123
+Content-Type: application/json
+
+{
+  "title": "Updated Lesson Title",
+  "content": {
+    "description": "Updated description"
+  }
+}
+
+### Reorder/move a lesson node
+PATCH {{baseUrl}}/api/courses/{{courseId}}/nodes/node-123/reorder
+Content-Type: application/json
+
+{
+  "targetParentId": "module-456",
+  "targetIndex": 0
+}
+
+### Delete a lesson node
+DELETE {{baseUrl}}/api/courses/{{courseId}}/nodes/node-123
+
+### Get homework status for course
+GET {{baseUrl}}/api/courses/homework-status?courseId={{courseId}}&classId={{classId}}
+
+
+### ========================================
+### CLASSES
+### ========================================
+
+### Get current user's classes
+GET {{baseUrl}}/api/classes
+
+### Get specific class with course data
+GET {{baseUrl}}/api/classes/class-123
+
+### Create a new class
+POST {{baseUrl}}/api/classes
+Content-Type: application/json
+
+{
+  "name": "Web Dev - Class A",
+  "courseId": "{{courseId}}",
+  "organizationId": "{{orgId}}"
+}
+
+### Add a member to class
+POST {{baseUrl}}/api/classes/class-123/members
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "role": "teacher"
+}
+
+### Add student to class
+POST {{baseUrl}}/api/classes/class-123/members
+Content-Type: application/json
+
+{
+  "userId": "{{studentId}}",
+  "role": "student"
+}
+
+### Get all students in a class
+GET {{baseUrl}}/api/classes/class-123/students
+
+### Get student's pending assignments
+GET {{baseUrl}}/api/classes/class-123/pending-assignments
+
+### Get pending assignments for multiple classes (batch)
+POST {{baseUrl}}/api/classes/pending-assignments-batch
+Content-Type: application/json
+
+{
+  "classIds": ["class-123", "class-456", "class-789"]
+}
+
+
+### ========================================
+### CLASS GROUPS
+### ========================================
+
+### Create a class group
+POST {{baseUrl}}/api/class-groups
+Content-Type: application/json
+
+{
+  "classId": "class-123",
+  "name": "Group A - Beginners",
+  "description": "Students new to programming"
+}
+
+### Update a class group
+PATCH {{baseUrl}}/api/class-groups/{{groupId}}
+Content-Type: application/json
+
+{
+  "classId": "class-123",
+  "name": "Group A - Updated Name",
+  "description": "Updated description"
+}
+
+### Add member to class group
+POST {{baseUrl}}/api/class-groups/{{groupId}}/members
+Content-Type: application/json
+
+{
+  "classId": "class-123",
+  "userId": "{{studentId}}"
+}
+
+### Remove member from class group
+DELETE {{baseUrl}}/api/class-groups/{{groupId}}/members/{{studentId}}?classId=class-123
+
+### Delete a class group
+DELETE {{baseUrl}}/api/class-groups/{{groupId}}?classId=class-123
+
+
+### ========================================
+### CLASS LESSON NODES
+### ========================================
+
+### Load class lesson nodes for a lesson
+GET {{baseUrl}}/api/class-lesson-nodes?lessonNodeId={{lessonNodeId}}&classId={{classId}}
+
+### Get counts of class lesson nodes
+POST {{baseUrl}}/api/class-lesson-nodes/counts
+Content-Type: application/json
+
+{
+  "lessonNodeIds": ["lesson-123", "lesson-456"],
+  "classId": "{{classId}}"
+}
+
+### Create a class lesson node (lesson note)
+POST {{baseUrl}}/api/class-lesson-nodes
+Content-Type: application/json
+
+{
+  "lessonNodeId": "{{lessonNodeId}}",
+  "classId": "{{classId}}",
+  "type": "lesson_note",
+  "content": {
+    "notes": "Important points from the lesson",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+}
+
+### Create a class lesson node (homework implementation)
+POST {{baseUrl}}/api/class-lesson-nodes
+Content-Type: application/json
+
+{
+  "lessonNodeId": "{{homeworkId}}",
+  "classId": "{{classId}}",
+  "type": "homework_imp",
+  "content": {
+    "submissionId": "submit-789",
+    "code": "console.log('Hello World');",
+    "status": "submitted"
+  }
+}
+
+### Delete a class lesson node
+DELETE {{baseUrl}}/api/class-lesson-nodes/{{classLessonNodeId}}?classId={{classId}}
+
+### Get build run ID from lesson node
+GET {{baseUrl}}/api/class-lesson-nodes/{{lessonNodeId}}/build-run
+
+### Get assignment stats for a class
+GET {{baseUrl}}/api/class-lesson-nodes/assignment-stats/{{classId}}
+
+
+### ========================================
+### MEMBERS
+### ========================================
+
+### Check if user belongs to organization
+GET {{baseUrl}}/api/members/check?orgId={{orgId}}
+
+### Check if user belongs to organization by slug
+GET {{baseUrl}}/api/members/check?orgSlug=my-org
+
+### Add a member to an organization
+POST {{baseUrl}}/api/members
+Content-Type: application/json
+
+{
+  "organizationId": "{{orgId}}",
+  "userId": "{{userId}}",
+  "role": "admin"
+}
+
+### Add member to organization as member role
+POST {{baseUrl}}/api/members
+Content-Type: application/json
+
+{
+  "organizationId": "{{orgId}}",
+  "userId": "user-789",
+  "role": "member"
+}
+
+
+### ========================================
+### WIDGETS
+### ========================================
+
+### Get all widgets
+GET {{baseUrl}}/api/widgets
+
+
+### ========================================
+### HƯỚNG DẪN SỬ DỤNG / USAGE GUIDE
+### ========================================
+###
+### 🔐 AUTHENTICATION (Phải chạy trước tiên!)
+### ───────────────────────────────────────
+### 1. Chạy "Sign Up" để tạo user mới (lần đầu)
+###    - Hoặc "Sign In" nếu user đã tồn tại
+### 2. Response sẽ trả về session → REST Client tự lưu cookie
+### 3. Sau đó các request khác sẽ tự động có session
+###
+### ✅ SỰ CỐ GIẢI QUYẾT UNAUTHORIZED
+### ───────────────────────────────────────
+### - Endpoint yêu cầu authentication: phải chạy Sign In trước
+### - @AllowAnonymous() endpoints: không cần session
+###   * /api/health (check server status)
+###   * /api/widgets (get all widgets)
+###
+### 🔄 COOKIE BEHAVIOR
+### ───────────────────────────────────────
+### - REST Client tự động lưu & gửi cookie từ Sign In response
+### - Cookie được lưu và dùng cho tất cả request tiếp theo
+### - Nếu cookie hết hạn/bị xóa → phải Sign In lại
+###
+### 📝 CHỈNH SỬA VARIABLES
+### ───────────────────────────────────────
+### - Thay đổi @testEmail, @testPassword tại phần VARIABLES
+### - Hoặc click "Edit Request" trên từng request để customize
+### - Các @orgId, @courseId, v.v. dùng giá trị test - thay bằng ID thực tế từ DB
+###
+### 🚀 NEXT STEPS
+### ───────────────────────────────────────
+### 1. Click "Send Request" trên "Sign Up" → tạo user
+### 2. Nếu error (user tồn tại) → run "Sign In" thay vì Sign Up
+### 3. Check response từ Sign In → xem session info
+### 4. Bây giờ có thể test các endpoint khác
+### 5. Cập nhật @orgId, @courseId, @classId bằng ID thực tế để test với data
+###
