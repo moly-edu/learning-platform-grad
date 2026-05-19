@@ -10,7 +10,9 @@
     "test": "vitest run",
     "test:unit": "vitest run __tests__/server",
     "test:integration": "vitest run __tests__/integration",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "perf:k6:public": "powershell -ExecutionPolicy Bypass -File performance/run-k6.ps1 -Script performance/k6/public-api.js",
+    "perf:k6:protected": "powershell -ExecutionPolicy Bypass -File performance/run-k6.ps1 -Script performance/k6/protected-api.js"
   },
   "dependencies": {
     "@blocknote/core": "^0.47.0",

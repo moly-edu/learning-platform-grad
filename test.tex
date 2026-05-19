@@ -1,0 +1,228 @@
+\chapter{Thử nghiệm và đánh giá}
+
+Chương này trình bày quá trình thử nghiệm và đánh giá hệ thống JoyMath sau khi hoàn thành giai đoạn hiện thực hóa. Mục tiêu của chương nhằm xác minh tính đúng đắn của các chức năng nghiệp vụ, đánh giá mức độ ổn định của hệ thống và hiệu năng vận hành trong các điều kiện sử dụng khác nhau.
+
+Trong phạm vi khóa luận, việc đánh giá tập trung vào ba nhóm chính gồm kiểm thử chức năng, kiểm thử phi chức năng và kiểm thử tải cơ bản. Các thử nghiệm được thực hiện trên môi trường phát triển của hệ thống nhằm đánh giá khả năng vận hành của nền tảng trước khi mở rộng quy mô sử dụng.
+
+\section{Môi trường thử nghiệm}
+
+Các thử nghiệm được thực hiện trên môi trường phát triển của hệ thống nhằm đánh giá khả năng vận hành trong điều kiện sử dụng thông thường. Bên cạnh các ca kiểm thử chức năng tự động, quá trình đánh giá còn sử dụng các công cụ chuyên biệt cho kiểm thử đầu cuối và kiểm thử tải API.
+
+Bảng \ref{tab:test-environment} trình bày cấu hình môi trường được sử dụng trong quá trình thử nghiệm hệ thống.
+
+\begin{table}[H]
+\centering
+\caption{Cấu hình môi trường thử nghiệm}
+\label{tab:test-environment}
+\small
+\begin{tabular}{|p{4.2cm}|p{8.5cm}|}
+\hline
+\textbf{Thành phần} & \textbf{Cấu hình} \\ \hline
+
+Kiến trúc mã nguồn & Monorepo \\ \hline
+
+Công cụ unit test và integration test & Vitest \\ \hline
+
+Công cụ end-to-end test & Playwright \\ \hline
+
+Công cụ kiểm thử tải API & k6 \\ \hline
+
+Công cụ hỗ trợ thực thi & Node.js, npm workspace \\ \hline
+\end{tabular}
+\end{table}
+
+Ngoài các kiểm thử thủ công, hệ thống cũng sử dụng các kịch bản tự động hóa nhằm đánh giá các luồng nghiệp vụ lặp lại và giảm nguy cơ phát sinh lỗi hồi quy trong quá trình phát triển. Các kịch bản tự động được thiết kế để kiểm tra từ logic xử lý cục bộ, các API nghiệp vụ cho đến một số luồng sử dụng đại diện. Việc kết hợp giữa kiểm thử thủ công và tự động giúp đảm bảo độ phủ kiểm thử.
+
+\section{Kiểm thử chức năng}
+
+\subsection{Mục tiêu và phạm vi}
+
+Kiểm thử chức năng tập trung xác minh các luồng nghiệp vụ chính của hệ thống, bao gồm xây dựng chương trình học, quản lý lớp học, giao bài tập, thực hiện bài tập, giám sát quá trình học tập và quản lý bài tập tương tác.
+
+Quá trình kiểm thử tập trung vào các phần đang được sử dụng thực tế trong hệ thống, đặc biệt là các API nghiệp vụ, các hàm xử lý dữ liệu và các luồng xác thực cơ bản. Bên cạnh đó, một số thành phần liên quan tới widget tương tác cũng được đưa vào phạm vi đánh giá để đảm bảo khả năng hoạt động ổn định trên nền tảng.
+
+\subsection{Các mức kiểm thử được áp dụng}
+
+Để đảm bảo chất lượng phần mềm ở nhiều cấp độ khác nhau, khóa luận áp dụng ba mức kiểm thử chính gồm unit test, integration test và end-to-end test.
+
+Bảng \ref{tab:functional-test-levels} mô tả đối tượng và cách thức thực hiện của từng mức kiểm thử.
+
+\begin{table}[H]
+\centering
+\caption{Chiến lược kiểm thử chức năng theo mức}
+\label{tab:functional-test-levels}
+\small
+\begin{tabular}{|p{2.8cm}|p{4.7cm}|p{5.3cm}|}
+\hline
+\textbf{Mức kiểm thử} & \textbf{Đối tượng chính} & \textbf{Cách thực hiện} \\ \hline
+
+Unit test & Hàm nghiệp vụ, hàm tiện ích, logic xử lý dữ liệu, validate dữ liệu & Viết test cho từng hàm độc lập, sử dụng dữ liệu giả lập và kiểm tra kết quả đầu ra cùng các trường hợp biên. \\ \hline
+
+Integration test & API, logic xác thực, kiểm tra quyền truy cập, định dạng dữ liệu phản hồi & Gọi trực tiếp các route handler với dữ liệu kiểm thử, mock các thành phần phụ thuộc cần thiết và kiểm tra mã trạng thái cùng dữ liệu phản hồi. \\ \hline
+
+E2E test & Một số luồng sử dụng đại diện ở mức giao diện người dùng & Mô phỏng thao tác thực tế trên trình duyệt như truy cập trang công khai, kiểm tra biểu mẫu xác thực và kiểm tra chuyển hướng của các route được bảo vệ. \\ \hline
+\end{tabular}
+\end{table}
+
+Các mức kiểm thử này giúp đánh giá hệ thống từ cấp độ logic xử lý nhỏ nhất cho đến toàn bộ hành trình người dùng trong môi trường gần thực tế.
+
+\subsection{Tổng hợp kết quả kiểm thử chức năng}
+
+Sau quá trình thực hiện các ca kiểm thử, hệ thống tiến hành tổng hợp kết quả theo từng mức kiểm thử nhằm đánh giá độ ổn định tổng thể của hệ thống.
+
+Bảng \ref{tab:functional-summary} trình bày thống kê kết quả kiểm thử chức năng.
+
+\begin{table}[H]
+\centering
+\caption{Tổng hợp kết quả kiểm thử chức năng}
+\label{tab:functional-summary}
+\small
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.3cm}|p{2.3cm}|p{2.3cm}|}
+\hline
+\textbf{Nhóm kiểm thử} & \textbf{Tổng số} & \textbf{Đạt} & \textbf{Chưa đạt} & \textbf{Tỉ lệ đạt} \\ \hline
+
+Unit test & 30 & 30 & 0 & 100\% \\ \hline
+
+Integration test & 29 & 29 & 0 & 100\% \\ \hline
+
+E2E test & 12 & 12 & 0 & 100\% \\ \hline
+
+Tổng hợp & 71 & 71 & 0 & 100\% \\ \hline
+\end{tabular}
+\end{table}
+
+Kết quả trong Bảng \ref{tab:functional-summary} cho thấy toàn bộ các ca kiểm thử chức năng đều đạt yêu cầu. Điều này cho thấy các chức năng nghiệp vụ cốt lõi và các API quan trọng của hệ thống hoạt động ổn định trên các trường hợp đã được đặc tả.
+
+\section{Kiểm thử phi chức năng}
+
+\subsection{Mục tiêu và tiêu chí đánh giá}
+
+Bên cạnh việc kiểm tra tính đúng đắn của chức năng, hệ thống cũng được đánh giá theo các tiêu chí phi chức năng nhằm xác minh khả năng vận hành ổn định trong điều kiện sử dụng thực tế.
+
+Các tiêu chí đánh giá tập trung vào hiệu năng, độ ổn định, tính khả dụng và kiểm soát truy cập cơ bản.
+
+\subsection{Các tiêu chí kiểm thử phi chức năng}
+
+Quá trình kiểm thử phi chức năng được tổ chức dựa trên các nhóm tiêu chí chính sau:
+
+\begin{itemize}
+    \item \textbf{Hiệu năng}: đo thời gian phản hồi của các API nghiệp vụ chính trong điều kiện tải ngắn hạn.
+    
+    \item \textbf{Ổn định}: kiểm tra khả năng vận hành liên tục khi có nhiều request được gửi lặp lại trong khoảng thời gian ngắn.
+    
+    \item \textbf{Khả dụng}: đánh giá khả năng truy cập các trang công khai, biểu mẫu xác thực và điều hướng cơ bản.
+    
+    \item \textbf{Bảo mật cơ bản}: xác minh kiểm soát phân quyền và khả năng chặn truy cập trái phép tới tài nguyên không hợp lệ.
+\end{itemize}
+
+Bảng \ref{tab:non-functional-results} trình bày kết quả kiểm thử phi chức năng của hệ thống.
+
+\begin{table}[H]
+\centering
+\caption{Kết quả kiểm thử phi chức năng}
+\label{tab:non-functional-results}
+\small
+\begin{tabular}{|p{2.8cm}|p{4.4cm}|p{3.0cm}|p{2.8cm}|}
+\hline
+\textbf{Hạng mục} & \textbf{Chỉ số đánh giá} & \textbf{Mục tiêu} & \textbf{Kết quả} \\ \hline
+
+Hiệu năng API công khai & Chỉ số \texttt{avg} và \texttt{p(95)} của nhóm API công khai & \texttt{avg < 600 ms}, \texttt{p(95) < 1000 ms} & Đạt \\ \hline
+
+Hiệu năng API yêu cầu xác thực & Chỉ số \texttt{avg} và \texttt{p(95)} của nhóm API yêu cầu xác thực & \texttt{avg < 600 ms}, \texttt{p(95) < 1000 ms} & Đạt \\ \hline
+
+Độ ổn định khi chịu tải ngắn hạn & Tỉ lệ request lỗi trong các bài load test & $< 5\%$ & Đạt \\ \hline
+
+Khả dụng cơ bản & Truy cập trang công khai, biểu mẫu xác thực và điều hướng cơ bản & Hoạt động đúng & Đạt \\ \hline
+
+Phân quyền truy cập & Người dùng không thể truy cập dữ liệu trái vai trò & Không phát hiện truy cập sai quyền & Đạt \\ \hline
+\end{tabular}
+\end{table}
+
+Kết quả trong Bảng \ref{tab:non-functional-results} cho thấy hệ thống đạt mức chấp nhận cho giai đoạn thử nghiệm. Các API trọng yếu vận hành ổn định, thời gian phản hồi phù hợp và chưa ghi nhận lỗi nghiêm trọng ảnh hưởng đến các luồng sử dụng chính.
+
+\section{Kiểm thử tải và hiệu năng API}
+
+\subsection{Mục tiêu}
+
+Kiểm thử tải được thực hiện nhằm đánh giá khả năng phản hồi và độ ổn định của hệ thống khi có nhiều request API được gửi liên tục trong một khoảng thời gian ngắn. Đây là hình thức load test ở mức dịch vụ, tập trung vào các API nghiệp vụ quan trọng thay vì kiểm tra toàn bộ giao diện người dùng.
+
+\subsection{Kịch bản kiểm thử}
+
+Các kịch bản tải được mô phỏng bằng công cụ kiểm thử HTTP \texttt{k6} với nhiều mức số lượng người dùng ảo đồng thời khác nhau.
+
+Bảng \ref{tab:load-test-scenarios} trình bày các kịch bản kiểm thử tải được sử dụng trong quá trình đánh giá hệ thống.
+
+\begin{table}[H]
+\centering
+\caption{Các kịch bản kiểm thử tải}
+\label{tab:load-test-scenarios}
+\small
+\begin{tabular}{|p{2cm}|p{5.5cm}|p{4cm}|}
+\hline
+\textbf{Kịch bản} & \textbf{Mô tả} & \textbf{Cấu hình tải} \\ \hline
+
+Smoke-Public & Gửi lặp lại các request tới nhóm API công khai nhằm kiểm tra phản hồi cơ bản của hệ thống & 1 VU trong 10 giây \\ \hline
+
+Load-Public & Gửi liên tục các request tới nhóm API công khai nhằm đánh giá thời gian phản hồi trung bình và độ ổn định ngắn hạn & 5 VU trong 20 giây \\ \hline
+
+Load-Protected & Gửi liên tục các request tới nhóm API yêu cầu xác thực nhằm đánh giá phản hồi thực tế khi có thêm bước xác thực và kiểm tra quyền truy cập & 5 VU trong 30 giây \\ \hline
+
+\end{tabular}
+\end{table}
+
+Các kịch bản trên được xây dựng nhằm mô phỏng điều kiện vận hành cơ bản của hệ thống ở mức dịch vụ API, qua đó cung cấp số liệu thực nghiệm về thời gian phản hồi và tỉ lệ lỗi.
+
+\subsection{Kết quả kiểm thử tải}
+
+Sau quá trình thực hiện các kịch bản tải, hệ thống tiến hành đo số lượng request xử lý được, thời gian phản hồi trung bình, thời gian phản hồi bách phân vị 95 và tỉ lệ lỗi phát sinh nhằm đánh giá mức độ ổn định khi tải tăng lên.
+
+Bảng \ref{tab:load-test-results} trình bày kết quả kiểm thử tải của hệ thống.
+
+\begin{table}[H]
+\centering
+\caption{Kết quả kiểm thử tải}
+\label{tab:load-test-results}
+\small
+\begin{tabular}{|p{2.6cm}|p{2.2cm}|p{2.0cm}|p{2.3cm}|p{2.3cm}|p{1.8cm}|}
+\hline
+\textbf{Kịch bản} & \textbf{Số request} & \textbf{Tỉ lệ lỗi} & \textbf{Avg} & \textbf{P(95)} & \textbf{Đánh giá} \\ \hline
+
+Smoke-Public & 14 & 0.00\% & 250.31 ms & 336.53 ms & Đạt \\ \hline
+
+Load-Public & 132 & 0.00\% & 279.93 ms & 372.70 ms & Đạt \\ \hline
+
+Load-Protected & 224 & 0.00\% & 569.90 ms & 865.86 ms & Đạt \\ \hline
+\end{tabular}
+\end{table}
+
+Kết quả trong Bảng \ref{tab:load-test-results} cho thấy nhóm API công khai có thời gian phản hồi tương đối thấp và ổn định. Ở cả hai kịch bản smoke và load, chỉ số \texttt{avg} đều dưới 300 ms, trong khi chỉ số \texttt{p(95)} đều thấp hơn 400 ms.
+
+Đối với nhóm API yêu cầu xác thực, thời gian phản hồi cao hơn rõ rệt do phải thực hiện thêm các bước xác thực, kiểm tra quyền truy cập và xử lý dữ liệu nghiệp vụ. Tuy vậy, kết quả đo được vẫn nằm trong ngưỡng chấp nhận, với \texttt{avg} là 569.90 ms, \texttt{p(95)} là 865.86 ms và không ghi nhận request lỗi trong quá trình kiểm thử.
+
+Nhìn chung, kết quả kiểm thử tải cho thấy hệ thống duy trì được độ ổn định tốt ở mức tải ngắn hạn đối với các API quan trọng, đồng thời phản ánh được sự khác biệt hợp lý giữa nhóm API công khai và nhóm API yêu cầu xác thực.
+
+\section{Đánh giá kết quả}
+
+Kết quả kiểm thử cho thấy hệ thống đã đáp ứng các chức năng nghiệp vụ cốt lõi được đặt ra trong giai đoạn thiết kế. Các phần quan trọng như quản lý lớp học, cấu trúc chương trình học, giao bài tập, theo dõi trạng thái bài tập và quản lý widget đều hoạt động ổn định trên các trường hợp đã được kiểm thử.
+
+Ở góc độ hiệu năng, nhóm API công khai có thời gian phản hồi tốt trong điều kiện tải thông thường, còn nhóm API yêu cầu xác thực tuy chậm hơn nhưng vẫn nằm trong ngưỡng đánh giá đã đặt ra. Các kết quả này cho thấy hệ thống có khả năng vận hành ổn định đối với các luồng API chính trong phạm vi thử nghiệm của khóa luận.
+
+Kết quả kiểm thử tải cơ bản cho thấy hệ thống có khả năng xử lý ổn định nhiều request liên tiếp ở quy mô thử nghiệm nhỏ đến trung bình. Tuy nhiên, đây mới là mức load test ngắn hạn ở tầng API, chưa phản ánh đầy đủ hành vi của hệ thống trong các kịch bản tải lớn hoặc vận hành kéo dài.
+
+Nhìn chung, nền tảng đã đạt mức hoàn thiện phù hợp cho mục tiêu của khóa luận và đủ khả năng tiếp tục phát triển thành hệ thống triển khai thực tế trong các giai đoạn tiếp theo.
+
+\section{Hạn chế của thử nghiệm}
+
+Mặc dù hệ thống đã được kiểm thử trên nhiều khía cạnh khác nhau, quá trình thử nghiệm trong phạm vi khóa luận vẫn còn một số hạn chế nhất định. Thứ nhất, hệ thống chưa được đánh giá trên quy mô người dùng thực tế trong thời gian dài, do đó chưa phản ánh đầy đủ các tình huống sử dụng phức tạp trong môi trường vận hành thực tế. Thứ hai, các kiểm thử tải mới dừng ở mức load test cơ bản đối với API, chưa đánh giá sâu các tình huống tải cực lớn hoặc các trường hợp bất thường về hạ tầng.
+
+Ngoài ra, một số khía cạnh như kiểm thử bảo mật chuyên sâu, khả năng chịu lỗi hạ tầng và tối ưu chi phí vận hành cloud vẫn chưa được thực hiện đầy đủ. Trong các giai đoạn tiếp theo, hệ thống cần được mở rộng thử nghiệm với người dùng thật, đồng thời bổ sung các cơ chế giám sát, kiểm thử tự động và tối ưu hạ tầng để nâng cao độ tin cậy khi triển khai trên quy mô lớn.
+
+\section{Kết chương}
+
+Chương này đã trình bày quá trình thử nghiệm và đánh giá hệ thống JoyMath trên nhiều khía cạnh gồm chức năng, hiệu năng và độ ổn định.
+
+Kết quả kiểm thử cho thấy các chức năng nghiệp vụ cốt lõi hoạt động đúng theo yêu cầu đã đặc tả, đồng thời hệ thống duy trì được mức phản hồi và độ ổn định phù hợp trong các điều kiện sử dụng thử nghiệm.
+
+Bên cạnh đó, các thử nghiệm tải cơ bản cũng cho thấy nền tảng duy trì được mức phản hồi và độ ổn định phù hợp đối với các API quan trọng trong phạm vi thử nghiệm. Mặc dù vẫn còn một số hạn chế về quy mô và phạm vi đánh giá, các kết quả đạt được cho thấy hệ thống đã đáp ứng được mục tiêu nghiên cứu và có tiềm năng tiếp tục mở rộng trong các giai đoạn phát triển tiếp theo.
+
+Những kết quả này đồng thời xác nhận tính khả thi của hướng tiếp cận xây dựng nền tảng học liệu tương tác được đề xuất trong khóa luận.
